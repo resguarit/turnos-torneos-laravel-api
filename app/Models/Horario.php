@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Horario extends Model
 {
-    /** @use HasFactory<\Database\Factories\HorarioFactory> */
     use HasFactory;
+
+    protected $table = 'horarios';
+
+
+    protected $fillable = ['horaInicio', 'horaFin', 'activo'];
 }
