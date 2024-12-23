@@ -6,6 +6,7 @@ use App\Http\Controllers\canchaController;
 use App\Http\Controllers\reservaController;
 use App\Http\Controllers\horarioController;
 
+use App\Http\Controllers\AuthController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -21,3 +22,5 @@ Route::get('/horarios', [horarioController::class, 'index']);
 Route::post('/horarios', [horarioController::class, 'store']);
 Route::delete('/horarios/{horario}', [horarioController::class, 'destroy']);
 
+
+Route::post('/login', [AuthController::class, 'login']);

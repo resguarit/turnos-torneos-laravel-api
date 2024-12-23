@@ -11,5 +11,13 @@ class Reserva extends Model
 
     protected $table = 'reservas';
 
-    protected $fillable = ['fecha_turno', 'fecha_reserva', 'horarioCanchaID', 'usuarioID', 'monto_total', 'monto_seña', 'estado'];	
+    protected $fillable = ['fecha_turno', 'fecha_reserva', 'horarioCanchaID', 'usuarioID', 'monto_total', 'monto_seña', 'estado'];
+    
+    public function horarioCancha(){
+        return $this->belongsTo(HorarioCancha::class, 'horarioCanchaID');
+    }
+
+    public function usuario(){
+        return $this->belongsTo(User::class, 'usuarioID');
+    }
 }
