@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\ReservaResource;
 use Illuminate\Http\Request;
 use App\Models\Reserva;
 use Illuminate\Support\Facades\Validator;
@@ -11,10 +12,15 @@ class reservaController extends Controller
     //
 
     public function index(){
-        $reservas = Reserva::all();
+
+        $reservas = Reserva::with([
+            'usuario',
+            'horarioCancha.horario',
+            'horarioCancha.cancha',
+        ])->get();
 
         $data = [
-            'reservas' => $reservas,
+            'reservas' => ReservaResource::collection($reservas),
             'status' => 200
         ];
 
@@ -24,9 +30,9 @@ class reservaController extends Controller
     public function store(Request $request){
 
         $validator = Validator::make($request->all(), [
-            'fecha_turno' => 'required',
-            'horarioCanchaID' => 'required',
-            'usuarioID' => 'required',
+            'fecha_turno' => 'required|date',
+            'horarioCanchaID' => 'required|exists:horarios_cancha,id',
+            'usuarioID' => 'required|exists:users,id',
             'monto_total' => 'required',
             'monto_seña' => 'required',
             'estado' => 'required'
