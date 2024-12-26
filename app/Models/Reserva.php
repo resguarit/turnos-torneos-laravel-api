@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class Reserva extends Model
 {
@@ -16,6 +17,13 @@ class Reserva extends Model
     protected $hidden = ['created_at', 'updated_at'];
 
     
+    protected $dates = ['fecha_turno', 'fecha_reserva'];
+
+    public function getFechaTurnoAttribute($value)
+    {
+        return Carbon::parse($value);
+    }
+
     public function horarioCancha(){
         return $this->belongsTo(HorarioCancha::class, 'horarioCanchaID');
     }

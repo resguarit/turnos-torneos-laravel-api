@@ -7,6 +7,7 @@ use App\Http\Controllers\reservaController;
 use App\Http\Controllers\horarioController;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\disponibilidadController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -21,6 +22,8 @@ Route::get('/reservas', [reservaController::class, 'index']);
 Route::post('/reservas', [reservaController::class, 'store']);
 Route::patch('/reservas/{id}', [reservaController::class, 'update']);
 Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
+
+Route::get('/disponibilidad', [disponibilidadController::class, 'getHorariosNoDisponibles']);
 
 Route::get('/horarios', [horarioController::class, 'index']);
 Route::post('/horarios', [horarioController::class, 'store']);
