@@ -13,6 +13,9 @@ class Reserva extends Model
     protected $table = 'reservas';
 
     protected $fillable = ['fecha_turno', 'fecha_reserva', 'horarioCanchaID', 'usuarioID', 'monto_total', 'monto_seña', 'estado'];
+
+    protected $hidden = ['created_at', 'updated_at'];
+
     
     protected $dates = ['fecha_turno', 'fecha_reserva'];
 
