@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\canchaController;
 use App\Http\Controllers\reservaController;
 use App\Http\Controllers\horarioController;
-
+use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\disponibilidadController;
 
@@ -22,6 +22,9 @@ Route::get('/reservas', [reservaController::class, 'index']);
 Route::post('/reservas', [reservaController::class, 'store']);
 Route::patch('/reservas/{id}', [reservaController::class, 'update']);
 Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
+
+
+Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
 
 Route::get('/disponibilidad', [disponibilidadController::class, 'getHorariosNoDisponibles']);
 
