@@ -14,13 +14,16 @@ Route::get('/user', function (Request $request) {
 
 Route::get('/canchas', [canchaController::class, 'index']);
 Route::post('/canchas', [canchaController::class, 'store']);
+Route::patch('/canchas/{id}', [canchaController::class, 'update']);
+Route::delete('/canchas/{id}', [canchaController::class, 'destroy']);
 
 Route::get('/reservas', [reservaController::class, 'index']);
 Route::post('/reservas', [reservaController::class, 'store']);
+Route::patch('/reservas/{id}', [reservaController::class, 'update']);
+Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
 
 Route::get('/horarios', [horarioController::class, 'index']);
 Route::post('/horarios', [horarioController::class, 'store']);
 Route::delete('/horarios/{horario}', [horarioController::class, 'destroy']);
 
-
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login',[AuthController::class, 'login']); //falta register    
