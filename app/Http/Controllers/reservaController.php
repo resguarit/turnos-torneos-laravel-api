@@ -88,6 +88,18 @@ class reservaController extends Controller
             return response()->json($data, 404);
         }
 
+        $reservaExistente = Reserva::where('fecha_turno', $request->fecha_turno)
+                                   ->where('horarioCanchaID', $horarioCancha->id)
+                                   ->first();
+
+        if ($reservaExistente) {
+            $data = [
+                'message' => 'Ya existe una reserva para esa cancha en esta fecha y horario',
+                'status' => 400
+            ];
+            return response()->json($data, 400);
+        }
+
         // Crear una nueva reserva
         $reserva = Reserva::create([
             'fecha_turno' => $request->fecha_turno,

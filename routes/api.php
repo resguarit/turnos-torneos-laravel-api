@@ -28,6 +28,7 @@ Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
 Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
 
 Route::get('/disponibilidad', [disponibilidadController::class, 'getHorariosNoDisponibles']);
+Route::get('/disponibilidad/fecha', [disponibilidadController::class, 'getHorariosNoDisponiblesPorFecha']);
 
 Route::get('/horarios', [horarioController::class, 'index']);
 Route::post('/horarios', [horarioController::class, 'store']);

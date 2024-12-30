@@ -23,10 +23,10 @@ class DatabaseSeeder extends Seeder
         ]);**/
 
         User::factory()->create([
-            'name' => 'Pedro Ramirez',
-            'email' => 'pedro@gmail.com',
-            'password' => bcrypt('password1'),
-            'telefono' => '2214545',
+            'name' => 'Jorge Cuarto',
+            'email' => 'jorge@gmail.com',
+            'password' => bcrypt('password'),
+            'telefono' => '2215607115',
         ]);
     }
 }

@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Reserva;
 use App\Models\Cancha;
 use App\Models\Horario;
+use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class disponibilidadController extends Controller
 {
@@ -53,5 +55,58 @@ class disponibilidadController extends Controller
         }
 
         return response()->json($result, 200);
+    }
+
+    public function getHorariosNoDisponiblesPorFecha(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'fecha' => 'required|date_format:Y-m-d',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
+
+        $canchasCount = Cancha::count();
+        $horarios = Horario::where('activo', true)->get();
+
+        $reservas = Reserva::whereDate('fecha_turno', $fecha)
+                            ->with('horarioCancha.horario')
+                            ->get();
+
+        $noDisponibles = [];
+
+        foreach ($reservas as $reserva) {
+            $horario = $reserva->horarioCancha->horario;
+            $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
+
+            if (!isset($noDisponibles[$intervalo])) {
+                $noDisponibles[$intervalo] = 0;
+            }
+
+            $noDisponibles[$intervalo]++;
+        }
+
+        $result = [];
+
+        foreach ($horarios as $horario) {
+            $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
+            $disponible = !isset($noDisponibles[$intervalo]) || $noDisponibles[$intervalo] < $canchasCount;
+
+            $result[] = [
+                'id' => $horario->id,
+                'horaInicio' => $horario->horaInicio,
+                'horaFin' => $horario->horaFin,
+                'disponible' => $disponible
+            ];
+        }
+
+        return response()->json(['horarios' => $result], 200);
     }
 }
