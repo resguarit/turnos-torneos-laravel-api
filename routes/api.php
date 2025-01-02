@@ -29,6 +29,7 @@ Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'blo
 
 Route::get('/disponibilidad', [disponibilidadController::class, 'getHorariosNoDisponibles']);
 Route::get('/disponibilidad/fecha', [disponibilidadController::class, 'getHorariosNoDisponiblesPorFecha']);
+Route::get('/disponibilidad/cancha', [disponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
 Route::get('/horarios', [horarioController::class, 'index']);
 Route::get('/horarios/{horario}', [horarioController::class, 'show']);

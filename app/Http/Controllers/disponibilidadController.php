@@ -109,4 +109,52 @@ class disponibilidadController extends Controller
 
         return response()->json(['horarios' => $result], 200);
     }
+
+
+    public function getCanchasPorHorarioFecha(Request $request){
+        $validator = Validator::make($request->all(), [
+            'fecha' => 'required|date_format:Y-m-d',
+            'horario_id' => 'required|exists:horarios,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
+
+        $horario = Horario::find($request->horario_id);
+
+        $reservas = Reserva::whereDate('fecha_turno', $fecha)
+                            ->where('horarioCanchaID', $horario->id)
+                            ->with('horarioCancha.cancha')
+                            ->get();
+
+        $canchas = Cancha::all();
+
+        $noDisponibles = [];
+
+        foreach ($reservas as $reserva) {
+            $cancha = $reserva->horarioCancha->cancha;
+            $noDisponibles[] = $cancha->id;
+        }
+
+        $result = [];
+
+        foreach ($canchas as $cancha) {
+            $disponible = !in_array($cancha->id, $noDisponibles);
+
+            $result[] = [
+                'id' => $cancha->id,
+                'nombre' => $cancha->tipoCancha,
+                'disponible' => $disponible
+            ];
+        }
+
+        return response()->json(['canchas' => $result], 200);
+    }
 }
