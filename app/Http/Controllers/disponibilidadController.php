@@ -150,11 +150,13 @@ class disponibilidadController extends Controller
 
             $result[] = [
                 'id' => $cancha->id,
-                'nombre' => $cancha->tipoCancha,
-                'disponible' => $disponible
+                'nro' => $cancha->nro,
+                'tipo' => $cancha->tipoCancha,
+                'disponible' => $disponible,
             ];
         }
 
-        return response()->json(['canchas' => $result], 200);
+
+        return response()->json(['canchas' => $result, 'status' => 200], 200);
     }
 }
