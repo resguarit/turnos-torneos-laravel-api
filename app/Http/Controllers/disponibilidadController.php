@@ -6,11 +6,15 @@ use Illuminate\Http\Request;
 use App\Models\Reserva;
 use App\Models\Cancha;
 use App\Models\Horario;
+use Illuminate\Support\Facades\Auth;
 
 class disponibilidadController extends Controller
 {
     public function getHorariosNoDisponibles()
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('horariosNoDisponible:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         $fechaInicio = now();
         $fechaFin = now()->addDays(30);

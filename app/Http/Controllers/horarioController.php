@@ -6,12 +6,17 @@ use App\Models\Horario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
 
 class horarioController extends Controller
 {
 
     public function index()
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('horarios:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        
         $horarios = Horario::all();
         
         $data = [
@@ -26,6 +31,10 @@ class horarioController extends Controller
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('horarios:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         $validator = Validator::make($request->all(), [
             'horaInicio' => 'required|date_format:H:i|unique:horarios,horaInicio',  
             'horaFin' => 'required|date_format:H:i|after:horaInicio|unique:horarios,horaFin',
@@ -65,11 +74,19 @@ class horarioController extends Controller
 
     public function show(Horario $horario)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('horarios:showOne') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         return $horario;
     }
 
     public function destroy($id)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('horarios:delete') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         try {
             $horario = Horario::findOrFail($id);
             $horario->delete();

@@ -3,15 +3,16 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        
+        // Implementación del registro
     }
 
     public function login(Request $request)
@@ -31,27 +32,31 @@ class AuthController extends Controller
             return response()->json($data, 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', request('email'))->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            $data = [
-                'message' => 'Credenciales incorrectas',
-                'status' => 401
-            ];
-
-            return response()->json($data, 401);
+        if (!$user) {
+            return response()->json([
+                'message' => 'Usuario no encontrado',
+                'status' => 404
+            ], 404);
         }
 
-        $token = $user->createToken('myapptoken')->plainTextToken;
+        if ($user && Hash::check($request->password, $user->password)) {
+            $abilities = $this->resolveAbilities($user);
+            $token = $user->createToken('login', $abilities);
+            return [
+                'token' => $token->plainTextToken,
+            ];
+        }
 
-        $data = [
-            'message' => 'Usuario logueado',
-            'user' => $user,
-            'token' => $token,
-            'status' => 200
-        ];
-
-        return response()->json($data, 200);
+        return response()->json([
+            'message' => 'Credenciales incorrectas',
+            'status' => 401
+        ], 401);
     }
 
+    protected function resolveAbilities(User $user)
+    {
+        return $user->getAbilities();
+    }
 }
