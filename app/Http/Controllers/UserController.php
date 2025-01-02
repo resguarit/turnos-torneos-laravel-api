@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
@@ -128,5 +128,73 @@ class UserController extends Controller
     protected function resolveAbilities(User $user)
     {
         return $user->getAbilities();
+    }
+
+    public function update(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('usuario:update') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $userToUpdate = User::find($id);
+
+        if (!$userToUpdate) {
+            return response()->json([
+                'message' => 'Usuario no encontrado',
+                'status' => 404
+            ], 404);
+        }
+
+        // Validar los datos de entrada
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|unique:users,name,' . $id,
+            'email' => 'sometimes|string|email|unique:users,email,' . $id,
+            'telefono' => 'sometimes|string|max:15',
+            'password' => 'sometimes|string|min:8|confirmed',
+            'current_password' => 'sometimes|required_with:password|string',
+        ]);
+
+        // Manejar errores de validación
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        // Verificar la contraseña actual si se está cambiando la contraseña
+        if ($request->has('password') && !Hash::check($request->current_password, $userToUpdate->password)) {
+            return response()->json([
+                'message' => 'La contraseña actual no es correcta',
+                'status' => 401
+            ], 401);
+        }
+
+        // Actualizar los campos del usuario
+        if ($request->has('name')) {
+            $userToUpdate->name = $request->name;
+        }
+
+        if ($request->has('email')) {
+            $userToUpdate->email = $request->email;
+        }
+
+        if ($request->has('telefono')) {
+            $userToUpdate->telefono = $request->telefono;
+        }
+
+        if ($request->has('password')) {
+            $userToUpdate->password = Hash::make($request->password);
+        }
+
+        // Guardar los cambios en la base de datos
+        $userToUpdate->save();
+
+        // Respuesta exitosa
+        return response()->json([
+            'message' => 'Usuario actualizado correctamente',
+            'status' => 200
+        ], 200);
     }
 }

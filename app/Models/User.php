@@ -58,7 +58,8 @@ class User extends Authenticatable
             'horarios:showOne',
             'reservas:create',
             'reservas:update',
-            'reservas:destroy'
+            'reservas:destroy',
+            'usuario:update',
         ],
         'moderador' => [
             'canchas:show',
@@ -71,7 +72,8 @@ class User extends Authenticatable
             'reservas:show',
             'reservas:create',
             'reservas:update',
-            'reservas:destroy'
+            'reservas:destroy',
+            'usuario:update',
         ],
         'admin' => ['*'],
     ];

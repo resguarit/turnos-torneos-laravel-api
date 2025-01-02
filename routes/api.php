@@ -6,7 +6,7 @@ use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\DisponibilidadController;
-use App\Http\Controllers\configController;
+use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\UserController;
 
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -28,8 +28,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
     
-    Route::post('/configurar-horarios', [configController::class, 'configurarHorarios']);   
+    Route::post('/configurar-horarios', [ConfigController::class, 'configurarHorarios']);   
 
+    Route::patch('/usuarios/{id}', [UserController::class, 'update']);
     Route::post('/create-user', [UserController::class, 'createUser']);
 
 });
