@@ -1,15 +1,13 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CanchaController;
 use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\BloqueoTemporalController;
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DisponibilidadController;
 use App\Http\Controllers\configController;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\UserController;
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/canchas', [CanchaController::class, 'index']);
@@ -32,7 +30,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::post('/configurar-horarios', [configController::class, 'configurarHorarios']);   
 
+    Route::post('/create-user', [UserController::class, 'createUser']);
+
 });
 
-Route::post('/login',[AuthController::class, 'login']); //falta register
-
+Route::post('/login', [UserController::class, 'login']);
+Route::post('/register', [UserController::class, 'register']);
