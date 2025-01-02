@@ -13,3 +13,7 @@ Artisan::command('bloqueos:clear-expired', function () {
     $this->info('Bloqueos expirados eliminados.');
 })->weekly(); // Intervalo más corto para pruebas
 
+//FALTA HACER EL CRONTAB EN EL SERVIDOR
+
+
+

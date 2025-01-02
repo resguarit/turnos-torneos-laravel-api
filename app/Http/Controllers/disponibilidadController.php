@@ -11,6 +11,7 @@ class disponibilidadController extends Controller
 {
     public function getHorariosNoDisponibles()
     {
+
         $fechaInicio = now();
         $fechaFin = now()->addDays(30);
 
