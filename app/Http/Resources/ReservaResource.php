@@ -30,7 +30,7 @@ class ReservaResource extends JsonResource
                 'tipoCancha' => $this->horarioCancha->cancha->tipoCancha,
             ],
             'fecha_reserva' => $this->fecha_reserva,
-            'fecha_turno' => $this->fecha_turno,
+            'fecha_turno' => $this->fecha_turno->format('Y-m-d'),
             'monto_total' => $this->monto_total,
             'monto_seña' => $this->monto_seña,
             'estado' => $this->estado,

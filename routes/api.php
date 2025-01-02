@@ -8,6 +8,7 @@ use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DisponibilidadController;
+use App\Http\Controllers\configController;
 use Illuminate\Support\Facades\Auth;
 
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -28,6 +29,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
+    
+    Route::post('/configurar-horarios', [configController::class, 'configurarHorarios']);   
+
 });
 
-Route::post('/login', [AuthController::class, 'login']); //falta register
+Route::post('/login',[AuthController::class, 'login']); //falta register
+

@@ -15,13 +15,38 @@ class reservaController extends Controller
 {
     //
 
-    public function index(){
-
+    public function index(Request $request)
+    {
         $user = Auth::user();
 
         abort_unless( $user->tokenCan('reservas:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        
+        $validator = Validator::make($request->all(), [
+            'fecha' => 'date|nullable',
+            'fecha_inicio' => 'date|nullable',
+            'fecha_fin' => 'date|nullable|after_or_equal:fecha_inicio',
+        ]);
 
-        $reservas = Reserva::with([
+        if ($validator->fails()) {
+            $data = [
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ];
+            return response()->json($data, 400);
+        }
+
+        $query = Reserva::query();
+
+        if ($request->has('fecha')) {
+            $query->whereDate('fecha_turno', $request->fecha);
+        }
+
+        if ($request->has('fecha_inicio') && $request->has('fecha_fin')) {
+            $query->whereBetween('fecha_turno', [$request->fecha_inicio, $request->fecha_fin]);
+        }
+
+        $reservas = $query->with([
             'usuario',
             'horarioCancha.horario',
             'horarioCancha.cancha',
