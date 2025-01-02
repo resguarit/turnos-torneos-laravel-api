@@ -31,6 +31,7 @@ Route::get('/disponibilidad', [disponibilidadController::class, 'getHorariosNoDi
 Route::get('/disponibilidad/fecha', [disponibilidadController::class, 'getHorariosNoDisponiblesPorFecha']);
 
 Route::get('/horarios', [horarioController::class, 'index']);
+Route::get('/horarios/{horario}', [horarioController::class, 'show']);
 Route::post('/horarios', [horarioController::class, 'store']);
 Route::delete('/horarios/{horario}', [horarioController::class, 'destroy']);
 

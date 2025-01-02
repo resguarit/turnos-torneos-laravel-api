@@ -63,10 +63,25 @@ class horarioController extends Controller
         return response()->json($data, 201);
     }
 
-    public function show(Horario $horario)
+    public function show($id)
     {
-        return $horario;
+        try {
+            $horario = Horario::findOrFail($id);
+
+            $data = [
+                'horario' => $horario,
+                'status' => 200
+            ];
+            return response()->json($data, 200);
+        } catch (ModelNotFoundException $e) {
+            $data = [
+                'message' => 'Horario no encontrado',
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
     }
+    
 
     public function destroy($id)
     {

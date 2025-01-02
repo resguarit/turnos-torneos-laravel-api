@@ -54,6 +54,21 @@ class reservaController extends Controller
         return response()->json($data, 200);
     }
 
+    public function getAll(){
+        $reservas = Reserva::with([
+            'usuario',
+            'horarioCancha.horario',
+            'horarioCancha.cancha',
+        ])->get();
+
+        $data = [
+            'reservas' => ReservaResource::collection($reservas),
+            'status' => 200
+        ];
+
+        return response()->json($data, 200);
+    }
+
     public function store(Request $request)
     {
         // Validar los datos de entrada
