@@ -15,10 +15,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/canchas/{id}', [CanchaController::class, 'update']);
     Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);
 
-    Route::get('/reservas', [ReservaController::class, 'index']);
-    Route::post('/reservas', [ReservaController::class, 'store']);
-    Route::patch('/reservas/{id}', [ReservaController::class, 'update']);
-    Route::delete('/reservas/{id}', [ReservaController::class, 'destroy']);
+Route::get('/reservas', [reservaController::class, 'index']);
+Route::post('/reservas', [reservaController::class, 'store']);
+Route::patch('/reservas/{id}', [reservaController::class, 'update']);
+Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
+Route::get('/reservas-all', [reservaController::class, 'getAll']);
 
     Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
 

@@ -18,8 +18,8 @@ class disponibilidadController extends Controller
 
         abort_unless( $user->tokenCan('horariosNoDisponible:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
-        $fechaInicio = now();
-        $fechaFin = now()->addDays(30);
+        $fechaInicio = now()->startOfDay();
+        $fechaFin = now()->addDays(30)->endOfDay();
 
         $canchasCount = Cancha::count();
         $horarios = Horario::all();
