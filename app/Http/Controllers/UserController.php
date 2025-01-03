@@ -116,6 +116,7 @@ class UserController extends Controller
             $token = $user->createToken('login', $abilities);
             return [
                 'token' => $token->plainTextToken,
+                'user' => $user -> id,
             ];
         }
 
