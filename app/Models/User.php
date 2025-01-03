@@ -73,6 +73,7 @@ class User extends Authenticatable
             'reservas:show',
             'reservas:create',
             'reservas:update',
+            "reservas:show_all",
             'reservas:destroy',
             'usuario:update',
             "horarios:indisponibilizar",

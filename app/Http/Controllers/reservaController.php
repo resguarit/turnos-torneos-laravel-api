@@ -66,6 +66,11 @@ class reservaController extends Controller
     }
 
     public function getAll(){
+
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('reservas:show_all') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         $reservas = Reserva::with([
             'usuario',
             'horarioCancha.horario',
