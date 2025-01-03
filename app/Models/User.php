@@ -74,6 +74,7 @@ class User extends Authenticatable
             'reservas:update',
             'reservas:destroy',
             'usuario:update',
+            "horarios:indisponibilizar"
         ],
         'admin' => ['*'],
     ];

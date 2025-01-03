@@ -16,7 +16,7 @@ class UserController extends Controller
             'name' => 'required|string',
             'email' => 'required|string|email|unique:users',
             'telefono' => 'required|string|max:15',
-            'password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         if ($validator->fails()) {
@@ -47,43 +47,43 @@ class UserController extends Controller
 
     public function createUser(Request $request)
     {
-        $authUser = Auth::user();
+    $authUser = Auth::user();
 
-        abort_unless($authUser->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+    abort_unless($authUser->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string',
-            'email' => 'required|string|email|unique:users',
-            'telefono' => 'required|string|max:15',
-            'password' => 'required|string',
-            'rol' => 'required|string|in:cliente,moderador,admin'
-        ]);
+    $validator = Validator::make($request->all(), [
+        'name' => 'required|string',
+        'email' => 'required|string|email|unique:users',
+        'telefono' => 'required|string|max:15',
+        'password' => 'required|string|min:8|confirmed',
+        'rol' => 'required|string|in:cliente,moderador,admin'
+    ]);
 
-        if ($validator->fails()) {
-            $data = [
-                'message' => 'Error de validación',
-                'errors' => $validator->errors(),
-                'status' => 422
-            ];
+    if ($validator->fails()) {
+        $data = [
+            'message' => 'Error de validación',
+            'errors' => $validator->errors(),
+            'status' => 422
+        ];
 
-            return response()->json($data, 422);
-        }
-
-        $user = new User([
-            'name' => $request->name,
-            'email' => $request->email,
-            'telefono' => $request->telefono,
-            'password' => Hash::make($request->password),
-            'rol' => $request->rol
-        ]);
-
-        $user->save();
-
-        return response()->json([
-            'message' => 'Usuario creado con éxito',
-            'status' => 201
-        ], 201);
+        return response()->json($data, 422);
     }
+
+    $user = new User([
+        'name' => $request->name,
+        'email' => $request->email,
+        'telefono' => $request->telefono,
+        'password' => Hash::make($request->password),
+        'rol' => $request->rol
+    ]);
+
+    $user->save();
+
+    return response()->json([
+        'message' => 'Usuario creado con éxito',
+        'status' => 201
+    ], 201);
+}
 
     public function login(Request $request)
     {
@@ -132,69 +132,69 @@ class UserController extends Controller
 
     public function update(Request $request, $id)
     {
-        $user = Auth::user();
+    $user = Auth::user();
 
-        abort_unless($user->tokenCan('usuario:update') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+    abort_unless($user->tokenCan('usuario:update') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        $userToUpdate = User::find($id);
+    $userToUpdate = User::find($id);
 
-        if (!$userToUpdate) {
-            return response()->json([
-                'message' => 'Usuario no encontrado',
-                'status' => 404
-            ], 404);
-        }
-
-        // Validar los datos de entrada
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|unique:users,name,' . $id,
-            'email' => 'sometimes|string|email|unique:users,email,' . $id,
-            'telefono' => 'sometimes|string|max:15',
-            'password' => 'sometimes|string|min:8|confirmed',
-            'current_password' => 'sometimes|required_with:password|string',
-        ]);
-
-        // Manejar errores de validación
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Error en la validación',
-                'errors' => $validator->errors(),
-                'status' => 400
-            ], 400);
-        }
-
-        // Verificar la contraseña actual si se está cambiando la contraseña
-        if ($request->has('password') && !Hash::check($request->current_password, $userToUpdate->password)) {
-            return response()->json([
-                'message' => 'La contraseña actual no es correcta',
-                'status' => 401
-            ], 401);
-        }
-
-        // Actualizar los campos del usuario
-        if ($request->has('name')) {
-            $userToUpdate->name = $request->name;
-        }
-
-        if ($request->has('email')) {
-            $userToUpdate->email = $request->email;
-        }
-
-        if ($request->has('telefono')) {
-            $userToUpdate->telefono = $request->telefono;
-        }
-
-        if ($request->has('password')) {
-            $userToUpdate->password = Hash::make($request->password);
-        }
-
-        // Guardar los cambios en la base de datos
-        $userToUpdate->save();
-
-        // Respuesta exitosa
+    if (!$userToUpdate) {
         return response()->json([
-            'message' => 'Usuario actualizado correctamente',
-            'status' => 200
-        ], 200);
+            'message' => 'Usuario no encontrado',
+            'status' => 404
+        ], 404);
+    }
+
+    // Validar los datos de entrada
+    $validator = Validator::make($request->all(), [
+        'name' => 'sometimes|string|unique:users,name,' . $id,
+        'email' => 'sometimes|string|email|unique:users,email,' . $id,
+        'telefono' => 'sometimes|string|max:15',
+        'password' => 'sometimes|string|min:8|confirmed',
+        'current_password' => 'sometimes|required_with:password|string',
+    ]);
+
+    // Manejar errores de validación
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Error en la validación',
+            'errors' => $validator->errors(),
+            'status' => 400
+        ], 400);
+    }
+
+    // Verificar la contraseña actual si se está cambiando la contraseña
+    if ($request->has('password') && !Hash::check($request->current_password, $userToUpdate->password)) {
+        return response()->json([
+            'message' => 'La contraseña actual no es correcta',
+            'status' => 401
+        ], 401);
+    }
+
+    // Actualizar los campos del usuario
+    if ($request->has('name')) {
+        $userToUpdate->name = $request->name;
+    }
+
+    if ($request->has('email')) {
+        $userToUpdate->email = $request->email;
+    }
+
+    if ($request->has('telefono')) {
+        $userToUpdate->telefono = $request->telefono;
+    }
+
+    if ($request->has('password')) {
+        $userToUpdate->password = Hash::make($request->password);
+    }
+
+    // Guardar los cambios en la base de datos
+    $userToUpdate->save();
+
+    // Respuesta exitosa
+    return response()->json([
+        'message' => 'Usuario actualizado correctamente',
+        'status' => 200
+    ], 200);
     }
 }
