@@ -81,6 +81,7 @@ class User extends Authenticatable
             "usuario:showOne",
             "horarios:indisponibilizar",
             "horarios:fecha",
+            "disponibilidad:canchas",
         ],
         'admin' => ['*'],
     ];

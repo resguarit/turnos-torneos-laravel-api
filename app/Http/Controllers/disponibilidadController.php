@@ -121,6 +121,11 @@ class disponibilidadController extends Controller
 
 
     public function getCanchasPorHorarioFecha(Request $request){
+
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('disponibilidad:canchas') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
             'horario_id' => 'required|exists:horarios,id',
