@@ -64,6 +64,7 @@ class User extends Authenticatable
         ],
         'moderador' => [
             'canchas:show',
+            "cancha:showOne",
             'canchas:update',
             'reserva:bloqueo',
             'horariosNoDisponible:show',

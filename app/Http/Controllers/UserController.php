@@ -145,6 +145,7 @@ class UserController extends Controller
 
         return response()->json($data,200);
     }
+    
     public function show ($id){
         $user = Auth::user();
 
@@ -176,6 +177,7 @@ class UserController extends Controller
             'status' => 200
         ], 200);
     }
+
     public function update(Request $request, $id)
 {
     $user = Auth::user();

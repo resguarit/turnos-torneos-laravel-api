@@ -12,6 +12,7 @@ use App\Http\Controllers\UserController;
 Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/canchas', [CanchaController::class, 'index']);
+    Route::get('/canchas/{id}', [CanchaController::class, 'show']);
     Route::post('/canchas', [CanchaController::class, 'store']);
     Route::patch('/canchas/{id}', [CanchaController::class, 'update']);
     Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);

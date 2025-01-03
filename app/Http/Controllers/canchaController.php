@@ -26,6 +26,39 @@ class CanchaController extends Controller
         return response()->json($data, 200);
     }
 
+    public function show ($id){
+        
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('cancha:showOne') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $validator = Validator::make(['id' => $id], [
+            'id' => 'required|integer|exists:canchas,id'
+        ]);
+
+        if($validator->fails()){
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $canchaToShow = Cancha::find($id);
+
+        if (!$canchaToShow) {
+            return response()->json([
+                'message' => 'Cancha no encontrada',
+                'status' => 404
+            ], 404);
+        }
+
+        return response()->json([
+            'cancha' => $canchaToShow,
+            'status' => 200
+        ], 200);
+    }
+
     public function store(Request $request)
     {
         $user = Auth::user();
