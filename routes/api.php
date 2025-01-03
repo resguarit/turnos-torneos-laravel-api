@@ -29,8 +29,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
     Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
-
     Route::get('/horarios', [HorarioController::class, 'index']);
+    Route::get('/horarios/{id}', [HorarioController::class, 'show']);
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
     
