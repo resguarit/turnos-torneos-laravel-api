@@ -103,7 +103,8 @@ class reservaController extends Controller
             'usuarioID' => 'required|exists:users,id',
             'monto_total' => 'required',
             'monto_seña' => 'required',
-            'estado' => 'required'
+            'estado' => 'required',
+            'tipo' => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -149,7 +150,8 @@ class reservaController extends Controller
             'usuarioID' => $request->usuarioID,
             'monto_total' => $request->monto_total,
             'monto_seña' => $request->monto_seña,
-            'estado' => $request->estado
+            'estado' => $request->estado,
+            'tipo' => $request->tipo
         ]);
 
         if (!$reserva) {
@@ -194,7 +196,8 @@ class reservaController extends Controller
             'horarioCanchaID' => 'sometimes|exists:horarios_cancha,id',
             'monto_total' => 'sometimes',
             'monto_seña' => 'sometimes',
-            'estado' => 'sometimes'
+            'estado' => 'sometimes',
+            'tipo' => 'sometimes'
         ]);
 
         // Manejar errores de validación
@@ -227,6 +230,11 @@ class reservaController extends Controller
         if($request->has('estado')){
             $reserva->estado = $request->estado;
         }
+
+        if($request->has('tipo')){
+            $reserva->tipo = $request->tipo;
+        }
+
 
         // Guardar los cambios en la base de datos
         $reserva->save();
