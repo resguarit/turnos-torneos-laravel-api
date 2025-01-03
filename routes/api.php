@@ -23,7 +23,7 @@ Route::get('/reservas', [reservaController::class, 'index']);
 Route::post('/reservas', [reservaController::class, 'store']);
 Route::patch('/reservas/{id}', [reservaController::class, 'update']);
 Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
-
+Route::get('/reservas-all', [reservaController::class, 'getAll']);
 
 Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
 

@@ -30,6 +30,7 @@ class reservaController extends Controller
             return response()->json($data, 400);
         }
 
+        $fechaHoy = now()->startOfDay();
         $query = Reserva::query();
 
         if ($request->has('fecha')) {
@@ -38,6 +39,10 @@ class reservaController extends Controller
 
         if ($request->has('fecha_inicio') && $request->has('fecha_fin')) {
             $query->whereBetween('fecha_turno', [$request->fecha_inicio, $request->fecha_fin]);
+        }
+
+        if(!$request->has('fecha') && !$request->has('fecha_inicio') && !$request->has('fecha_fin')){
+            $query->whereDate('fecha_turno', '>=', $fechaHoy);
         }
 
         $reservas = $query->with([
