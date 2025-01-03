@@ -61,6 +61,7 @@ class User extends Authenticatable
             'reservas:destroy',
             'usuario:update',
             "horarios:fecha",
+            "disponibilidad:canchas",
         ],
         'moderador' => [
             'canchas:show',

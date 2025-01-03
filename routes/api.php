@@ -23,7 +23,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/reservas/{id}', [reservaController::class, 'update']);
     Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
 
-    Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
+    Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorarios']);
 
     Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
     Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
