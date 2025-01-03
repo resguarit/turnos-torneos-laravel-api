@@ -23,8 +23,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
 
     Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
-    Route::get('/disponibilidad/fecha', [disponibilidadController::class, 'getHorariosNoDisponiblesPorFecha']);
-    Route::get('/disponibilidad/cancha', [disponibilidadController::class, 'getCanchasPorHorarioFecha']);
+    Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
+    Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
 
     Route::get('/horarios', [HorarioController::class, 'index']);

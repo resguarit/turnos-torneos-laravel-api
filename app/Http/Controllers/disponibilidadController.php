@@ -62,8 +62,12 @@ class disponibilidadController extends Controller
         return response()->json($result, 200);
     }
 
-    public function getHorariosNoDisponiblesPorFecha(Request $request)
+    public function getHorariosDisponiblesPorFecha(Request $request)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('horarios:fecha') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
         ]);
