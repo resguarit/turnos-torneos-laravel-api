@@ -13,8 +13,8 @@ class disponibilidadController extends Controller
 {
     public function getHorariosNoDisponibles()
     {
-        $fechaInicio = now();
-        $fechaFin = now()->addDays(30);
+        $fechaInicio = now()->startOfDay();
+        $fechaFin = now()->addDays(30)->endOfDay();
 
         $canchasCount = Cancha::count();
         $horarios = Horario::all();
