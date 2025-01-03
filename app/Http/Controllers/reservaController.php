@@ -92,7 +92,7 @@ class reservaController extends Controller
 
         abort_unless( $user->tokenCan('reservas:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
-        if (!$request->user()->tokenCan('reservas:crete')) {
+        if (!$request->user()->tokenCan('reservas:create')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
         // Validar los datos de entrada
