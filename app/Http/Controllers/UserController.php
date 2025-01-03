@@ -46,7 +46,7 @@ class UserController extends Controller
     }
 
     public function createUser(Request $request)
-    {
+{
     $authUser = Auth::user();
 
     abort_unless($authUser->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
@@ -130,8 +130,54 @@ class UserController extends Controller
         return $user->getAbilities();
     }
 
+    public function index(){
+        
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('usuario:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $users = User::all();
+
+        $data = [
+            'usuarios' => $users,
+            'status' => 200
+        ];
+
+        return response()->json($data,200);
+    }
+    public function show ($id){
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('usuario:showOne') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $validator = Validator::make(['id' => $id], [
+            'id' => 'required|integer|exists:users,id'
+        ]);
+
+        if($validator->fails()){
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $userToShow = User::find($id);
+
+        if (!$userToShow) {
+            return response()->json([
+                'message' => 'Usuario no encontrado',
+                'status' => 404
+            ], 404);
+        }
+
+        return response()->json([
+            'user' => $userToShow,
+            'status' => 200
+        ], 200);
+    }
     public function update(Request $request, $id)
-    {
+{
     $user = Auth::user();
 
     abort_unless($user->tokenCan('usuario:update') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
@@ -196,5 +242,9 @@ class UserController extends Controller
         'message' => 'Usuario actualizado correctamente',
         'status' => 200
     ], 200);
+
     }
+
 }
+
+
