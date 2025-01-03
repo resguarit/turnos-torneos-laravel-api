@@ -31,6 +31,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 
     Route::get('/horarios', [HorarioController::class, 'index']);
+    Route::get('/horarios/{horario}', [HorarioController::class, 'show']);
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
     
