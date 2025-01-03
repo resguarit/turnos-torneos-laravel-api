@@ -6,11 +6,16 @@ use App\Models\Cancha;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
 
 class CanchaController extends Controller
 {
     public function index()
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('canchas:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         $canchas = Cancha::all();
 
         $data = [
@@ -23,6 +28,10 @@ class CanchaController extends Controller
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('canchas:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         $validator = Validator::make($request->all(), [
             'nro' => 'required|unique:canchas',
             'tipoCancha' => 'required|max:200',
@@ -64,10 +73,13 @@ class CanchaController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Encontrar la cancha por su ID
+        
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('canchas:update') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         $cancha = Cancha::find($id);
 
-        // Verificar si la cancha existe
         if (!$cancha) {
             $data = [
                 'message' => 'No hay cancha encontrada',
@@ -126,6 +138,10 @@ class CanchaController extends Controller
 
     public function destroy($id)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('canchas:destroy') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        
         try {
             $cancha = Cancha::findOrFail($id);
             $cancha->delete();

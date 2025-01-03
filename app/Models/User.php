@@ -11,18 +11,20 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasFactory, Notifiable;
+    use HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array
      */
     protected $fillable = [
         'name',
         'email',
         'telefono',
         'password',
+        'rol',
     ];
 
     /**
@@ -47,4 +49,39 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    const ROLES = [
+        'cliente' => [
+            'canchas:show',
+            'reserva:bloqueo',
+            'horariosNoDisponible:show',
+            'horarios:show',
+            'horarios:showOne',
+            'reservas:create',
+            'reservas:update',
+            'reservas:destroy',
+            'usuario:update',
+        ],
+        'moderador' => [
+            'canchas:show',
+            'canchas:update',
+            'reserva:bloqueo',
+            'horariosNoDisponible:show',
+            'horarios:show',
+            'horarios:create',
+            'horarios:showOne',
+            'reservas:show',
+            'reservas:create',
+            'reservas:update',
+            'reservas:destroy',
+            'usuario:update',
+            "horarios:indisponibilizar"
+        ],
+        'admin' => ['*'],
+    ];
+
+    public function getAbilities()
+    {
+        return self::ROLES[$this->rol] ?? [];
+    }
+
 }

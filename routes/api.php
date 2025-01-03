@@ -1,41 +1,42 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\canchaController;
-use App\Http\Controllers\reservaController;
-use App\Http\Controllers\horarioController;
+use App\Http\Controllers\CanchaController;
+use App\Http\Controllers\ReservaController;
+use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\BloqueoTemporalController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\disponibilidadController;
-use App\Http\Controllers\configController;
+use App\Http\Controllers\DisponibilidadController;
+use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\UserController;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/canchas', [CanchaController::class, 'index']);
+    Route::post('/canchas', [CanchaController::class, 'store']);
+    Route::patch('/canchas/{id}', [CanchaController::class, 'update']);
+    Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);
 
-Route::get('/canchas', [canchaController::class, 'index']);
-Route::post('/canchas', [canchaController::class, 'store']);
-Route::patch('/canchas/{id}', [canchaController::class, 'update']);
-Route::delete('/canchas/{id}', [canchaController::class, 'destroy']);
+    Route::get('/reservas', [ReservaController::class, 'index']);
+    Route::post('/reservas', [ReservaController::class, 'store']);
+    Route::patch('/reservas/{id}', [ReservaController::class, 'update']);
+    Route::delete('/reservas/{id}', [ReservaController::class, 'destroy']);
 
-Route::get('/reservas', [reservaController::class, 'index']);
-Route::post('/reservas', [reservaController::class, 'store']);
-Route::patch('/reservas/{id}', [reservaController::class, 'update']);
-Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
+    Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
+
+    Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
+    Route::get('/disponibilidad/fecha', [disponibilidadController::class, 'getHorariosNoDisponiblesPorFecha']);
+    Route::get('/disponibilidad/cancha', [disponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
 
-Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
+    Route::get('/horarios', [HorarioController::class, 'index']);
+    Route::post('/horarios', [HorarioController::class, 'store']);
+    Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
+    
+    Route::post('/configurar-horarios', [ConfigController::class, 'configurarHorarios']);   
 
-Route::get('/disponibilidad', [disponibilidadController::class, 'getHorariosNoDisponibles']);
-Route::get('/disponibilidad/fecha', [disponibilidadController::class, 'getHorariosNoDisponiblesPorFecha']);
-Route::get('/disponibilidad/cancha', [disponibilidadController::class, 'getCanchasPorHorarioFecha']);
+    Route::patch('/usuarios/{id}', [UserController::class, 'update']);
+    Route::post('/create-user', [UserController::class, 'createUser']);
 
-Route::get('/horarios', [horarioController::class, 'index']);
-Route::get('/horarios/{horario}', [horarioController::class, 'show']);
-Route::post('/horarios', [horarioController::class, 'store']);
-Route::delete('/horarios/{horario}', [horarioController::class, 'destroy']);
+});
 
-Route::post('/login',[AuthController::class, 'login']); //falta register
-
-Route::post('/configurar-horarios', [configController::class, 'configurarHorarios']);   
+Route::post('/login', [UserController::class, 'login']);
+Route::post('/register', [UserController::class, 'register']);

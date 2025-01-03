@@ -19,5 +19,7 @@ class BloqueoTemporal extends Model
     ];
 
     public $timestamps = true;
+
+    
 }
 

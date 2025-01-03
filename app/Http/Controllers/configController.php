@@ -8,11 +8,16 @@ use App\Models\Cancha;
 use App\Models\HorarioCancha;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class configController extends Controller
 {
     public function configurarHorarios(Request $request)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('horarios:config') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         $validator = Validator::make($request->all(), [
             'hora_apertura' => 'required|date_format:H:i',
             'hora_cierre' => 'required|date_format:H:i|after:hora_apertura',

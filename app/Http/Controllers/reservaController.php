@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use App\Models\Reserva;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
+
 
 class reservaController extends Controller
 {
@@ -15,6 +17,10 @@ class reservaController extends Controller
 
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('reservas:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        
         $validator = Validator::make($request->all(), [
             'fecha' => 'date|nullable',
             'fecha_inicio' => 'date|nullable',
@@ -71,6 +77,14 @@ class reservaController extends Controller
 
     public function store(Request $request)
     {
+        
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('reservas:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
+        if (!$request->user()->tokenCan('create_reservation')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'required|date',
@@ -102,6 +116,8 @@ class reservaController extends Controller
             ];
             return response()->json($data, 404);
         }
+
+        $user = Auth::user();
 
         $reservaExistente = Reserva::where('fecha_turno', $request->fecha_turno)
                                    ->where('horarioCanchaID', $horarioCancha->id)
@@ -145,6 +161,11 @@ class reservaController extends Controller
 
     public function update(Request $request, $id)
     {
+
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('reservas:update') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         // Encontrar la reserva por su ID
         $reserva = Reserva::find($id);
 
@@ -212,6 +233,10 @@ class reservaController extends Controller
 
     public function destroy($id)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('reservas:destroy') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
         try {
             $reserva = Reserva::findOrFail($id);
             $reserva->delete();

@@ -6,11 +6,17 @@ use App\Models\BloqueoTemporal;
 use App\Models\HorarioCancha;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class BloqueoTemporalController extends Controller
 {
     public function bloquearHorario(Request $request)
     {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('reserva:bloqueo') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
+        
         $validated = $request->validate([
             'usuario_id' => 'required|exists:users,id',
             'canchaID' => 'required|exists:canchas,id',
