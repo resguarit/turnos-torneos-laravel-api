@@ -13,7 +13,8 @@ class BloqueoTemporal extends Model
 
     protected $fillable = [
         'usuario_id',
-        'horario_cancha_id',
+        'horario_id',
+        'cancha_id',
         'fecha',
         'expira_en',
     ];
