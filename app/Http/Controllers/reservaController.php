@@ -191,7 +191,8 @@ class reservaController extends Controller
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'sometimes|date',
-            'horarioCanchaID' => 'sometimes|exists:horarios_cancha,id',
+            'horarioID' => 'sometimes|exists:horarios,id',
+            'canchaID' => 'sometimes|exists:canchas,id',
             'monto_total' => 'sometimes',
             'monto_seña' => 'sometimes',
             'estado' => 'sometimes'
@@ -208,12 +209,16 @@ class reservaController extends Controller
         }
 
         // Actualizar los campos de la reserva
-        if($request->has('fechaTurno')){
-            $reserva->fechaTurno = $request->fechaTurno;
+        if($request->has('fecha_turno')){
+            $reserva->fecha_turno = $request->fecha_turno;
         }
 
-        if($request->has('horarioCanchaID')){
-            $reserva->horarioCanchaID = $request->horarioCanchaID;
+        if($request->has('horarioID')){
+            $reserva->horarioID = $request->horarioID;
+        }
+
+        if($request->has('canchaID')){
+            $reserva->canchaID = $request->canchaID;
         }
 
         if($request->has('monto_total')){
@@ -261,6 +266,31 @@ class reservaController extends Controller
         } catch (ModelNotFoundException $e) {
             $data = [
                 'message' => 'reserva no encontrada',
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
+    }
+
+    public function show($id)
+    {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('reservas:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
+        try {
+            $reserva = Reserva::findOrFail($id);
+
+            $data = [
+                'reserva' => new ReservaResource($reserva),
+                'status' => 200
+            ];
+
+            return response()->json($data, 200);
+
+        } catch (ModelNotFoundException $e) {
+            $data = [
+                'message' => 'Reserva no encontrada',
                 'status' => 404
             ];
             return response()->json($data, 404);

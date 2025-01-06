@@ -18,6 +18,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);
 
     Route::get('/reservas', [reservaController::class, 'index']);
+    Route::get('/reservas/{id}', [reservaController::class, 'show']);
     Route::get('/reservas-all', [reservaController::class, 'getAll']);
     Route::post('/reservas', [reservaController::class, 'store']);
     Route::patch('/reservas/{id}', [reservaController::class, 'update']);
