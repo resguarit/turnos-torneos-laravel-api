@@ -36,22 +36,22 @@ class configController extends Controller
         $hora_cierre = Carbon::createFromFormat('H:i', $request->hora_cierre);
         $intervalo = $request->intervalo;
 
-        $horarios_existentes = Horario::orderBy('horaInicio')->get();
+        $horarios_existentes = Horario::orderBy('hora_inicio')->get();
 
         if ($horarios_existentes->isEmpty()) {
             $this->crearHorarios($hora_apertura, $hora_cierre, $intervalo);
         } else {
-            $hora_apertura_existente = Carbon::createFromFormat('H:i:s', $horarios_existentes->first()->horaInicio);
-            $hora_cierre_existente = Carbon::createFromFormat('H:i:s', $horarios_existentes->last()->horaFin);
+            $hora_apertura_existente = Carbon::createFromFormat('H:i:s', $horarios_existentes->first()->hora_inicio);
+            $hora_cierre_existente = Carbon::createFromFormat('H:i:s', $horarios_existentes->last()->hora_fin);
 
             if ($hora_apertura->lt($hora_apertura_existente)) {
                 $this->crearHorarios($hora_apertura, $hora_apertura_existente, $intervalo);
             } elseif ($hora_apertura->gt($hora_apertura_existente)) {
-                Horario::where('horaInicio', '<', $hora_apertura->format('H:i:s'))->update(['activo' => false]);
+                Horario::where('hora_inicio', '<', $hora_apertura->format('H:i:s'))->update(['activo' => false]);
             }
 
             if ($hora_cierre->lt($hora_cierre_existente)) {
-                Horario::where('horaFin', '>', $hora_cierre->format('H:i:s'))->orWhere('horaInicio', '>=', $hora_cierre->format('H:i:s'))->update(['activo' => false]);
+                Horario::where('hora_fin', '>', $hora_cierre->format('H:i:s'))->orWhere('hora_inicio', '>=', $hora_cierre->format('H:i:s'))->update(['activo' => false]);
             } elseif ($hora_cierre->gt($hora_cierre_existente)) {
                 $this->crearHorarios($hora_cierre_existente, $hora_cierre, $intervalo);
             }
@@ -76,7 +76,7 @@ class configController extends Controller
             $hora_fin_turno = $hora_actual->format('H:i');
 
             $horario = Horario::firstOrCreate(
-                ['hora_inicio' => $hora_inicio_turno, 'horaFin' => $hora_fin_turno],
+                ['hora_inicio' => $hora_inicio_turno, 'hora_fin' => $hora_fin_turno],
                 ['activo' => true]
             );
         }

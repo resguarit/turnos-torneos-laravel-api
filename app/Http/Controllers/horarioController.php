@@ -36,8 +36,8 @@ class horarioController extends Controller
         abort_unless( $user->tokenCan('horarios:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
-            'hora_inicio' => 'required|date_format:H:i|unique:horarios,horaInicio',  
-            'hora_fin' => 'required|date_format:H:i|after:horaInicio|unique:horarios,horaFin',
+            'hora_inicio' => 'required|date_format:H:i|unique:horarios,hora_inicio',  
+            'hora_fin' => 'required|date_format:H:i|after:hora_inicio|unique:horarios,hora_fin',
             'activo' => 'required|boolean',
         ]);
 
@@ -51,8 +51,8 @@ class horarioController extends Controller
         }
 
         $horario = Horario::create([
-            'hora_inicio' => $request->horaInicio,
-            'hora_fin' => $request->horaFin,
+            'hora_inicio' => $request->hora_inicio,
+            'hora_fin' => $request->hora_fin,
             'activo' => $request->activo,
         ]);
 

@@ -21,12 +21,12 @@ class BloqueoTemporalController extends Controller
         
         $validated = $request->validate([
             'usuario_id' => 'required|exists:users,id',
-            'canchaID' => 'required|exists:canchas,id',
-            'horarioID' => 'required|exists:horarios,id',
+            'cancha_id' => 'required|exists:canchas,id',
+            'horario_id' => 'required|exists:horarios,id',
             'fecha' => 'required|date',
         ]);
 
-        $turno = Cancha::where('cancha_id', $validated['canchaID']) && Horario::where('horario_id', $validated['horarioID']) && Turno::where('fecha_turno', $validated['fecha'])->first();
+        $turno = Cancha::where('cancha_id', $validated['cancha_id']) && Horario::where('horario_id', $validated['horario_id']) && Turno::where('fecha_turno', $validated['fecha'])->first();
 
         if (!$turno) {
             return response()->json([
@@ -39,21 +39,23 @@ class BloqueoTemporalController extends Controller
             DB::beginTransaction(); // Inicia la transacción
 
             // Bloqueo exclusivo para evitar condiciones de carrera
-            $yaReservado = DB::table('turnos')
-                ->where('horarioCanchaID', $horarioCancha->id)
+            $ya_reservado = DB::table('turnos')
+                ->where('horario', $request->horario_id)
+                ->where('cancha', $request->cancha_id)
                 ->where('fecha_turno', $validated['fecha'])
                 ->whereIn('estado', ['pendiente', 'confirmada'])
                 ->lockForUpdate()
                 ->exists();
 
-            $yaBloqueado = DB::table('bloqueo_temporal')
-                ->where('horario_cancha_id', $horarioCancha->id)
+            $ya_bloqueado = DB::table('bloqueo_temporal')
+                ->where('horario', $request->horario_id)
+                ->where('cancha', $request->cancha_id)
                 ->where('fecha', $validated['fecha'])
                 ->where('expira_en', '>', now())
                 ->lockForUpdate()
                 ->exists();
 
-            if ($yaReservado || $yaBloqueado) {
+            if ($ya_reservado || $ya_bloqueado) {
                 DB::rollBack();
                 return response()->json(['message' => 'El horario ya no está disponible.'], 400);
             }
@@ -61,7 +63,8 @@ class BloqueoTemporalController extends Controller
             // Crear el bloqueo temporal
             $bloqueo = BloqueoTemporal::create([
                 'usuario_id' => $validated['usuario_id'],
-                'horario_cancha_id' => $horarioCancha->id,
+                'horario_id' => $request->horario_id,
+                'cancha_id' => $request->cancha_id,
                 'fecha' => $validated['fecha'],
                 'expira_en' => now()->addMinutes(10),
             ]);
