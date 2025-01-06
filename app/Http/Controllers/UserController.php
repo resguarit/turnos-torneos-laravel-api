@@ -117,6 +117,7 @@ class UserController extends Controller
             return [
                 'token' => $token->plainTextToken,
                 'userId' => $user -> id,
+                'userName' => $user -> name,
             ];
         }
 
