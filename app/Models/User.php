@@ -77,6 +77,7 @@ class User extends Authenticatable
             'reservas:update',
             "reservas:show_all",
             'reservas:destroy',
+            "reservas:createTurnoFijo",
             "usuario:show",
             'usuario:update',
             "usuario:showOne",

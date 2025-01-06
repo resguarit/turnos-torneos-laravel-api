@@ -12,7 +12,7 @@ class BloqueoTemporalController extends Controller
 {
     public function bloquearHorario(Request $request)
     {
-        $user = Auth::user();
+        abort_unless($user = Auth::user(), 401, 'No autorizado');
 
         abort_unless( $user->tokenCan('reserva:bloqueo') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
