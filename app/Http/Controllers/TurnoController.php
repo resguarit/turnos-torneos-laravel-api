@@ -117,8 +117,8 @@ class TurnoController extends Controller
             return response()->json($data, 400);
         }
 
-        $horario = Horario::find($request->horarioID);
-        $cancha = Cancha::find($request->canchaID);
+        $horario = Horario::find($request->horario_id);
+        $cancha = Cancha::find($request->cancha_id);
 
         if (!$horario || !$cancha) {
             return response()->json([
@@ -195,8 +195,8 @@ class TurnoController extends Controller
             ], 400);
         }
 
-        $horario = Horario::find($request->horarioID);
-        $cancha = Cancha::find($request->canchaID);
+        $horario = Horario::find($request->horario_id);
+        $cancha = Cancha::find($request->cancha_id);
 
         if (!$horario || !$cancha) {
             return response()->json([
@@ -229,7 +229,7 @@ class TurnoController extends Controller
                     'fecha_reserva' => now(),
                     'horario_id' => $request->horario_id,
                     'cancha_id' => $request->cancha_id,
-                    'usuarioID' => $request->usuarioID,
+                    'usuario_id' => $request->usuario_id,
                     'monto_total' => $request->monto_total,
                     'monto_seña' => $request->monto_seña,
                     'estado' => $request->estado,
