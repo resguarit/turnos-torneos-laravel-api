@@ -26,10 +26,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorarios']);
 
-    Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
-    Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
-    Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
-
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::get('/horarios/{id}', [HorarioController::class, 'show']);
     Route::post('/horarios', [HorarioController::class, 'store']);
@@ -46,3 +42,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
+
+Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
+Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
+Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
