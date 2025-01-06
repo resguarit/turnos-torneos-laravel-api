@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('reservas', function (Blueprint $table) {
+        Schema::create('turnos', function (Blueprint $table) {
             $table->id();
             $table->foreignId('usuarioID')->constrained('users')->onDelete('cascade');
             $table->foreignId('horarioCanchaID')->constrained('horarios_cancha')->onDelete('cascade');
@@ -17,12 +17,13 @@ return new class extends Migration
             $table->decimal('monto_total',8,2);
             $table->decimal('monto_seña', 8, 2);
             $table->string('estado')->default('pendiente');
+            $table->string('tipo')->default('unico');
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('reservas');
+        Schema::dropIfExists('turnos');
     }
 };

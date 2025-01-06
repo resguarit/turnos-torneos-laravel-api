@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Reserva;
+use App\Models\Turno;
 use App\Models\Cancha;
 use App\Models\Horario;
 use Illuminate\Support\Facades\Auth;
@@ -24,15 +24,15 @@ class disponibilidadController extends Controller
         $canchasCount = Cancha::count();
         $horarios = Horario::all();
 
-        $reservas = Reserva::whereBetween('fecha_turno', [$fechaInicio, $fechaFin])
+        $turnos = Turno::whereBetween('fecha_turno', [$fechaInicio, $fechaFin])
                             ->with('horarioCancha.horario')
                             ->get();
 
         $noDisponibles = [];
 
-        foreach ($reservas as $reserva) {
-            $fecha = $reserva->fecha_turno->format('Y-m-d');
-            $horario = $reserva->horarioCancha->horario;
+        foreach ($turnos as $turnos) {
+            $fecha = $turnos->fecha_turno->format('Y-m-d');
+            $horario = $turnos->horarioCancha->horario;
             $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
 
             if (!isset($noDisponibles[$fecha])) {
@@ -85,14 +85,14 @@ class disponibilidadController extends Controller
         $canchasCount = Cancha::count();
         $horarios = Horario::where('activo', true)->get();
 
-        $reservas = Reserva::whereDate('fecha_turno', $fecha)
+        $turnos = Turno::whereDate('fecha_turno', $fecha)
                             ->with('horarioCancha.horario')
                             ->get();
 
         $noDisponibles = [];
 
-        foreach ($reservas as $reserva) {
-            $horario = $reserva->horarioCancha->horario;
+        foreach ($turnos as $turno) {
+            $horario = $turno->horarioCancha->horario;
             $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
 
             if (!isset($noDisponibles[$intervalo])) {
@@ -143,7 +143,7 @@ class disponibilidadController extends Controller
 
         $horario = Horario::find($request->horario_id);
 
-        $reservas = Reserva::whereDate('fecha_turno', $fecha)
+        $turnos = Turno::whereDate('fecha_turno', $fecha)
                             ->where('horarioCanchaID', $horario->id)
                             ->with('horarioCancha.cancha')
                             ->get();
@@ -152,8 +152,8 @@ class disponibilidadController extends Controller
 
         $noDisponibles = [];
 
-        foreach ($reservas as $reserva) {
-            $cancha = $reserva->horarioCancha->cancha;
+        foreach ($turnos as $turno) {
+            $cancha = $turno->horarioCancha->cancha;
             $noDisponibles[] = $cancha->id;
         }
 

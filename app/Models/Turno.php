@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
-class Reserva extends Model
+class Turno extends Model
 {
     use HasFactory;
 
-    protected $table = 'reservas';
+    protected $table = 'turnos';
 
     protected $fillable = ['fecha_turno', 'fecha_reserva', 'horarioCanchaID', 'usuarioID', 'monto_total', 'monto_seña', 'estado', 'tipo'];
 

@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ReservaResource extends JsonResource
+class TurnoResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

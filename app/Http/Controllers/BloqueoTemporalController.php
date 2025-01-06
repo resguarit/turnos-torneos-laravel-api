@@ -14,7 +14,7 @@ class BloqueoTemporalController extends Controller
     {
         abort_unless($user = Auth::user(), 401, 'No autorizado');
 
-        abort_unless( $user->tokenCan('reserva:bloqueo') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless( $user->tokenCan('turno:bloqueo') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         
         $validated = $request->validate([
@@ -39,7 +39,7 @@ class BloqueoTemporalController extends Controller
             DB::beginTransaction(); // Inicia la transacción
 
             // Bloqueo exclusivo para evitar condiciones de carrera
-            $yaReservado = DB::table('reservas')
+            $yaReservado = DB::table('turnos')
                 ->where('horarioCanchaID', $horarioCancha->id)
                 ->where('fecha_turno', $validated['fecha'])
                 ->whereIn('estado', ['pendiente', 'confirmada'])

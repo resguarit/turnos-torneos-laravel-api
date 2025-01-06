@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CanchaController;
-use App\Http\Controllers\ReservaController;
+use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\DisponibilidadController;
@@ -17,14 +17,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/canchas/{id}', [CanchaController::class, 'update']);
     Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);
 
-    Route::get('/reservas', [ReservaController::class, 'index']);
-    Route::get('/reservas-all', [ReservaController::class, 'getAll']);
-    Route::post('/reservas/turnounico', [ReservaController::class, 'storeTurnoUnico']);
-    Route::post('/reservas/turnofijo', [ReservaController::class, 'storeTurnoFijo']);
-    Route::patch('/reservas/{id}', [ReservaController::class, 'update']);
-    Route::delete('/reservas/{id}', [ReservaController::class, 'destroy']);
+    Route::get('/turnos', [TurnoController::class, 'index']);
+    Route::get('/turnos-all', [TurnoController::class, 'getAll']);
+    Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
+    Route::post('/turnos/turnofijo', [TurnoController::class, 'storeTurnoFijo']);
+    Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
+    Route::delete('/turnos/{id}', [TurnoController::class, 'destroy']);
 
-    Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorarios']);
+    Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorarios']);
 
     Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
     Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
