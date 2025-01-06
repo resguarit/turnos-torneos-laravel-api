@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Horario;
 use App\Models\Cancha;
-use App\Models\HorarioCancha;
+use App\Models\Turno;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -32,35 +32,33 @@ class configController extends Controller
             ], 400);
         }
 
-        $horaApertura = Carbon::createFromFormat('H:i', $request->hora_apertura);
-        $horaCierre = Carbon::createFromFormat('H:i', $request->hora_cierre);
+        $hora_apertura = Carbon::createFromFormat('H:i', $request->hora_apertura);
+        $hora_cierre = Carbon::createFromFormat('H:i', $request->hora_cierre);
         $intervalo = $request->intervalo;
 
-        $horariosExistentes = Horario::orderBy('horaInicio')->get();
+        $horarios_existentes = Horario::orderBy('horaInicio')->get();
 
-        if ($horariosExistentes->isEmpty()) {
-            $this->crearHorarios($horaApertura, $horaCierre, $intervalo);
+        if ($horarios_existentes->isEmpty()) {
+            $this->crearHorarios($hora_apertura, $hora_cierre, $intervalo);
         } else {
-            $horaAperturaExistente = Carbon::createFromFormat('H:i:s', $horariosExistentes->first()->horaInicio);
-            $horaCierreExistente = Carbon::createFromFormat('H:i:s', $horariosExistentes->last()->horaFin);
+            $hora_apertura_existente = Carbon::createFromFormat('H:i:s', $horarios_existentes->first()->horaInicio);
+            $hora_cierre_existente = Carbon::createFromFormat('H:i:s', $horarios_existentes->last()->horaFin);
 
-            if ($horaApertura->lt($horaAperturaExistente)) {
-                $this->crearHorarios($horaApertura, $horaAperturaExistente, $intervalo);
-            } elseif ($horaApertura->gt($horaAperturaExistente)) {
-                Horario::where('horaInicio', '<', $horaApertura->format('H:i:s'))->update(['activo' => false]);
+            if ($hora_apertura->lt($hora_apertura_existente)) {
+                $this->crearHorarios($hora_apertura, $hora_apertura_existente, $intervalo);
+            } elseif ($hora_apertura->gt($hora_apertura_existente)) {
+                Horario::where('horaInicio', '<', $hora_apertura->format('H:i:s'))->update(['activo' => false]);
             }
 
-            if ($horaCierre->lt($horaCierreExistente)) {
-                Horario::where('horaFin', '>', $horaCierre->format('H:i:s'))->orWhere('horaInicio', '>=', $horaCierre->format('H:i:s'))->update(['activo' => false]);
-            } elseif ($horaCierre->gt($horaCierreExistente)) {
-                $this->crearHorarios($horaCierreExistente, $horaCierre, $intervalo);
+            if ($hora_cierre->lt($hora_cierre_existente)) {
+                Horario::where('horaFin', '>', $hora_cierre->format('H:i:s'))->orWhere('horaInicio', '>=', $hora_cierre->format('H:i:s'))->update(['activo' => false]);
+            } elseif ($hora_cierre->gt($hora_cierre_existente)) {
+                $this->crearHorarios($hora_cierre_existente, $hora_cierre, $intervalo);
             }
 
-            Horario::whereBetween('horaInicio', [$horaApertura->format('H:i:s'), $horaCierre->subMinutes(60)->format('H:i:s')])
+            Horario::whereBetween('hora_inicio', [$hora_apertura->format('H:i:s'), $hora_cierre->subMinutes(60)->format('H:i:s')])
                 ->update(['activo' => true]);
         }
-
-        $this->actualizarHorariosCancha();
 
         return response()->json([
             'message' => 'Horarios configurados correctamente',
@@ -68,51 +66,19 @@ class configController extends Controller
         ], 201);
     }
 
-    private function crearHorarios($horaInicio, $horaFin, $intervalo)
+    private function crearHorarios($hora_inicio, $hora_fin, $intervalo)
     {
-        $horaActual = $horaInicio;
+        $hora_actual = $hora_inicio;
 
-        while ($horaActual->lt($horaFin)) {
-            $horaInicioTurno = $horaActual->format('H:i');
-            $horaActual->addMinutes($intervalo * 60);
-            $horaFinTurno = $horaActual->format('H:i');
+        while ($hora_actual->lt($hora_fin)) {
+            $hora_inicio_turno = $hora_actual->format('H:i');
+            $hora_actual->addMinutes($intervalo * 60);
+            $hora_fin_turno = $hora_actual->format('H:i');
 
             $horario = Horario::firstOrCreate(
-                ['horaInicio' => $horaInicioTurno, 'horaFin' => $horaFinTurno],
+                ['hora_inicio' => $hora_inicio_turno, 'horaFin' => $hora_fin_turno],
                 ['activo' => true]
             );
-
-            $canchas = Cancha::all();
-            foreach ($canchas as $cancha) {
-                HorarioCancha::firstOrCreate([
-                    'cancha_id' => $cancha->id,
-                    'horario_id' => $horario->id,
-                    'activo' => true
-                ]);
-            }
-        }
-    }
-
-    private function actualizarHorariosCancha()
-    {
-        $horarios = Horario::where('activo', true)->get();
-        $canchas = Cancha::all();
-
-        HorarioCancha::whereIn('horario_id', $horarios->pluck('id'))->update(['activo' => true]);
-        foreach ($canchas as $cancha) {
-            foreach ($horarios as $horario) {
-                HorarioCancha::firstOrCreate([
-                    'cancha_id' => $cancha->id,
-                    'horario_id' => $horario->id,
-                ], [
-                    'activo' => true
-                ]);
-            }
-        }
-
-        $horariosNoActivos = Horario::where('activo', false)->get();
-        foreach ($horariosNoActivos as $horario) {
-            HorarioCancha::where('horario_id', $horario->id)->update(['activo' => false]);
         }
     }
 }

@@ -18,39 +18,39 @@ class disponibilidadController extends Controller
 
         abort_unless( $user->tokenCan('horariosNoDisponible:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
-        $fechaInicio = now()->startOfDay();
-        $fechaFin = now()->addDays(30)->endOfDay();
+        $fecha_inicio = now()->startOfDay();
+        $fecha_fin = now()->addDays(30)->endOfDay();
 
-        $canchasCount = Cancha::count();
+        $canchas_count = Cancha::count();
         $horarios = Horario::all();
 
-        $turnos = Turno::whereBetween('fecha_turno', [$fechaInicio, $fechaFin])
-                            ->with('horarioCancha.horario')
+        $turnos = Turno::whereBetween('fecha_turno', [$fecha_inicio, $fecha_fin])
+                            ->with('horario')
                             ->get();
 
-        $noDisponibles = [];
+        $no_disponibles = [];
 
         foreach ($turnos as $turnos) {
             $fecha = $turnos->fecha_turno->format('Y-m-d');
-            $horario = $turnos->horarioCancha->horario;
-            $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
+            $horario = $turnos->horario;
+            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
 
-            if (!isset($noDisponibles[$fecha])) {
-                $noDisponibles[$fecha] = [];
+            if (!isset($no_disponibles[$fecha])) {
+                $no_disponibles[$fecha] = [];
             }
 
-            if (!isset($noDisponibles[$fecha][$intervalo])) {
-                $noDisponibles[$fecha][$intervalo] = 0;
+            if (!isset($no_disponibles[$fecha][$intervalo])) {
+                $no_disponibles[$fecha][$intervalo] = 0;
             }
 
-            $noDisponibles[$fecha][$intervalo]++;
+            $no_disponibles[$fecha][$intervalo]++;
         }
 
         $result = [];
 
-        foreach ($noDisponibles as $fecha => $horarios) {
+        foreach ($no_disponibles as $fecha => $horarios) {
             foreach ($horarios as $intervalo => $count) {
-                if ($count >= $canchasCount) {
+                if ($count >= $canchas_count) {
                     if (!isset($result[$fecha])) {
                         $result[$fecha] = [];
                     }
@@ -82,36 +82,36 @@ class disponibilidadController extends Controller
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
 
-        $canchasCount = Cancha::count();
+        $canchas_count = Cancha::count();
         $horarios = Horario::where('activo', true)->get();
 
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                            ->with('horarioCancha.horario')
+                            ->with('horario')
                             ->get();
 
-        $noDisponibles = [];
+        $no_disponibles = [];
 
         foreach ($turnos as $turno) {
-            $horario = $turno->horarioCancha->horario;
-            $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
+            $horario = $turno->horario;
+            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
 
-            if (!isset($noDisponibles[$intervalo])) {
-                $noDisponibles[$intervalo] = 0;
+            if (!isset($no_disponibles[$intervalo])) {
+                $no_disponibles[$intervalo] = 0;
             }
 
-            $noDisponibles[$intervalo]++;
+            $no_disponibles[$intervalo]++;
         }
 
         $result = [];
 
         foreach ($horarios as $horario) {
-            $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
-            $disponible = !isset($noDisponibles[$intervalo]) || $noDisponibles[$intervalo] < $canchasCount;
+            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
+            $disponible = !isset($no_disponibles[$intervalo]) || $no_disponibles[$intervalo] < $canchas_count;
 
             $result[] = [
                 'id' => $horario->id,
-                'horaInicio' => $horario->horaInicio,
-                'horaFin' => $horario->horaFin,
+                'hora_inicio' => $horario->hora_inicio,
+                'hora_fin' => $horario->hora_fin,
                 'disponible' => $disponible
             ];
         }
@@ -144,28 +144,28 @@ class disponibilidadController extends Controller
         $horario = Horario::find($request->horario_id);
 
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                            ->where('horarioCanchaID', $horario->id)
-                            ->with('horarioCancha.cancha')
+                            ->where('horario', $horario->id)
+                            ->with('cancha')
                             ->get();
 
         $canchas = Cancha::all();
 
-        $noDisponibles = [];
+        $no_disponibles = [];
 
         foreach ($turnos as $turno) {
-            $cancha = $turno->horarioCancha->cancha;
-            $noDisponibles[] = $cancha->id;
+            $cancha = $turno->cancha;
+            $no_disponibles[] = $cancha->id;
         }
 
         $result = [];
 
         foreach ($canchas as $cancha) {
-            $disponible = !in_array($cancha->id, $noDisponibles);
+            $disponible = !in_array($cancha->id, $no_disponibles);
 
             $result[] = [
                 'id' => $cancha->id,
                 'nro' => $cancha->nro,
-                'tipo' => $cancha->tipoCancha,
+                'tipo' => $cancha->tipo_cancha,
                 'disponible' => $disponible,
             ];
         }

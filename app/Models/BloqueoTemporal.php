@@ -18,8 +18,6 @@ class BloqueoTemporal extends Model
         'expira_en',
     ];
 
-    public $timestamps = true;
-
-    
+    public $timestamps = true;   
 }
 

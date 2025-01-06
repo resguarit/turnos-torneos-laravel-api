@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\BloqueoTemporal;
-use App\Models\HorarioCancha;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Cancha;
+use App\Models\Horario;
+use App\Models\Turno;
 
 class BloqueoTemporalController extends Controller
 {
@@ -24,13 +26,11 @@ class BloqueoTemporalController extends Controller
             'fecha' => 'required|date',
         ]);
 
-        $horarioCancha = HorarioCancha::where('cancha_id', $validated['canchaID'])
-            ->where('horario_id', $validated['horarioID'])
-            ->first();
+        $turno = Cancha::where('cancha_id', $validated['canchaID']) && Horario::where('horario_id', $validated['horarioID']) && Turno::where('fecha_turno', $validated['fecha'])->first();
 
-        if (!$horarioCancha) {
+        if (!$turno) {
             return response()->json([
-                'message' => 'HorarioCancha no encontrado',
+                'message' => 'Turno no encontrado',
                 'status' => 404
             ], 404);
         }

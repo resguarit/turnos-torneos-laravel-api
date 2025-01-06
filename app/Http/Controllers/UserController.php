@@ -46,7 +46,7 @@ class UserController extends Controller
     }
 
     public function createUser(Request $request)
-{
+    {
     $authUser = Auth::user();
 
     abort_unless($authUser->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
@@ -116,7 +116,8 @@ class UserController extends Controller
             $token = $user->createToken('login', $abilities);
             return [
                 'token' => $token->plainTextToken,
-                'userId' => $user -> id,
+                'user_id' => $user -> id,
+                'rol' => $user -> rol,
             ];
         }
 
