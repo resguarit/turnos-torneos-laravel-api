@@ -14,10 +14,7 @@ class disponibilidadController extends Controller
 {
     public function getHorariosNoDisponibles()
     {
-        $user = Auth::user();
-
-        abort_unless( $user->tokenCan('horariosNoDisponible:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
-
+        
         $fecha_inicio = now()->startOfDay();
         $fecha_fin = now()->addDays(30)->endOfDay();
 
@@ -64,9 +61,6 @@ class disponibilidadController extends Controller
 
     public function getHorariosDisponiblesPorFecha(Request $request)
     {
-        $user = Auth::user();
-
-        abort_unless( $user->tokenCan('horarios:fecha') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
@@ -121,10 +115,6 @@ class disponibilidadController extends Controller
 
 
     public function getCanchasPorHorarioFecha(Request $request){
-
-        $user = Auth::user();
-
-        abort_unless( $user->tokenCan('disponibilidad:canchas') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
