@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Cancha;
+use App\Models\Horario;
+use Carbon\Carbon;
 
 
 class ReservaController extends Controller
@@ -395,41 +398,47 @@ class ReservaController extends Controller
             return response()->json($data, 400);
         }
 
-        $fecha = $request->fecha;
-        $horarios = HorarioCancha::with('horario')->get()->groupBy('horario.hora');
-        $canchas = HorarioCancha::with('cancha')->get()->groupBy('cancha.nombre');
+        $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
 
-        $reservas = Reserva::whereDate('fecha_turno', $fecha)->with(['usuario', 'horarioCancha.horario', 'horarioCancha.cancha'])->get();
+        $horarios = Horario::where('activo', true)->get();
+        $canchas = Cancha::all();
 
-        $grid = [
-            'timeSlots' => $horarios->keys()->toArray(),
-            'canchas' => $canchas->keys()->toArray(),
-        ];
+        $reservas = Reserva::whereDate('fecha_turno', $fecha)
+                            ->with(['usuario', 'horarioCancha.horario', 'horarioCancha.cancha'])
+                            ->get();
 
-        foreach ($reservas as $reserva) {
-            $hora = $reserva->horarioCancha->horario->hora;
-            $cancha = $reserva->horarioCancha->cancha->nombre;
+        $grid = [];
 
-            if (!isset($grid[$hora])) {
-                $grid[$hora] = [];
+        foreach ($horarios as $horario) {
+            $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
+            $grid[$intervalo] = [];
+
+            foreach ($canchas as $cancha) {
+                $reserva = $reservas->firstWhere('horarioCancha.horario.id', $horario->id)
+                                    ->firstWhere('horarioCancha.cancha.id', $cancha->id);
+
+                $grid[$intervalo][$cancha->nro] = [
+                    'cancha' => $cancha->nro,
+                    'tipo' => $cancha->tipoCancha,
+                    'disponible' => !$reserva,
+                    'reserva' => $reserva ? [
+                        'id' => $reserva->id,
+                        'usuario' => [
+                            'usuarioID' => $reserva->usuario->id,
+                            'nombre' => $reserva->usuario->nombre,
+                            'telefono' => $reserva->usuario->telefono,
+                        ],
+                        'monto_total' => $reserva->monto_total,
+                        'monto_seña' => $reserva->monto_seña,
+                        'estado' => $reserva->estado,
+                        'tipo' => $reserva->tipo,
+                    ] : null,
+                ];
             }
-
-            $grid[$hora][$cancha] = [
-                'id' => $reserva->id,
-                'usuario' => [
-                    'usuarioID' => $reserva->usuario->id,
-                    'nombre' => $reserva->usuario->nombre,
-                    'telefono' => $reserva->usuario->telefono,
-                ],
-                'monto_total' => $reserva->monto_total,
-                'monto_seña' => $reserva->monto_seña,
-                'estado' => $reserva->estado,
-                'tipo' => $reserva->tipo,
-            ];
         }
 
         $data = [
-            'reservations' => $grid,
+            'grid' => $grid,
             'status' => 200
         ];
 
