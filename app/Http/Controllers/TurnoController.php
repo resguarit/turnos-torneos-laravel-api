@@ -229,7 +229,7 @@ class TurnoController extends Controller
                     'fecha_reserva' => now(),
                     'horario_id' => $request->horario_id,
                     'cancha_id' => $request->cancha_id,
-                    'usuarioID' => $request->usuario_id,
+                    'usuario_id' => $request->usuario_id,
                     'monto_total' => $request->monto_total,
                     'monto_seña' => $request->monto_seña,
                     'estado' => $request->estado,
