@@ -17,6 +17,7 @@ return new class extends Migration
             $table->decimal('monto_total',8,2);
             $table->decimal('monto_seña', 8, 2);
             $table->string('estado')->default('pendiente');
+            $table->string('tipo')->default('unico');
             $table->timestamps();
         });
     }
