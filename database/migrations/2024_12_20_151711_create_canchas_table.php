@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('canchas', function (Blueprint $table) {
             $table->id();
             $table->string('nro');
-            $table->string('tipoCancha');
+            $table->string('tipo_cancha');
             $table->boolean('activa')->default(true);
-            $table->decimal('precioPorHora', 8, 2);
+            $table->decimal('precio_por_hora', 8, 2);
             $table->timestamps();
         });
     }

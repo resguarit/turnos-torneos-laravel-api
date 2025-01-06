@@ -12,12 +12,16 @@ class Cancha extends Model
 
     protected $table = 'canchas';
 
-    protected $fillable = ['nro', 'tipoCancha', 'precioPorHora', 'activa'];
+    protected $fillable = ['nro', 'tipo_cancha', 'precio_por_hora', 'activa'];
 
     protected $hidden = ['created_at', 'updated_at'];
 
-    public function horariosCancha(){
-        return $this->hasMany(HorarioCancha::class, 'cancha_id');
+    public function horario(){
+        return $this->belongsTo(Horario::class, 'horario_id');
+    }
+
+    public function cancha(){
+        return $this->belongsTo(Cancha::class, 'cancha_id');
     }
 
 }

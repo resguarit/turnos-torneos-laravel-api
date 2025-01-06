@@ -67,8 +67,8 @@ class CanchaController extends Controller
 
         $validator = Validator::make($request->all(), [
             'nro' => 'required|unique:canchas',
-            'tipoCancha' => 'required|max:200',
-            'precioPorHora' => 'required',
+            'tipo_cancha' => 'required|max:200',
+            'precio_por_hora' => 'required',
             'activa' => 'required|boolean'
         ]);
 
@@ -83,8 +83,8 @@ class CanchaController extends Controller
 
         $cancha = Cancha::create([
             'nro' => $request->nro,
-            'tipoCancha' => $request->tipoCancha,
-            'precioPorHora' => $request->precioPorHora
+            'tipo_cancha' => $request->tipo_cancha,
+            'precio_por_hora' => $request->precio_por_hora
         ]);
 
         if (!$cancha) {
@@ -124,8 +124,8 @@ class CanchaController extends Controller
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'nro' => 'sometimes|unique:canchas,nro,' . $id,
-            'tipoCancha' => 'sometimes|max:200',
-            'precioPorHora' => 'sometimes|numeric',
+            'tipo_cancha' => 'sometimes|max:200',
+            'precio_por_hora' => 'sometimes|numeric',
             'activa' => 'sometimes|boolean'
         ]);
 
@@ -144,12 +144,12 @@ class CanchaController extends Controller
             $cancha->nro = $request->nro;
         }
 
-        if($request->has('tipoCancha')){
-            $cancha->tipoCancha = $request->tipoCancha;
+        if($request->has('tipo_cancha')){
+            $cancha->tipo_cancha = $request->tipo_cancha;
         }
 
-        if($request->has('precioPorHora')){
-            $cancha->precioPorHora = $request->precioPorHora;
+        if($request->has('precio_por_hora')){
+            $cancha->precio_por_hora = $request->precio_por_hora;
         }
 
         if($request->has('activa')){
