@@ -266,4 +266,66 @@ class reservaController extends Controller
             return response()->json($data, 404);
         }
     }
+
+
+    public function grid(Request $request)
+    {
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('reservas:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $validator = Validator::make($request->all(), [
+            'fecha' => 'required|date',
+        ]);
+
+        if ($validator->fails()) {
+            $data = [
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ];
+            return response()->json($data, 400);
+        }
+
+        $fecha = $request->fecha;
+        $horarios = HorarioCancha::with('horario')->get()->groupBy('horario.hora');
+        $canchas = HorarioCancha::with('cancha')->get()->groupBy('cancha.nombre');
+
+        $reservas = Reserva::whereDate('fecha_turno', $fecha)->with(['usuario', 'horarioCancha.horario', 'horarioCancha.cancha'])->get();
+
+        $grid = [
+            'timeSlots' => $horarios->keys()->toArray(),
+            'canchas' => $canchas->keys()->toArray(),
+        ];
+
+        foreach ($reservas as $reserva) {
+            $hora = $reserva->horarioCancha->horario->hora;
+            $cancha = $reserva->horarioCancha->cancha->nombre;
+
+            if (!isset($grid[$hora])) {
+                $grid[$hora] = [];
+            }
+
+            $grid[$hora][$cancha] = [
+                'id' => $reserva->id,
+                'usuario' => [
+                    'usuarioID' => $reserva->usuario->id,
+                    'nombre' => $reserva->usuario->nombre,
+                    'telefono' => $reserva->usuario->telefono,
+                ],
+                'monto_total' => $reserva->monto_total,
+                'monto_seña' => $reserva->monto_seña,
+                'estado' => $reserva->estado,
+                'tipo' => $reserva->tipo,
+            ];
+        }
+
+        $data = [
+            'reservations' => $grid,
+            'status' => 200
+        ];
+
+        return response()->json($data, 200);
+    }
+
 }

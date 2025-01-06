@@ -24,6 +24,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/reservas/{id}', [reservaController::class, 'destroy']);
 
     Route::post('/reservas/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorarios']);
+    Route::get('/reservas-por-fecha/{fecha}', [ReservaController::class, 'grid']);
 
     Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
     Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
