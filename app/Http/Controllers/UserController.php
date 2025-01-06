@@ -118,6 +118,7 @@ class UserController extends Controller
                 'token' => $token->plainTextToken,
                 'user_id' => $user -> id,
                 'rol' => $user -> rol,
+                'username' => $user -> name,
             ];
         }
 

@@ -134,7 +134,7 @@ class disponibilidadController extends Controller
         $horario = Horario::find($request->horario_id);
 
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                            ->where('horario', $horario->id)
+                            ->where('horario_id', $horario->id)
                             ->with('cancha')
                             ->get();
 

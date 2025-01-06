@@ -27,7 +27,7 @@ class TurnoResource extends JsonResource
             ],
             'cancha' => [
                 'nro' => $this->cancha->nro,
-                'tipo_cancha' => $this->cancha->tipoCancha,
+                'tipo_cancha' => $this->cancha->tipo_cancha,
             ],
             'fecha_reserva' => $this->fecha_reserva,
             'fecha_turno' => $this->fecha_turno->format('Y-m-d'),

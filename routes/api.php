@@ -19,6 +19,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/turnos', [TurnoController::class, 'index']);
     Route::get('/turnos-all', [TurnoController::class, 'getAll']);
+    Route::get('/turnos/{id}', [TurnoController::class, 'show']);
     Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
     Route::post('/turnos/turnofijo', [TurnoController::class, 'storeTurnoFijo']);
     Route::patch('/turnos/{id}', [TurnoController::class, 'update']);

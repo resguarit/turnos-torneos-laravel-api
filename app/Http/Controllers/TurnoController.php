@@ -117,8 +117,8 @@ class TurnoController extends Controller
             return response()->json($data, 400);
         }
 
-        $horario = Horario::find($request->horarioID);
-        $cancha = Cancha::find($request->canchaID);
+        $horario = Horario::find($request->horario_id);
+        $cancha = Cancha::find($request->cancha_id);
 
         if (!$horario || !$cancha) {
             return response()->json([
@@ -284,7 +284,7 @@ class TurnoController extends Controller
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'sometimes|date',
-            'horario_id' => 'sometimes|required_with:fecha_turno|exists:horario,id',
+            'horario_id' => 'sometimes|required_with:fecha_turno|exists:horarios,id',
             'cancha_id' => 'sometimes|required_with:fecha_turno|exists:canchas,id',
             'monto_total' => 'sometimes|numeric',
             'monto_seña' => 'sometimes|numeric',
@@ -302,7 +302,7 @@ class TurnoController extends Controller
         }
 
         // Actualizar los campos de la reserva
-        if($request->has('fechaTurno') && $request->has('horario_id') && $request->has('cancha_id')){
+        if($request->has('fecha_turno') && $request->has('horario_id') && $request->has('cancha_id')){
             $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
                                     ->where('horario_id', $request->horario_id)
                                     ->where('cancha_id', $request->cancha_id)
@@ -315,7 +315,7 @@ class TurnoController extends Controller
             ];
             return response()->json($data, 400);
             }
-            $turno->fechaTurno = $request->fechaTurno;
+            $turno->fecha_turno = $request->fecha_turno;
             $turno->horario_id = $request->horario_id;
             $turno->cancha_id = $request->cancha_id;
         }
@@ -365,6 +365,33 @@ class TurnoController extends Controller
         } catch (ModelNotFoundException $e) {
             $data = [
                 'message' => 'Turno no encontrado',
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
+    }
+
+    public function show($id)
+    {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('turnos:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
+        try {
+            $turno = Turno::with(['cancha', 'horario'])->findOrFail($id);
+
+            $data = [
+            'turno' => new TurnoResource($turno),
+            'cancha_id' => $turno->cancha->id,
+            'horario_id' => $turno->horario->id,
+            'status' => 200
+            ];
+
+            return response()->json($data, 200);
+
+        } catch (ModelNotFoundException $e) {
+            $data = [
+                'message' => 'Reserva no encontrada',
                 'status' => 404
             ];
             return response()->json($data, 404);
