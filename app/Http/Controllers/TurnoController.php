@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Models\Cancha;
-use App\Models\Horario;
 use Carbon\Carbon;
 
 
@@ -406,66 +404,62 @@ class TurnoController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless($user->tokenCan('reservas:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+        abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
-            'fecha' => 'required|date',
+            'fecha' => 'required|date_format:Y-m-d',
         ]);
 
         if ($validator->fails()) {
-            $data = [
+            return response()->json([
                 'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 400
-            ];
-            return response()->json($data, 400);
+            ], 400);
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
 
         $horarios = Horario::where('activo', true)->get();
-        $canchas = Cancha::all();
+        $canchas = Cancha::where('activa', true)->get();
 
-        $reservas = Reserva::whereDate('fecha_turno', $fecha)
-                            ->with(['usuario', 'horarioCancha.horario', 'horarioCancha.cancha'])
+        $turnos = Turno::whereDate('fecha_turno', $fecha)
+                            ->with(['usuario', 'horario', 'cancha'])
                             ->get();
 
         $grid = [];
 
         foreach ($horarios as $horario) {
-            $intervalo = $horario->horaInicio . '-' . $horario->horaFin;
-            $grid[$intervalo] = [];
+            $hora = Carbon::createFromFormat('H:i:s', $horario->hora_inicio)->format('H');
+            $grid[$hora] = [];
 
             foreach ($canchas as $cancha) {
-                $reserva = $reservas->firstWhere('horarioCancha.horario.id', $horario->id)
-                                    ->firstWhere('horarioCancha.cancha.id', $cancha->id);
+                $turno = $turnos->first(function ($t) use ($horario, $cancha) {
+                    return $t->horario->id === $horario->id && $t->cancha->id === $cancha->id;
+                });
 
-                $grid[$intervalo][$cancha->nro] = [
+                $grid[$hora][$cancha->nro] = [
                     'cancha' => $cancha->nro,
-                    'tipo' => $cancha->tipoCancha,
-                    'disponible' => !$reserva,
-                    'reserva' => $reserva ? [
-                        'id' => $reserva->id,
+                    'tipo' => $cancha->tipo_cancha,
+                    'turno' => $turno ? [
+                        'id' => $turno->id,
                         'usuario' => [
-                            'usuarioID' => $reserva->usuario->id,
-                            'nombre' => $reserva->usuario->nombre,
-                            'telefono' => $reserva->usuario->telefono,
+                            'usuario_id' => $turno->usuario->id,
+                            'nombre' => $turno->usuario->name,
+                            'telefono' => $turno->usuario->telefono,
                         ],
-                        'monto_total' => $reserva->monto_total,
-                        'monto_seña' => $reserva->monto_seña,
-                        'estado' => $reserva->estado,
-                        'tipo' => $reserva->tipo,
+                        'monto_total' => $turno->monto_total,
+                        'monto_seña' => $turno->monto_seña,
+                        'estado' => $turno->estado,
+                        'tipo' => $turno->tipo,
                     ] : null,
                 ];
             }
         }
 
-        $data = [
+        return response()->json([
             'grid' => $grid,
             'status' => 200
-        ];
-
-        return response()->json($data, 200);
+        ], 200);
     }
-
 }
