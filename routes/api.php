@@ -25,7 +25,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
     Route::delete('/turnos/{id}', [TurnoController::class, 'destroy']);
 
-    Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorarios']);
+    Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
 
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::get('/horarios/{id}', [HorarioController::class, 'show']);
