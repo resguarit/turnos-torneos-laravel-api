@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\ReservaResource;
-use App\Models\HorarioCancha;
+use App\Http\Resources\TurnoResource;
+use App\Models\Horario;
+use App\Models\Cancha;
 use Illuminate\Http\Request;
-use App\Models\Reserva;
+use App\Models\Turno;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,7 @@ use App\Models\Horario;
 use Carbon\Carbon;
 
 
-class ReservaController extends Controller
+class TurnoController extends Controller
 {
     //
 
@@ -23,12 +24,12 @@ class ReservaController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('reservas:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless( $user->tokenCan('turnos:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
         
         $validator = Validator::make($request->all(), [
             'fecha' => 'date|nullable',
             'fecha_inicio' => 'date|nullable',
-            'fecha_fin' => 'date|nullable|after_or_equal:fecha_inicio',
+            'fecha_fin' => 'date|nullable|required_with:fecha_turno|after_or_equal:fecha_inicio',
         ]);
 
         if ($validator->fails()) {
@@ -41,7 +42,7 @@ class ReservaController extends Controller
         }
 
         $fechaHoy = now()->startOfDay();
-        $query = Reserva::query();
+        $query = Turno::query();
 
         if ($request->has('fecha')) {
             $query->whereDate('fecha_turno', $request->fecha);
@@ -55,14 +56,14 @@ class ReservaController extends Controller
             $query->whereDate('fecha_turno', '>=', $fechaHoy);
         }
 
-        $reservas = $query->with([
+        $turnos = $query->with([
             'usuario',
-            'horarioCancha.horario',
-            'horarioCancha.cancha',
+            'cancha',
+            'horario',
         ])->get();
 
         $data = [
-            'reservas' => ReservaResource::collection($reservas),
+            'turnos' => TurnoResource::collection($turnos),
             'status' => 200
         ];
 
@@ -73,16 +74,16 @@ class ReservaController extends Controller
 
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('reservas:show_all') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless( $user->tokenCan('turnos:show_all') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
-        $reservas = Reserva::with([
+        $turnos = Turno::with([
             'usuario',
-            'horarioCancha.horario',
-            'horarioCancha.cancha',
+            'cancha',
+            'horario',
         ])->get();
 
         $data = [
-            'reservas' => ReservaResource::collection($reservas),
+            'turnos' => TurnoResource::collection($turnos),
             'status' => 200
         ];
 
@@ -94,17 +95,17 @@ class ReservaController extends Controller
         
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('reservas:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless( $user->tokenCan('turnos:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
-        if (!$request->user()->tokenCan('reservas:create')) {
+        if (!$request->user()->tokenCan('turnos:create')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'required|date',
-            'canchaID' => 'required|exists:canchas,id',
-            'horarioID' => 'required|exists:horarios,id',
-            'usuarioID' => 'required|exists:users,id',
+            'cancha_id' => 'required|exists:canchas,id',
+            'horario_id' => 'required|exists:horarios,id',
+            // 'usuarioID' => 'required|exists:users,id',
             'monto_total' => 'required',
             'monto_seña' => 'required',
             'estado' => 'required',
@@ -119,55 +120,54 @@ class ReservaController extends Controller
             return response()->json($data, 400);
         }
 
-        $horarioCancha = HorarioCancha::where('cancha_id', $request->canchaID)
-                                      ->where('horario_id', $request->horarioID)
-                                      ->first();
+        $horario = Horario::find($request->horario_id);
+        $cancha = Cancha::find($request->cancha_id);
 
-        if (!$horarioCancha) {
-            $data = [
-                'message' => 'HorarioCancha no encontrado',
+        if (!$horario || !$cancha) {
+            return response()->json([
+                'message' => 'Horario o Cancha no encontrados',
                 'status' => 404
-            ];
-            return response()->json($data, 404);
+            ], 404);
         }
 
-        $user = Auth::user();
+        $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
+                        ->where('horario_id', $horario->id)
+                        ->where('cancha_id', $cancha->id)
+                        ->first();
 
-        $reservaExistente = Reserva::where('fecha_turno', $request->fecha_turno)
-                                   ->where('horarioCanchaID', $horarioCancha->id)
-                                   ->first();
 
-        if ($reservaExistente) {
+        if ($turnoExistente) {
             $data = [
-                'message' => 'Ya existe una reserva para esa cancha en esta fecha y horario',
+                'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
                 'status' => 400
             ];
             return response()->json($data, 400);
         }
 
         // Crear una nueva reserva
-        $reserva = Reserva::create([
+        $turno = Turno::create([
             'fecha_turno' => $request->fecha_turno,
             'fecha_reserva' => now(),
-            'horarioCanchaID' => $horarioCancha->id,
-            'usuarioID' => $request->usuarioID,
+            'horario_id' => $request->horario_id,
+            'cancha_id' => $request->cancha_id,
+            'usuario_id' => $user->id,
             'monto_total' => $request->monto_total,
             'monto_seña' => $request->monto_seña,
             'estado' => $request->estado,
-            'tipo' => 'único'
+            'tipo' => 'unico'
         ]);
 
-        if (!$reserva) {
+        if (!$turno) {
             $data = [
-                'message' => 'Error al crear la reserva',
+                'message' => 'Error al crear la turno',
                 'status' => 500
             ];
             return response()->json($data, 500);
         }
 
         $data = [
-            'message' => 'Reserva creada correctamente',
-            'reserva' => $reserva,
+            'message' => 'Turno creada correctamente',
+            'turno' => $turno,
             'status' => 201
         ];
 
@@ -178,17 +178,16 @@ class ReservaController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless($user->tokenCan('reservas:createTurnoFijo') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+        abort_unless($user->tokenCan('turnos:createTurnoFijo') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'required|date',
-            'canchaID' => 'required|exists:canchas,id',
-            'horarioID' => 'required|exists:horarios,id',
-            'usuarioID' => 'required|exists:users,id',
+            'cancha_id' => 'required|exists:canchas,id',
+            'horario_id' => 'required|exists:horarios,id',
+            'usuario_id' => 'required|exists:users,id',
             'monto_total' => 'required|numeric',
             'monto_seña' => 'required|numeric',
             'estado' => 'required|string',
-            'tipo' => 'required|string|in:fijo'
         ]);
 
         if ($validator->fails()) {
@@ -199,38 +198,40 @@ class ReservaController extends Controller
             ], 400);
         }
 
-        $horarioCancha = HorarioCancha::where('cancha_id', $request->canchaID)
-                                      ->where('horario_id', $request->horarioID)
-                                      ->first();
+        $horario = Horario::find($request->horarioID);
+        $cancha = Cancha::find($request->canchaID);
 
-        if (!$horarioCancha) {
+        if (!$horario || !$cancha) {
             return response()->json([
-                'message' => 'HorarioCancha no encontrado',
+                'message' => 'Horario o Cancha no encontrados',
                 'status' => 404
             ], 404);
         }
+
 
         DB::beginTransaction();
 
         try {
             for ($i = 0; $i < 4; $i++) {
                 $fecha_turno = now()->addWeeks($i)->toDateString();
-                $reservaExistente = Reserva::where('fecha_turno', $fecha_turno)
-                                           ->where('horarioCanchaID', $horarioCancha->id)
-                                           ->first();
+                $turnoExistente = Turno::where('fecha_turno', $fecha_turno)
+                                        ->where('horario_id', $horario->id)
+                                        ->where('cancha_id', $cancha->id)
+                                        ->first();
 
-                if ($reservaExistente) {
+                if ($turnoExistente) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'Ya existe una reserva para esa cancha en la fecha ' . $fecha_turno,
+                        'message' => 'Ya existe un turno para esa cancha en la fecha ' . $fecha_turno,
                         'status' => 400
                     ], 400);
                 }
 
-                $reserva = Reserva::create([
+                $turno = Turno::create([
                     'fecha_turno' => $fecha_turno,
                     'fecha_reserva' => now(),
-                    'horarioCanchaID' => $horarioCancha->id,
+                    'horario_id' => $request->horario_id,
+                    'cancha_id' => $request->cancha_id,
                     'usuarioID' => $request->usuarioID,
                     'monto_total' => $request->monto_total,
                     'monto_seña' => $request->monto_seña,
@@ -238,10 +239,10 @@ class ReservaController extends Controller
                     'tipo' => 'fijo'
                 ]);
 
-                if (!$reserva) {
+                if (!$turno) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'Error al crear la reserva',
+                        'message' => 'Error al crear el turno',
                         'status' => 500
                     ], 500);
                 }
@@ -250,14 +251,14 @@ class ReservaController extends Controller
             DB::commit();
 
             return response()->json([
-                'message' => 'Reservas creadas correctamente',
+                'message' => 'Turnos creadas correctamente',
                 'status' => 201
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
-                'message' => 'Error al crear las reservas',
+                'message' => 'Error al crear los turnos',
                 'status' => 500,
                 'error' => $e->getMessage()
             ], 500);
@@ -269,15 +270,15 @@ class ReservaController extends Controller
 
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('reservas:update') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless( $user->tokenCan('turnos:update') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         // Encontrar la reserva por su ID
-        $reserva = Reserva::find($id);
+        $turno = Turno::find($id);
 
         // Verificar si la reserva existe
-        if (!$reserva) {
+        if (!$turno) {
             $data = [
-                'message' => 'No hay reserva encontrada',
+                'message' => 'No hay turno encontrado',
                 'status' => 404
             ];
             return response()->json($data, 404);
@@ -286,11 +287,11 @@ class ReservaController extends Controller
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'sometimes|date',
-            'horarioCanchaID' => 'sometimes|required_with:fecha_turno|exists:horarios_cancha,id',
+            'horario_id' => 'sometimes|required_with:fecha_turno|exists:horarios,id',
+            'cancha_id' => 'sometimes|required_with:fecha_turno|exists:canchas,id',
             'monto_total' => 'sometimes|numeric',
             'monto_seña' => 'sometimes|numeric',
             'estado' => 'sometimes',
-            'tipo' => 'sometimes'
         ]);
 
         // Manejar errores de validación
@@ -304,48 +305,43 @@ class ReservaController extends Controller
         }
 
         // Actualizar los campos de la reserva
-        if($request->has('fechaTurno') && $request->has('horarioCanchaID')){
-            $reservaExistente = Reserva::where('fecha_turno', $request->fecha_turno)
-                                ->where('horarioCanchaID', $request->horarioCanchaID)
-                                ->first();
+        if($request->has('fecha_turno') && $request->has('horario_id') && $request->has('cancha_id')){
+            $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
+                                    ->where('horario_id', $request->horario_id)
+                                    ->where('cancha_id', $request->cancha_id)
+                                    ->first();
 
-            if ($reservaExistente) {
+            if ($turnoExistente) {
                 $data = [
-                'message' => 'Ya existe una reserva para esa cancha en esta fecha y horario',
+                'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
                 'status' => 400
             ];
             return response()->json($data, 400);
             }
-            $reserva->fechaTurno = $request->fechaTurno;
-            $reserva->horarioCanchaID = $request->horarioCanchaID;
-
+            $turno->fecha_turno = $request->fecha_turno;
+            $turno->horario_id = $request->horario_id;
+            $turno->cancha_id = $request->cancha_id;
         }
 
 
         if($request->has('monto_total')){
-            $reserva->monto_total = $request->monto_total;
+            $turno->monto_total = $request->monto_total;
         }
 
         if($request->has('monto_seña')){
-            $reserva->monto_seña = $request->monto_seña;
+            $turno->monto_seña = $request->monto_seña;
         }
         
         if($request->has('estado')){
-            $reserva->estado = $request->estado;
+            $turno->estado = $request->estado;
         }
-
-        if($request->has('tipo')){
-            $reserva->tipo = $request->tipo;
-        }
-
-
         // Guardar los cambios en la base de datos
-        $reserva->save();
+        $turno->save();
 
         // Respuesta exitosa
         $data = [
-            'message' => 'Reserva actualizada correctamente',
-            'reserva' => $reserva,
+            'message' => 'Turno actualizado correctamente',
+            'turno' => $turno,
             'status' => 200
         ];
 
@@ -356,14 +352,14 @@ class ReservaController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('reservas:destroy') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless( $user->tokenCan('turnos:destroy') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         try {
-            $reserva = Reserva::findOrFail($id);
-            $reserva->delete();
+            $turno = Turno::findOrFail($id);
+            $turno->delete();
 
             $data = [
-                'message' => 'Reserva eliminada correctamente',
+                'message' => 'Turno eliminado correctamente',
                 'status' => 200
             ];
 
@@ -371,7 +367,34 @@ class ReservaController extends Controller
 
         } catch (ModelNotFoundException $e) {
             $data = [
-                'message' => 'reserva no encontrada',
+                'message' => 'Turno no encontrado',
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
+    }
+
+    public function show($id)
+    {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('turnos:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
+        try {
+            $turno = Turno::with(['cancha', 'horario'])->findOrFail($id);
+
+            $data = [
+            'turno' => new TurnoResource($turno),
+            'cancha_id' => $turno->cancha->id,
+            'horario_id' => $turno->horario->id,
+            'status' => 200
+            ];
+
+            return response()->json($data, 200);
+
+        } catch (ModelNotFoundException $e) {
+            $data = [
+                'message' => 'Reserva no encontrada',
                 'status' => 404
             ];
             return response()->json($data, 404);

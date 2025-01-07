@@ -30,5 +30,13 @@ class DatabaseSeeder extends Seeder
             'telefono' => '1234567890',
             'rol' => 'admin',
         ]);
+
+        User::factory()->create([
+            'name' => 'Mora Gentil',
+            'email' => 'moragentil@gmail.com',
+            'password' => bcrypt('12345678'),
+            'telefono' => '1234567890',
+            'rol' => 'cliente',
+        ]);
     }
 }
