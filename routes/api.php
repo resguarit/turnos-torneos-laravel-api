@@ -14,14 +14,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/canchas', [CanchaController::class, 'index']);
     Route::get('/canchas/{id}', [CanchaController::class, 'show']);
     Route::post('/canchas', [CanchaController::class, 'store']);
-    Route::put('/canchas/{id}', [CanchaController::class, 'update']);
+    Route::patch('/canchas/{id}', [CanchaController::class, 'update']);
     Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);
 
     Route::get('/turnos', [TurnoController::class, 'index']);
     Route::get('/turnos-all', [TurnoController::class, 'getAll']);
     Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
     Route::post('/turnos/turnofijo', [TurnoController::class, 'storeTurnoFijo']);
-    Route::put('/turnos/{id}', [TurnoController::class, 'update']);
+    Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
     Route::delete('/turnos/{id}', [TurnoController::class, 'destroy']);
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
@@ -35,7 +35,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/usuarios', [UserController::class, 'index']);
     Route::get('/usuarios/{id}', [UserController::class, 'show']);
-    Route::put('/usuarios/{id}', [UserController::class, 'update']);
+    Route::patch('/usuarios/{id}', [UserController::class, 'update']);
     Route::post('/create-user', [UserController::class, 'createUser']);
 
 });
