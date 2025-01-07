@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\BloqueoTemporal;
 use Carbon\Carbon;
 
 
@@ -90,33 +91,20 @@ class TurnoController extends Controller
 
     public function storeTurnoUnico(Request $request)
     {
-        
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('turnos:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless($user->tokenCan('turnos:create') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        if (!$request->user()->tokenCan('turnos:create')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-        // Validar los datos de entrada
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
-            // 'usuarioID' => 'required|exists:users,id',
-            'monto_total' => 'required',
-            'monto_seña' => 'required',
-            'estado' => 'required',
+            'monto_total' => 'required|numeric',
+            'monto_seña' => 'required|numeric',
+            'estado' => 'required|string',
         ]);
 
-        if ($validator->fails()) {
-            $data = [
-                'message' => 'Error en la validacion',
-                'errors' => $validator->errors(),
-                'status' => 400
-            ];
-            return response()->json($data, 400);
-        }
+        // Asegúrate de que no haya llamadas duplicadas aquí
 
         $horario = Horario::find($request->horario_id);
         $cancha = Cancha::find($request->cancha_id);
@@ -129,18 +117,22 @@ class TurnoController extends Controller
         }
 
         $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
-                        ->where('horario_id', $horario->id)
-                        ->where('cancha_id', $cancha->id)
-                        ->first();
-
+                            ->where('horario_id', $horario->id)
+                            ->where('cancha_id', $cancha->id)
+                            ->first();
 
         if ($turnoExistente) {
-            $data = [
+            return response()->json([
                 'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
                 'status' => 400
-            ];
-            return response()->json($data, 400);
+            ], 400);
         }
+
+        // Eliminar bloqueo temporal si existe
+        BloqueoTemporal::where('fecha', $request->fecha_turno)
+            ->where('horario_id', $request->horario_id)
+            ->where('cancha_id', $request->cancha_id)
+            ->delete();
 
         // Crear una nueva reserva
         $turno = Turno::create([
@@ -156,20 +148,17 @@ class TurnoController extends Controller
         ]);
 
         if (!$turno) {
-            $data = [
-                'message' => 'Error al crear la turno',
+            return response()->json([
+                'message' => 'Error al crear el turno',
                 'status' => 500
-            ];
-            return response()->json($data, 500);
+            ], 500);
         }
 
-        $data = [
-            'message' => 'Turno creada correctamente',
+        return response()->json([
+            'message' => 'Turno creado correctamente',
             'turno' => $turno,
             'status' => 201
-        ];
-
-        return response()->json($data, 201);
+        ], 201);
     }
 
     public function storeTurnoFijo(Request $request)
@@ -182,7 +171,6 @@ class TurnoController extends Controller
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
-            'usuario_id' => 'required|exists:users,id',
             'monto_total' => 'required|numeric',
             'monto_seña' => 'required|numeric',
             'estado' => 'required|string',
@@ -196,8 +184,8 @@ class TurnoController extends Controller
             ], 400);
         }
 
-        $horario = Horario::find($request->horarioID);
-        $cancha = Cancha::find($request->canchaID);
+        $horario = Horario::find($request->horario_id);
+        $cancha = Cancha::find($request->cancha_id);
 
         if (!$horario || !$cancha) {
             return response()->json([
@@ -206,13 +194,15 @@ class TurnoController extends Controller
             ], 404);
         }
 
-
         DB::beginTransaction();
 
         try {
+            $fecha_turno = Carbon::parse($request->fecha_turno); // Inicializa la fecha_turno
+
             for ($i = 0; $i < 4; $i++) {
-                $fecha_turno = now()->addWeeks($i)->toDateString();
-                $turnoExistente = Turno::where('fecha_turno', $fecha_turno)
+                $fecha_turno_actual = $fecha_turno->copy()->addWeeks($i)->toDateString(); // Copia y agrega semanas
+
+                $turnoExistente = Turno::where('fecha_turno', $fecha_turno_actual)
                                         ->where('horario_id', $horario->id)
                                         ->where('cancha_id', $cancha->id)
                                         ->first();
@@ -220,17 +210,23 @@ class TurnoController extends Controller
                 if ($turnoExistente) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'Ya existe un turno para esa cancha en la fecha ' . $fecha_turno,
+                        'message' => 'Ya existe un turno para esa cancha en la fecha ' . $fecha_turno_actual,
                         'status' => 400
                     ], 400);
                 }
 
+                // Eliminar bloqueo temporal si existe
+                BloqueoTemporal::where('fecha', $fecha_turno_actual)
+                    ->where('horario_id', $request->horario_id)
+                    ->where('cancha_id', $request->cancha_id)
+                    ->delete();
+
                 $turno = Turno::create([
-                    'fecha_turno' => $fecha_turno,
+                    'fecha_turno' => $fecha_turno_actual,
                     'fecha_reserva' => now(),
                     'horario_id' => $request->horario_id,
                     'cancha_id' => $request->cancha_id,
-                    'usuarioID' => $request->usuarioID,
+                    'usuario_id' => $user->id,
                     'monto_total' => $request->monto_total,
                     'monto_seña' => $request->monto_seña,
                     'estado' => $request->estado,
@@ -249,7 +245,7 @@ class TurnoController extends Controller
             DB::commit();
 
             return response()->json([
-                'message' => 'Turnos creadas correctamente',
+                'message' => 'Turnos creados correctamente',
                 'status' => 201
             ], 201);
 
