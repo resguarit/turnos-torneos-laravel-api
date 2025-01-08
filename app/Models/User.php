@@ -60,6 +60,7 @@ class User extends Authenticatable
             'turnos:update',
             'turnos:destroy',
             'usuario:update',
+            "usuario:showOne",
             "horarios:fecha",
             "disponibilidad:canchas",
         ],
