@@ -329,9 +329,9 @@ class TurnoController extends Controller
             if($turnoExistente) {
                 $data = [
                 'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
-                'status' => 400
+                'status' => 409
             ];
-            return response()->json($data, 400);
+            return response()->json($data, 409);
            }
             if($request->has('fecha_turno')){
             $turno->fecha_turno = $request->fecha_turno;
