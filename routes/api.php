@@ -41,6 +41,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/usuarios/{id}', [UserController::class, 'update']);
     Route::post('/create-user', [UserController::class, 'createUser']);
 
+    Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
 });
 
 Route::post('/login', [UserController::class, 'login']);

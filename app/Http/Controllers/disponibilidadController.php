@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use  Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class DisponibilidadController extends Controller
 {   
@@ -184,5 +185,64 @@ class DisponibilidadController extends Controller
     {
         Cache::forget("horarios_disponibles_{$fecha}");
         Cache::forget("canchas_disponibles_{$fecha}_{$horarioId}");
+    }
+
+    public function storeTurnoUnico(Request $request)
+    {
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('turnos:create') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $validated = $request->validate([
+            'fecha_turno' => 'required|date',
+            'cancha_id' => 'required|exists:canchas,id',
+            'horario_id' => 'required|exists:horarios,id',
+            'monto_total' => 'required|numeric',
+            'monto_seña' => 'required|numeric',
+            'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
+        ]);
+
+        $horario = Horario::find($request->horario_id);
+        $cancha = Cancha::find($request->cancha_id);
+
+        if (!$horario || !$cancha) {
+            return response()->json([
+                'message' => 'Horario o Cancha no encontrados',
+                'status' => 404
+            ], 404);
+        }
+
+        // Verificar disponibilidad
+        $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
+            ->where('horario_id', $horario->id)
+            ->where('cancha_id', $cancha->id)
+            ->where('estado', '!=', 'Cancelado')
+            ->first();
+
+        if ($turnoExistente) {
+            return response()->json([
+                'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
+                'status' => 400
+            ], 400);
+        }
+
+        // Crear el turno
+        $turno = Turno::create([
+            'fecha_turno' => $request->fecha_turno,
+            'fecha_reserva' => now(),
+            'horario_id' => $request->horario_id,
+            'cancha_id' => $request->cancha_id,
+            'usuario_id' => $user->id,
+            'monto_total' => $request->monto_total,
+            'monto_seña' => $request->monto_seña,
+            'estado' => $request->estado,
+            'tipo' => 'unico'
+        ]);
+
+        return response()->json([
+            'message' => 'Turno creado correctamente',
+            'turno' => $turno,
+            'status' => 201
+        ], 201);
     }
 }
