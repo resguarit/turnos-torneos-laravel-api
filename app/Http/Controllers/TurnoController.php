@@ -101,7 +101,7 @@ class TurnoController extends Controller
             'horario_id' => 'required|exists:horarios,id',
             'monto_total' => 'required|numeric',
             'monto_seña' => 'required|numeric',
-            'estado' => 'required|string',
+            'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
 
         // Asegúrate de que no haya llamadas duplicadas aquí
@@ -117,15 +117,33 @@ class TurnoController extends Controller
         }
 
         $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
-                            ->where('horario_id', $horario->id)
-                            ->where('cancha_id', $cancha->id)
-                            ->first();
+            ->where('horario_id', $horario->id)
+            ->where('cancha_id', $cancha->id)
+            ->first(); 
 
         if ($turnoExistente) {
-            return response()->json([
-                'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
-                'status' => 400
-            ], 400);
+            if ($turnoExistente->estado === 'Cancelado') {
+                // Si el turno existente está cancelado, actualizarlo en lugar de crear uno nuevo
+                $turnoExistente->update([
+                    'fecha_reserva' => now(),
+                    'usuario_id' => $user->id,
+                    'monto_total' => $request->monto_total,
+                    'monto_seña' => $request->monto_seña,
+                    'estado' => $request->estado,
+                    'tipo' => 'unico'
+                ]);
+
+                return response()->json([
+                    'message' => 'Turno Actualizado correctamente',
+                    'turno' => $turnoExistente,
+                    'status' => 201
+                ], 201);
+            } else {
+                return response()->json([
+                    'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
+                    'status' => 400
+                ], 400);
+            }
         }
 
         // Eliminar bloqueo temporal si existe
@@ -173,7 +191,7 @@ class TurnoController extends Controller
             'horario_id' => 'required|exists:horarios,id',
             'monto_total' => 'required|numeric',
             'monto_seña' => 'required|numeric',
-            'estado' => 'required|string',
+            'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
 
         if ($validator->fails()) {
@@ -205,6 +223,7 @@ class TurnoController extends Controller
                 $turnoExistente = Turno::where('fecha_turno', $fecha_turno_actual)
                                         ->where('horario_id', $horario->id)
                                         ->where('cancha_id', $cancha->id)
+                                        ->where('estado', '!=', 'Cancelado') // Excluir turnos cancelados
                                         ->first();
 
                 if ($turnoExistente) {
@@ -285,7 +304,7 @@ class TurnoController extends Controller
             'cancha_id' => 'sometimes|required_with:fecha_turno|exists:canchas,id',
             'monto_total' => 'sometimes|numeric',
             'monto_seña' => 'sometimes|numeric',
-            'estado' => 'sometimes|in:pendiente,señado,pagado ,cancelado',
+            'estado' => 'sometimes|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
 
         // Manejar errores de validación
@@ -303,6 +322,8 @@ class TurnoController extends Controller
             $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
                                     ->where('horario_id', $request->horario_id)
                                     ->where('cancha_id', $request->cancha_id)
+                                    ->where('estado', '!=', 'Cancelado') // Excluir turnos cancelados
+                                    ->where('id', '!=', $id) // Excluir el turno actual
                                     ->first();
 
             if ($turnoExistente) {
@@ -332,8 +353,8 @@ class TurnoController extends Controller
                 $turno->estado = $request->estado;
 
                 // Si el estado cambia a cancelado, liberar el horario y la cancha
-                if ($request->estado === 'cancelado') {
-                    $turno->estado = 'cancelado';
+                if ($request->estado === 'Cancelado') {
+                    $turno->estado = 'Cancelado';
                     // Al estar cancelado, este turno ya no bloqueará el horario ni la cancha
                     // porque en las consultas de disponibilidad se excluyen los turnos cancelados
                 }
