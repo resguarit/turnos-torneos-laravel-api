@@ -285,7 +285,7 @@ class TurnoController extends Controller
             'cancha_id' => 'sometimes|required_with:fecha_turno|exists:canchas,id',
             'monto_total' => 'sometimes|numeric',
             'monto_seña' => 'sometimes|numeric',
-            'estado' => 'sometimes',
+            'estado' => 'sometimes|in:pendiente,señado,pagado ,cancelado',
         ]);
 
         // Manejar errores de validación
@@ -326,8 +326,35 @@ class TurnoController extends Controller
             $turno->monto_seña = $request->monto_seña;
         }
         
-        if($request->has('estado')){
-            $turno->estado = $request->estado;
+        if ($request->has('estado')) {
+            DB::beginTransaction();
+            try {
+                $turno->estado = $request->estado;
+
+                // Si el estado cambia a cancelado, liberar el horario y la cancha
+                if ($request->estado === 'cancelado') {
+                    $turno->estado = 'cancelado';
+                    // Al estar cancelado, este turno ya no bloqueará el horario ni la cancha
+                    // porque en las consultas de disponibilidad se excluyen los turnos cancelados
+                }
+                
+                $turno->save();
+                DB::commit();
+
+                return response()->json([
+                    'message' => 'Turno cancelado correctamente',
+                    'turno' => $turno,
+                    'status' => 200
+                ], 200);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Error al actualizar el estado del turno',
+                    'error' => $e->getMessage(),
+                    'status' => 500
+                ], 500);
+            }
         }
         // Guardar los cambios en la base de datos
         $turno->save();
