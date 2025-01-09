@@ -281,7 +281,7 @@ class TurnoController extends Controller
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'sometimes|date',
-            'horario_id' => 'sometimes|required_with:fecha_turno|exists:horario,id',
+            'horario_id' => 'sometimes|required_with:fecha_turno|exists:horarios,id',
             'cancha_id' => 'sometimes|required_with:fecha_turno|exists:canchas,id',
             'monto_total' => 'sometimes|numeric',
             'monto_seña' => 'sometimes|numeric',
@@ -299,7 +299,7 @@ class TurnoController extends Controller
         }
 
         // Actualizar los campos de la reserva
-        if($request->has('fechaTurno') && $request->has('horario_id') && $request->has('cancha_id')){
+        if($request->has('fecha_turno') && $request->has('horario_id') && $request->has('cancha_id')){
             $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
                                     ->where('horario_id', $request->horario_id)
                                     ->where('cancha_id', $request->cancha_id)
@@ -312,7 +312,7 @@ class TurnoController extends Controller
             ];
             return response()->json($data, 400);
             }
-            $turno->fechaTurno = $request->fechaTurno;
+            $turno->fecha_turno = $request->fecha_turno;
             $turno->horario_id = $request->horario_id;
             $turno->cancha_id = $request->cancha_id;
         }
@@ -393,5 +393,128 @@ class TurnoController extends Controller
             ];
             return response()->json($data, 404);
         }
+    }
+
+    public function show($id)
+    {
+        $user = Auth::user();
+
+        abort_unless( $user->tokenCan('turnos:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+
+        try {
+            $turno = Turno::with(['cancha', 'horario'])->findOrFail($id);
+
+            $data = [
+            'turno' => new TurnoResource($turno),
+            'cancha_id' => $turno->cancha->id,
+            'horario_id' => $turno->horario->id,
+            'status' => 200
+            ];
+
+            return response()->json($data, 200);
+
+        } catch (ModelNotFoundException $e) {
+            $data = [
+                'message' => 'Reserva no encontrada',
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
+    }
+
+
+    public function grid(Request $request)
+    {
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $validator = Validator::make($request->all(), [
+            'fecha' => 'required|date_format:Y-m-d',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
+
+        $horarios = Horario::where('activo', true)->get();
+        $canchas = Cancha::where('activa', true)->get();
+
+        $turnos = Turno::whereDate('fecha_turno', $fecha)
+                            ->with(['usuario', 'horario', 'cancha'])
+                            ->get();
+
+        $grid = [];
+
+        foreach ($horarios as $horario) {
+            $hora = Carbon::createFromFormat('H:i:s', $horario->hora_inicio)->format('H');
+            $grid[$hora] = [];
+
+            foreach ($canchas as $cancha) {
+                $turno = $turnos->first(function ($t) use ($horario, $cancha) {
+                    return $t->horario->id === $horario->id && $t->cancha->id === $cancha->id;
+                });
+
+                $grid[$hora][$cancha->nro] = [
+                    'cancha' => $cancha->nro,
+                    'tipo' => $cancha->tipo_cancha,
+                    'turno' => $turno ? [
+                        'id' => $turno->id,
+                        'usuario' => [
+                            'usuario_id' => $turno->usuario->id,
+                            'nombre' => $turno->usuario->name,
+                            'telefono' => $turno->usuario->telefono,
+                        ],
+                        'monto_total' => $turno->monto_total,
+                        'monto_seña' => $turno->monto_seña,
+                        'estado' => $turno->estado,
+                        'tipo' => $turno->tipo,
+                    ] : null,
+                ];
+            }
+        }
+
+        return response()->json([
+            'grid' => $grid,
+            'status' => 200
+        ], 200);
+    }
+
+    public function getTurnosByUserId($userId)
+    {
+        $user = Auth::user();
+        $tokenableId = $user->currentAccessToken()->tokenable_id;
+    
+        // Solo permitir ver los turnos propios o si es admin
+        if ($tokenableId != $userId && $user->rol !== 'admin') {
+            return response()->json([
+                'message' => 'No tienes permisos para ver los turnos de otro usuario',
+                'status' => 403
+            ], 403);
+        }
+    
+        abort_unless($user->tokenCan('turnos:ownShow') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+    
+        $turnos = Turno::where('usuario_id', $userId)
+                       ->with(['cancha', 'horario'])
+                       ->get();
+    
+        if ($turnos->isEmpty()) {
+            return response()->json([
+                'message' => 'No se encontraron turnos para este usuario',
+                'status' => 404
+            ], 404);
+        }
+    
+        return response()->json([
+            'turnos' => TurnoResource::collection($turnos),
+            'status' => 200
+        ], 200);
     }
 }

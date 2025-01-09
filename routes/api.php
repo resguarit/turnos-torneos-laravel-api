@@ -19,10 +19,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/turnos', [TurnoController::class, 'index']);
     Route::get('/turnos-all', [TurnoController::class, 'getAll']);
+    Route::get('/turnos/{id}', [TurnoController::class, 'show']);
+    Route::get('/turnos/usuario/{userId}', [TurnoController::class, 'getTurnosByUserId']);
     Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
     Route::post('/turnos/turnofijo', [TurnoController::class, 'storeTurnoFijo']);
     Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
     Route::delete('/turnos/{id}', [TurnoController::class, 'destroy']);
+    Route::get('/grilla', [TurnoController::class, 'grid']);
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
 
