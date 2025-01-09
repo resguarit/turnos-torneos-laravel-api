@@ -458,4 +458,36 @@ class TurnoController extends Controller
             'status' => 200
         ], 200);
     }
+
+    public function getTurnosByUserId($userId)
+    {
+        $user = Auth::user();
+        $tokenableId = $user->currentAccessToken()->tokenable_id;
+    
+        // Solo permitir ver los turnos propios o si es admin
+        if ($tokenableId != $userId && $user->rol !== 'admin') {
+            return response()->json([
+                'message' => 'No tienes permisos para ver los turnos de otro usuario',
+                'status' => 403
+            ], 403);
+        }
+    
+        abort_unless($user->tokenCan('turnos:ownShow') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+    
+        $turnos = Turno::where('usuario_id', $userId)
+                       ->with(['cancha', 'horario'])
+                       ->get();
+    
+        if ($turnos->isEmpty()) {
+            return response()->json([
+                'message' => 'No se encontraron turnos para este usuario',
+                'status' => 404
+            ], 404);
+        }
+    
+        return response()->json([
+            'turnos' => TurnoResource::collection($turnos),
+            'status' => 200
+        ], 200);
+    }
 }

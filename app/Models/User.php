@@ -54,6 +54,8 @@ class User extends Authenticatable
             'canchas:show',
             'turno:bloqueo',
             'horariosNoDisponible:show',
+            'turnos:ownShow',
+            'turnos:show',
             'horarios:show',
             'horarios:showOne',
             'turnos:create',
