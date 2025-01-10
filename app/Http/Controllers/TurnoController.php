@@ -104,8 +104,6 @@ class TurnoController extends Controller
             'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
 
-        // Asegúrate de que no haya llamadas duplicadas aquí
-
         $horario = Horario::find($request->horario_id);
         $cancha = Cancha::find($request->cancha_id);
 
@@ -119,6 +117,7 @@ class TurnoController extends Controller
         $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
             ->where('horario_id', $horario->id)
             ->where('cancha_id', $cancha->id)
+            ->where('estado', '!=', 'Cancelado') 
             ->first(); 
 
         if ($turnoExistente) {
@@ -227,12 +226,29 @@ class TurnoController extends Controller
                                         ->first();
 
                 if ($turnoExistente) {
-                    DB::rollBack();
-                    return response()->json([
-                        'message' => 'Ya existe un turno para esa cancha en la fecha ' . $fecha_turno_actual,
-                        'status' => 400
-                    ], 400);
-                }
+                    if ($turnoExistente->estado === 'Cancelado') {
+                        // Si el turno existente está cancelado, actualizarlo en lugar de crear uno nuevo
+                        $turnoExistente->update([
+                            'fecha_reserva' => now(),
+                            'usuario_id' => $user->id,
+                            'monto_total' => $request->monto_total,
+                            'monto_seña' => $request->monto_seña,
+                            'estado' => $request->estado,
+                            'tipo' => 'unico'
+                        ]);
+        
+                        return response()->json([
+                            'message' => 'Turno Actualizado correctamente',
+                            'turno' => $turnoExistente,
+                            'status' => 201
+                        ], 201);
+                    } else {
+                        return response()->json([
+                            'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
+                            'status' => 400
+                        ], 400);
+                    }
+            }
 
                 // Eliminar bloqueo temporal si existe
                 BloqueoTemporal::where('fecha', $fecha_turno_actual)
