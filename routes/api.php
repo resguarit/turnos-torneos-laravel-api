@@ -22,6 +22,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('turnos/user', [TurnoController::class, 'getTurnosByUser']);
     Route::get('turnos/user-proximos', [TurnoController::class, 'getProximos']);
     Route::get('/turnos/{id}', [TurnoController::class, 'show']);
+    Route::get('/turnos/usuario/{userId}', [TurnoController::class, 'getTurnosByUserId']);
     Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
     Route::post('/turnos/turnofijo', [TurnoController::class, 'storeTurnoFijo']);
     Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
@@ -42,6 +43,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/usuarios/{id}', [UserController::class, 'update']);
     Route::post('/create-user', [UserController::class, 'createUser']);
 
+    Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
 });
 
 Route::post('/login', [UserController::class, 'login']);

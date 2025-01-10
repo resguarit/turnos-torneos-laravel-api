@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use  Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class DisponibilidadController extends Controller
 {   
@@ -79,10 +80,11 @@ class DisponibilidadController extends Controller
                 return Cancha::count();
             });
 
-            // Cachear horarios activos por 12 horas
+            // Cachear horarios activos por 2 horas
             $horarios = Cache::remember('horarios_activos', now()->addHours(2), function() {
                 return Horario::where('activo', true)
                     ->select(['id', 'hora_inicio', 'hora_fin'])
+                    ->orderBy('hora_inicio', 'asc')
                     ->get();
             });
 
@@ -115,59 +117,65 @@ class DisponibilidadController extends Controller
      * @return \Illuminate\Http\JsonResponse
      */
     public function getCanchasPorHorarioFecha(Request $request)
-    {
-        //Validación de datos recibidos
-        $validator = Validator::make($request->all(), [
-            'fecha' => 'required|date_format:Y-m-d',
-            'horario_id' => 'required|exists:horarios,id',
-        ]);
+{
+    // Validación de entrada
+    $validator = Validator::make($request->all(), [
+        'fecha' => 'required|date_format:Y-m-d',
+        'horario_id' => 'required|exists:horarios,id',
+    ]);
 
-        //Si la validación falla, retorna error
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Error en la validación',
-                'errors' => $validator->errors(),
-                'status' => 400
-            ], 400);
-        }
-
-        // Crear objeto Carbon y obtener horario_id
-        $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-        $horarioId = $request->horario_id;
-        
-        // Definir clave única para el caché
-        $cacheKey = "canchas_disponibles_{$fecha->format('Y-m-d')}_{$horarioId}";
-
-        // Retornar datos cacheados o generarlos si no existen
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($fecha, $horarioId) {
-            // Obtener IDs de canchas ocupadas
-            $canchas_ocupadas = DB::table('turnos')
-                ->where('fecha_turno', $fecha)
-                ->where('horario_id', $horarioId)
-                ->pluck('cancha_id')
-                ->toArray();
-
-            // Cachear todas las canchas por 24 horas
-            $canchas = Cache::remember('todas_canchas', now()->addDay(), function() {
-                return Cancha::select(['id', 'nro', 'tipo_cancha'])->get();
-            });
-
-            // Mapear canchas con su disponibilidad
-            $result = $canchas->map(function($cancha) use ($canchas_ocupadas) {
-                return [
-                    'id' => $cancha->id,
-                    'nro' => $cancha->nro,
-                    'tipo' => $cancha->tipo_cancha,
-                    'disponible' => !in_array($cancha->id, $canchas_ocupadas),
-                ];
-            });
-
-            return response()->json([
-                'canchas' => $result,
-                'status' => 200
-            ], 200);
-        });
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Error en la validación',
+            'errors' => $validator->errors(),
+            'status' => 400
+        ], 400);
     }
+
+    // Preparar datos
+    $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
+    $horarioId = $request->horario_id;
+    
+    // Clave única para caché
+    $cacheKey = "canchas_disponibles_{$fecha->format('Y-m-d')}_{$horarioId}";
+
+    return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($fecha, $horarioId) {
+        // Obtener canchas ocupadas (solo estados bloqueantes)
+        $canchas_ocupadas = DB::table('turnos')
+            ->where('fecha_turno', $fecha)
+            ->where('horario_id', $horarioId)
+            ->whereIn('estado', ['Pendiente', 'Señado', 'Pagado'])
+            ->pluck('cancha_id')
+            ->toArray();
+
+
+        // Obtener todas las canchas activas
+        $canchas = Cache::remember('todas_canchas', now()->addDay(), function() {
+            return Cancha::select(['id', 'nro', 'tipo_cancha'])
+                        ->where('activa', true)
+                        ->get();
+        });
+
+        // Mapear canchas con su disponibilidad
+        $result = $canchas->map(function($cancha) use ($canchas_ocupadas) {
+            return [
+                'id' => $cancha->id,
+                'nro' => $cancha->nro,
+                'tipo' => $cancha->tipo_cancha,
+                'disponibilidad' => !in_array($cancha->id, $canchas_ocupadas)
+            ];
+        });
+
+        // Devolver respuesta con información de debug
+        return response()->json([
+            'canchas' => $result,
+            'status' => 200
+        ], 200);
+    });
+}
+
+
+
 
     /**
      * Método privado para limpiar el caché relacionado cuando se modifica un turno
