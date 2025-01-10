@@ -60,7 +60,6 @@ class disponibilidadController extends Controller
                 }
             }
 
-            // Add last range if exists
             if ($current !== null) {
                 $merged[] = $current['inicio'] . '-' . $current['fin'];
             }
