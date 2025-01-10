@@ -19,7 +19,7 @@ class disponibilidadController extends Controller
         $fecha_fin = now()->addDays(30)->endOfDay();
 
         $canchas_count = Cancha::count();
-        
+
         $turnos = Turno::select(
             'fecha_turno',
             'horario_id',
@@ -29,6 +29,7 @@ class disponibilidadController extends Controller
         ->groupBy('fecha_turno', 'horario_id')
         ->having('total_reservas', '>=', $canchas_count)
         ->with(['horario:id,hora_inicio,hora_fin'])
+        ->where('estado', "!=", "Cancelado")
         ->get();
 
         // Transformamos los resultados directamente al formato deseado
@@ -45,7 +46,6 @@ class disponibilidadController extends Controller
 
     public function getHorariosDisponiblesPorFecha(Request $request)
     {
-
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
         ]);
@@ -63,9 +63,11 @@ class disponibilidadController extends Controller
         $canchas_count = Cancha::count();
         $horarios = Horario::where('activo', true)->get();
 
+        // Modificar la consulta para excluir turnos cancelados
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                            ->with('horario')
-                            ->get();
+                        ->where('estado', '!=', 'Cancelado')
+                        ->with('horario')
+                        ->get();
 
         $no_disponibles = [];
 
