@@ -99,8 +99,6 @@ class TurnoController extends Controller
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
-            'monto_total' => 'required|numeric',
-            'monto_seña' => 'required|numeric',
             'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
 
@@ -114,42 +112,21 @@ class TurnoController extends Controller
             ], 404);
         }
 
+        $monto_total = $cancha->precio_por_hora;        
+        $monto_seña = $cancha->senia;
+
         $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
             ->where('horario_id', $horario->id)
             ->where('cancha_id', $cancha->id)
             ->where('estado', '!=', 'Cancelado') 
-            ->first(); 
+            ->first();
 
         if ($turnoExistente) {
-            if ($turnoExistente->estado === 'Cancelado') {
-                // Si el turno existente está cancelado, actualizarlo en lugar de crear uno nuevo
-                $turnoExistente->update([
-                    'fecha_reserva' => now(),
-                    'usuario_id' => $user->id,
-                    'monto_total' => $request->monto_total,
-                    'monto_seña' => $request->monto_seña,
-                    'estado' => $request->estado,
-                    'tipo' => 'unico'
-                ]);
-
-                return response()->json([
-                    'message' => 'Turno Actualizado correctamente',
-                    'turno' => $turnoExistente,
-                    'status' => 201
-                ], 201);
-            } else {
-                return response()->json([
-                    'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
-                    'status' => 400
-                ], 400);
-            }
+            return response()->json([
+                'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
+                'status' => 400
+            ], 400);
         }
-
-        // Eliminar bloqueo temporal si existe
-        BloqueoTemporal::where('fecha', $request->fecha_turno)
-            ->where('horario_id', $request->horario_id)
-            ->where('cancha_id', $request->cancha_id)
-            ->delete();
 
         // Crear una nueva reserva
         $turno = Turno::create([
@@ -158,8 +135,8 @@ class TurnoController extends Controller
             'horario_id' => $request->horario_id,
             'cancha_id' => $request->cancha_id,
             'usuario_id' => $user->id,
-            'monto_total' => $request->monto_total,
-            'monto_seña' => $request->monto_seña,
+            'monto_total' => $monto_total,
+            'monto_seña' => $monto_seña,
             'estado' => $request->estado,
             'tipo' => 'unico'
         ]);
@@ -188,8 +165,6 @@ class TurnoController extends Controller
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
-            'monto_total' => 'required|numeric',
-            'monto_seña' => 'required|numeric',
             'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
 
@@ -211,46 +186,33 @@ class TurnoController extends Controller
             ], 404);
         }
 
+        // Calculate amounts based on cancha values
+        $monto_total = $cancha->precio_por_hora;
+        $monto_seña = $cancha->senia;
+
         DB::beginTransaction();
 
         try {
-            $fecha_turno = Carbon::parse($request->fecha_turno); // Inicializa la fecha_turno
+            $fecha_turno = Carbon::parse($request->fecha_turno);
 
             for ($i = 0; $i < 4; $i++) {
-                $fecha_turno_actual = $fecha_turno->copy()->addWeeks($i)->toDateString(); // Copia y agrega semanas
+                $fecha_turno_actual = $fecha_turno->copy()->addWeeks($i)->toDateString();
 
                 $turnoExistente = Turno::where('fecha_turno', $fecha_turno_actual)
-                                        ->where('horario_id', $horario->id)
-                                        ->where('cancha_id', $cancha->id)
-                                        ->where('estado', '!=', 'Cancelado') // Excluir turnos cancelados
-                                        ->first();
+                    ->where('horario_id', $horario->id)
+                    ->where('cancha_id', $cancha->id)
+                    ->where('estado', '!=', 'Cancelado')
+                    ->first();
 
                 if ($turnoExistente) {
-                    if ($turnoExistente->estado === 'Cancelado') {
-                        // Si el turno existente está cancelado, actualizarlo en lugar de crear uno nuevo
-                        $turnoExistente->update([
-                            'fecha_reserva' => now(),
-                            'usuario_id' => $user->id,
-                            'monto_total' => $request->monto_total,
-                            'monto_seña' => $request->monto_seña,
-                            'estado' => $request->estado,
-                            'tipo' => 'unico'
-                        ]);
-        
-                        return response()->json([
-                            'message' => 'Turno Actualizado correctamente',
-                            'turno' => $turnoExistente,
-                            'status' => 201
-                        ], 201);
-                    } else {
-                        return response()->json([
-                            'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
-                            'status' => 400
-                        ], 400);
-                    }
-            }
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Ya existe un turno para esa cancha en la fecha ' . $fecha_turno_actual,
+                        'status' => 400
+                    ], 400);
+                }
 
-                // Eliminar bloqueo temporal si existe
+                // Delete any existing temporary block
                 BloqueoTemporal::where('fecha', $fecha_turno_actual)
                     ->where('horario_id', $request->horario_id)
                     ->where('cancha_id', $request->cancha_id)
@@ -262,8 +224,8 @@ class TurnoController extends Controller
                     'horario_id' => $request->horario_id,
                     'cancha_id' => $request->cancha_id,
                     'usuario_id' => $user->id,
-                    'monto_total' => $request->monto_total,
-                    'monto_seña' => $request->monto_seña,
+                    'monto_total' => $monto_total,
+                    'monto_seña' => $monto_seña,
                     'estado' => $request->estado,
                     'tipo' => 'fijo'
                 ]);
