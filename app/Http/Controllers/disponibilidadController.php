@@ -14,7 +14,6 @@ class disponibilidadController extends Controller
 {
     public function getHorariosNoDisponibles()
     {
-        
         $fecha_inicio = now()->startOfDay();
         $fecha_fin = now()->addDays(30)->endOfDay();
 
@@ -32,13 +31,40 @@ class disponibilidadController extends Controller
         ->where('estado', "!=", "Cancelado")
         ->get();
 
-        // Transformamos los resultados directamente al formato deseado
+        // Group by date and merge consecutive times
         $result = $turnos->groupBy(function($turno) {
             return $turno->fecha_turno->format('Y-m-d');
         })->map(function($grupoTurnos) {
-            return $grupoTurnos->map(function($turno) {
-                return $turno->horario->hora_inicio . '-' . $turno->horario->hora_fin;
-            })->values()->all();
+            $horarios = $grupoTurnos->sortBy(function($turno) {
+                return $turno->horario->hora_inicio;
+            });
+
+            $merged = [];
+            $current = null;
+
+            foreach ($horarios as $turno) {
+                $horaInicio = $turno->horario->hora_inicio;
+                $horaFin = $turno->horario->hora_fin;
+
+                if ($current === null) {
+                    $current = ['inicio' => $horaInicio, 'fin' => $horaFin];
+                } else {
+                    // If current end time equals this start time, extend the range
+                    if ($current['fin'] === $horaInicio) {
+                        $current['fin'] = $horaFin;
+                    } else {
+                        // Add completed range and start new one
+                        $merged[] = $current['inicio'] . '-' . $current['fin'];
+                        $current = ['inicio' => $horaInicio, 'fin' => $horaFin];
+                    }
+                }
+            }
+
+            // Add last range if exists
+            if ($current !== null) {
+                $merged[] = $current['inicio'] . '-' . $current['fin'];
+            }
+            return $merged;
         })->toArray();
 
         return $result;
