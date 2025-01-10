@@ -121,11 +121,13 @@ class TurnoController extends Controller
             ->where('estado', '!=', 'Cancelado') 
             ->first();
 
-        if ($turnoExistente) {
-            return response()->json([
-                'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
-                'status' => 400
-            ], 400);
+        $ya_bloqueado = BloqueoTemporal::where('fecha', $request->fecha_turno)
+                                        ->where('horario_id', $request->horario_id)
+                                        ->where('cancha_id', $request->cancha_id)
+                                        ->exists();
+
+        if ($turnoExistente || $ya_bloqueado) {
+            return response()->json(['message' => 'El Turno ya no está disponible.'], 400);
         }
 
         // Crear una nueva reserva
