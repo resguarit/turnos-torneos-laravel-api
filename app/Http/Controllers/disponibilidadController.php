@@ -80,10 +80,11 @@ class DisponibilidadController extends Controller
                 return Cancha::count();
             });
 
-            // Cachear horarios activos por 12 horas
+            // Cachear horarios activos por 2 horas
             $horarios = Cache::remember('horarios_activos', now()->addHours(2), function() {
                 return Horario::where('activo', true)
                     ->select(['id', 'hora_inicio', 'hora_fin'])
+                    ->orderBy('hora_inicio', 'asc')
                     ->get();
             });
 
@@ -143,7 +144,7 @@ class DisponibilidadController extends Controller
         $canchas_ocupadas = DB::table('turnos')
             ->where('fecha_turno', $fecha)
             ->where('horario_id', $horarioId)
-            ->whereIn('estado', ['Pendiente', 'Señado', 'Pagado']) // Estados en upper camel case
+            ->whereIn('estado', ['Pendiente', 'Señado', 'Pagado'])
             ->pluck('cancha_id')
             ->toArray();
 
