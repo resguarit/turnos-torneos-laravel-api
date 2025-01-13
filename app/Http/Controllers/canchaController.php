@@ -28,9 +28,9 @@ class CanchaController extends Controller
 
     public function show ($id){
         
-        $user = Auth::user();
+       // $user = Auth::user();
 
-        abort_unless($user->tokenCan('cancha:showOne') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+        // abort_unless($user->tokenCan('cancha:showOne') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make(['id' => $id], [
             'id' => 'required|integer|exists:canchas,id'
