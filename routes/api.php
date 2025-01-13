@@ -8,6 +8,9 @@ use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\DisponibilidadController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AuthController;
+
+
 
 Route::middleware(['auth:sanctum'])->group(function () {
     
@@ -59,4 +62,6 @@ Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanch
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/canchas/{id}', [CanchaController::class, 'show']);
 
+Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle']);
+Route::post('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 
