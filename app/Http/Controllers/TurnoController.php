@@ -469,9 +469,11 @@ class TurnoController extends Controller
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
 
+
         $horarios = Horario::where('activo', true)
-                            ->orderBy("hora_inicio", "asc")
-                            ->get();
+        ->orderBy('hora_inicio', 'asc')
+        ->get();
+
         $canchas = Cancha::where('activa', true)->get();
 
         $turnos = Turno::whereDate('fecha_turno', $fecha)
