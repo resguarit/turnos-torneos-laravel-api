@@ -468,11 +468,12 @@ class TurnoController extends Controller
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
 
         $horarios = Horario::where('activo', true)
-        ->orderBy('hora_inicio', 'asc')
-        ->get();
+                            ->where('dia', $diaSemana) // Filtrar por día de la semana
+                            ->orderBy('hora_inicio', 'asc')
+                            ->get();
 
         $canchas = Cancha::where('activa', true)->get();
 
@@ -510,12 +511,26 @@ class TurnoController extends Controller
                 ];
             }
         }
-        
+
         return response()->json([
             'grid' => $grid,
-            // 'horarios'=> $horarios,
             'status' => 200
         ], 200);
+    }
+
+    private function getNombreDiaSemana($diaSemana)
+    {
+        $dias = [
+            0 => 'domingo',
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábado'
+        ];
+
+        return $dias[$diaSemana];
     }
 
     public function getTurnosByUser()
