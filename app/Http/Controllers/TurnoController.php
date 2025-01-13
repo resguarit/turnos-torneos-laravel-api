@@ -318,26 +318,51 @@ class TurnoController extends Controller
         }
 
         // Actualizar los campos de la reserva
-        if($request->has('fecha_turno') && $request->has('horario_id') && $request->has('cancha_id')){
-            $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
-                                    ->where('horario_id', $request->horario_id)
-                                    ->where('cancha_id', $request->cancha_id)
-                                    ->where('estado', '!=', 'Cancelado') // Excluir turnos cancelados
-                                    ->where('id', '!=', $id) // Excluir el turno actual
-                                    ->first();
+        if($request->has('fecha_turno') || $request->has('horario_id') || $request->has('cancha_id')){
 
-            if ($turnoExistente) {
+            if($request->has('fecha_turno')){
+                $fecha_comparar = $request->fecha_turno;
+            } else {
+                $fecha_comparar = $turno->fecha_turno;
+            }
+
+            if($request->has('horario_id')){
+                $horario_comparar = $request->horario_id;
+            } else {
+                $horario_comparar = $turno->horario_id;
+            }
+
+            if($request->has('cancha_id')){
+                $cancha_comparar = $request->cancha_id;
+            } else {
+                $cancha_comparar = $turno->cancha_id;
+            }
+
+            $turnoExistente = Turno::where('fecha_turno', $fecha_comparar)
+                                    ->where('horario_id', $horario_comparar)
+                                    ->where('cancha_id', $cancha_comparar)
+                                    ->where('id', '!=', $id)
+                                    ->where('estado', '!=', 'Cancelado')
+                                    ->first();
+                                    
+
+            if($turnoExistente) {
                 $data = [
                 'message' => 'Ya existe un turno para esa cancha en esta fecha y horario',
-                'status' => 400
+                'status' => 409
             ];
-            return response()->json($data, 400);
-            }
+            return response()->json($data, 409);
+           }
+            if($request->has('fecha_turno')){
             $turno->fecha_turno = $request->fecha_turno;
+            }
+            if($request->has('horario_id')){
             $turno->horario_id = $request->horario_id;
+            }
+            if($request->has('cancha_id')){
             $turno->cancha_id = $request->cancha_id;
+            }
         }
-
 
         if($request->has('monto_total')){
             $turno->monto_total = $request->monto_total;
@@ -464,7 +489,11 @@ class TurnoController extends Controller
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
 
-        $horarios = Horario::where('activo', true)->get();
+
+        $horarios = Horario::where('activo', true)
+        ->orderBy('hora_inicio', 'asc')
+        ->get();
+
         $canchas = Cancha::where('activa', true)->get();
 
         $turnos = Turno::whereDate('fecha_turno', $fecha)
@@ -475,6 +504,7 @@ class TurnoController extends Controller
 
         foreach ($horarios as $horario) {
             $hora = Carbon::createFromFormat('H:i:s', $horario->hora_inicio)->format('H');
+            $hora = (int) $hora;
             $grid[$hora] = [];
 
             foreach ($canchas as $cancha) {
@@ -500,42 +530,55 @@ class TurnoController extends Controller
                 ];
             }
         }
-
+        
         return response()->json([
             'grid' => $grid,
+            // 'horarios'=> $horarios,
             'status' => 200
         ], 200);
     }
 
-    public function getTurnosByUserId($userId)
+    public function getTurnosByUser()
     {
         $user = Auth::user();
-        $tokenableId = $user->currentAccessToken()->tokenable_id;
-    
-        // Solo permitir ver los turnos propios o si es admin
-        if ($tokenableId != $userId && $user->rol !== 'admin') {
-            return response()->json([
-                'message' => 'No tienes permisos para ver los turnos de otro usuario',
-                'status' => 403
-            ], 403);
-        }
-    
-        abort_unless($user->tokenCan('turnos:ownShow') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-    
-        $turnos = Turno::where('usuario_id', $userId)
-                       ->with(['cancha', 'horario'])
-                       ->get();
-    
+
+        abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $turnos = Turno::where('usuario_id', $user->id)
+            ->with(['cancha', 'horario'])
+            ->get();
+
+        $data = [
+            'turnos' => TurnoResource::collection($turnos),
+            'status' => 200
+        ];
+
         if ($turnos->isEmpty()) {
             return response()->json([
                 'message' => 'No se encontraron turnos para este usuario',
                 'status' => 404
             ], 404);
-        }
-    
-        return response()->json([
+
+        return response()->json($data, 200);
+    }}
+
+    public function getProximos(){
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $fechaHoy = now()->startOfDay();
+
+        $turnos = Turno::where('usuario_id', $user->id)
+            ->whereDate('fecha_turno', '>=', $fechaHoy)
+            ->with(['cancha', 'horario'])
+            ->get();
+
+        $data = [
             'turnos' => TurnoResource::collection($turnos),
             'status' => 200
-        ], 200);
+        ];
+
+        return response()->json($data, 200);
     }
 }
