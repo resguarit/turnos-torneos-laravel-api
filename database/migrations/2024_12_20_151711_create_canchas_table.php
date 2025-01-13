@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('tipo_cancha');
             $table->boolean('activa')->default(true);
             $table->decimal('precio_por_hora', 8, 2);
+            $table->decimal('senia', 8, 2); // Agregada columna senia
             $table->timestamps();
         });
     }

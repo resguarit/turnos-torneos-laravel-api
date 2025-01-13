@@ -250,6 +250,17 @@ class UserController extends Controller
 
     }
 
+    public function logout(Request $request)
+    {
+        $user = Auth::user();
+
+        $user->tokens()->delete();
+
+        return response()->json([
+            'message' => 'Sesión cerrada con éxito',
+            'status' => 200
+        ], 200);
+    }
 }
 
 
