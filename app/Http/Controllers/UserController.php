@@ -250,6 +250,33 @@ class UserController extends Controller
 
     }
 
+    public function destroy($id){
+        
+        $user = Auth::user();
+
+        abort($user->tokenCan('usuario:delete') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $validator = Validator::make(['id' => $id], [
+            'id' => 'required|integer|exists:users,id'
+        ]);
+
+        if($validator->fails()){
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $userToDelete = User::find($id);
+        $userToDelete->delete();
+
+        return response()->json([
+            'message' => 'Usuario eliminado con éxito',
+            'status' => 200
+        ], 200);
+    }
+
     public function logout()
     {
         $user = Auth::user();
