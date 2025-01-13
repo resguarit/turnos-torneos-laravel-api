@@ -13,9 +13,9 @@ class horarioController extends Controller
 
     public function index()
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('horarios:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
         
         $horarios = Horario::all();
         
@@ -31,13 +31,14 @@ class horarioController extends Controller
 
     public function store(Request $request)
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('horarios:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
             'hora_inicio' => 'required|date_format:H:i|unique:horarios,hora_inicio',  
             'hora_fin' => 'required|date_format:H:i|after:hora_inicio|unique:horarios,hora_fin',
+            'dia' => 'requiered|in:l,m,x,j,v,s,d',
             'activo' => 'required|boolean',
         ]);
 
@@ -53,6 +54,7 @@ class horarioController extends Controller
         $horario = Horario::create([
             'hora_inicio' => $request->hora_inicio,
             'hora_fin' => $request->hora_fin,
+            'dia'=> $request->dia,
             'activo' => $request->activo,
         ]);
 
@@ -74,9 +76,9 @@ class horarioController extends Controller
 
     public function show($id)
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:showOne') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('horarios:showOne') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         try {
             $horario = Horario::findOrFail($id);
@@ -99,9 +101,9 @@ class horarioController extends Controller
 
     public function destroy($id)
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:delete') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('horarios:delete') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         try {
             $horario = Horario::findOrFail($id);

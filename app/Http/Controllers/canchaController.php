@@ -12,9 +12,9 @@ class CanchaController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('canchas:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('canchas:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         $canchas = Cancha::all();
 
@@ -63,45 +63,37 @@ class CanchaController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('canchas:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless($user->tokenCan('canchas:create') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
             'nro' => 'required|unique:canchas',
             'tipo_cancha' => 'required|max:200',
-            'precio_por_hora' => 'required',
+            'precio_por_hora' => 'required|numeric',
+            'senia' => 'required|numeric',
             'activa' => 'required|boolean'
         ]);
 
         if ($validator->fails()) {
-            $data = [
+            return response()->json([
                 'message' => 'Error en la validacion',
                 'errors' => $validator->errors(),
                 'status' => 400
-            ];
-            return response()->json($data, 400);
+            ], 400);
         }
 
         $cancha = Cancha::create([
             'nro' => $request->nro,
             'tipo_cancha' => $request->tipo_cancha,
-            'precio_por_hora' => $request->precio_por_hora
+            'precio_por_hora' => $request->precio_por_hora,
+            'senia' => $request->senia,
+            'activa' => $request->activa
         ]);
 
-        if (!$cancha) {
-            $data = [
-                'message' => 'Error al crear la cancha',
-                'status' => 500
-            ];
-            return response()->json($data, 500);
-        }
-
-        $data = [
+        return response()->json([
             'message' => 'Cancha creada correctamente',
             'cancha' => $cancha,
             'status' => 201
-        ];
-
-        return response()->json($data, 201);
+        ], 201);
     }
 
     public function update(Request $request, $id)
@@ -126,6 +118,7 @@ class CanchaController extends Controller
             'nro' => 'sometimes|unique:canchas,nro,' . $id,
             'tipo_cancha' => 'sometimes|max:200',
             'precio_por_hora' => 'sometimes|numeric',
+            'senia' => 'sometimes|numeric',
             'activa' => 'sometimes|boolean'
         ]);
 
