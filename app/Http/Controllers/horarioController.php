@@ -13,9 +13,9 @@ class horarioController extends Controller
 
     public function index()
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('horarios:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
         
         $horarios = Horario::all();
         
@@ -31,9 +31,9 @@ class horarioController extends Controller
 
     public function store(Request $request)
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('horarios:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
             'hora_inicio' => 'required|date_format:H:i|unique:horarios,hora_inicio',  
@@ -74,9 +74,9 @@ class horarioController extends Controller
 
     public function show($id)
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:showOne') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('horarios:showOne') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         try {
             $horario = Horario::findOrFail($id);
@@ -99,9 +99,9 @@ class horarioController extends Controller
 
     public function destroy($id)
     {
-        $user = Auth::user();
+        // $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:delete') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        // abort_unless( $user->tokenCan('horarios:delete') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
         try {
             $horario = Horario::findOrFail($id);
