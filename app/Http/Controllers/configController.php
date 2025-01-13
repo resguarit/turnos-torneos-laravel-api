@@ -16,11 +16,12 @@ class configController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('horarios:config') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
+        abort_unless($user->tokenCan('horarios:config') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
         $validator = Validator::make($request->all(), [
-            'hora_apertura' => 'required|date_format:H:i',
-            'hora_cierre' => 'required|date_format:H:i|after:hora_apertura',
+            'dias' => 'required|array',
+            'dias.*.hora_apertura' => 'required_with:dias.*.hora_cierre|date_format:H:i',
+            'dias.*.hora_cierre' => 'required_with:dias.*.hora_apertura|date_format:H:i|after:dias.*.hora_apertura',
         ]);
 
         if ($validator->fails()) {
@@ -31,31 +32,37 @@ class configController extends Controller
             ], 400);
         }
 
-        $hora_apertura = Carbon::createFromFormat('H:i', $request->hora_apertura);
-        $hora_cierre = Carbon::createFromFormat('H:i', $request->hora_cierre);
+        $dias = $request->input('dias');
 
-        $horarios_existentes = Horario::orderBy('hora_inicio')->get();
+        foreach ($dias as $dia => $horas) {
+            if (isset($horas['hora_apertura']) && isset($horas['hora_cierre'])) {
+                $horaApertura = Carbon::createFromFormat('H:i', $horas['hora_apertura']);
+                $horaCierre = Carbon::createFromFormat('H:i', $horas['hora_cierre']);
 
-        if ($horarios_existentes->isEmpty()) {
-            $this->crearHorarios($hora_apertura, $hora_cierre);
-        } else {
-            $hora_apertura_existente = Carbon::createFromFormat('H:i:s', $horarios_existentes->first()->hora_inicio);
-            $hora_cierre_existente = Carbon::createFromFormat('H:i:s', $horarios_existentes->last()->hora_fin);
+                $horariosExistentes = Horario::where('dia', $dia)->orderBy('hora_inicio')->get();
 
-            if ($hora_apertura->lt($hora_apertura_existente)) {
-                $this->crearHorarios($hora_apertura, $hora_apertura_existente);
-            } elseif ($hora_apertura->gt($hora_apertura_existente)) {
-                Horario::where('hora_inicio', '<', $hora_apertura->format('H:i:s'))->update(['activo' => false]);
+                if ($horariosExistentes->isEmpty()) {
+                    $this->crearHorarios($horaApertura, $horaCierre, $dia);
+                } else {
+                    $horaAperturaExistente = Carbon::createFromFormat('H:i:s', $horariosExistentes->first()->hora_inicio);
+                    $horaCierreExistente = Carbon::createFromFormat('H:i:s', $horariosExistentes->last()->hora_fin);
+
+                    if ($horaApertura->lt($horaAperturaExistente)) {
+                        $this->crearHorarios($horaApertura, $horaAperturaExistente, $dia);
+                    } elseif ($horaApertura->gt($horaAperturaExistente)) {
+                        Horario::where('dia', $dia)->where('hora_inicio', '<', $horaApertura->format('H:i:s'))->update(['activo' => false]);
+                    }
+
+                    if ($horaCierre->lt($horaCierreExistente)) {
+                        Horario::where('dia', $dia)->where('hora_fin', '>', $horaCierre->format('H:i:s'))->update(['activo' => false]);
+                    } elseif ($horaCierre->gt($horaCierreExistente)) {
+                        $this->crearHorarios($horaCierreExistente, $horaCierre, $dia);
+                    }
+
+                    Horario::where('dia', $dia)->whereBetween('hora_inicio', [$horaApertura->format('H:i:s'), $horaCierre->format('H:i:s')])
+                        ->update(['activo' => true]);
+                }
             }
-
-            if ($hora_cierre->lt($hora_cierre_existente)) {
-                Horario::where('hora_fin', '>', $hora_cierre->format('H:i:s'))->orWhere('hora_inicio', '>=', $hora_cierre->format('H:i:s'))->update(['activo' => false]);
-            } elseif ($hora_cierre->gt($hora_cierre_existente)) {
-                $this->crearHorarios($hora_cierre_existente, $hora_cierre);
-            }
-
-            Horario::whereBetween('hora_inicio', [$hora_apertura->format('H:i:s'), $hora_cierre->subMinutes(60)->format('H:i:s')])
-                ->update(['activo' => true]);
         }
 
         return response()->json([
@@ -64,17 +71,17 @@ class configController extends Controller
         ], 201);
     }
 
-    private function crearHorarios($hora_inicio, $hora_fin)
+    private function crearHorarios($horaInicio, $horaFin, $dia)
     {
-        $hora_actual = $hora_inicio;
+        $horaActual = $horaInicio;
 
-        while ($hora_actual->lt($hora_fin)) {
-            $hora_inicio_turno = $hora_actual->format('H:i');
-            $hora_actual->addMinutes(60);
-            $hora_fin_turno = $hora_actual->format('H:i');
+        while ($horaActual->lt($horaFin)) {
+            $horaInicioTurno = $horaActual->format('H:i');
+            $horaActual->addMinutes(60);
+            $horaFinTurno = $horaActual->format('H:i');
 
-            $horario = Horario::firstOrCreate(
-                ['hora_inicio' => $hora_inicio_turno, 'hora_fin' => $hora_fin_turno],
+            Horario::firstOrCreate(
+                ['hora_inicio' => $horaInicioTurno, 'hora_fin' => $horaFinTurno, 'dia' => $dia],
                 ['activo' => true]
             );
         }
