@@ -53,5 +53,8 @@ Route::post('/register', [UserController::class, 'register']);
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
 Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
+
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
+Route::get('/canchas/{id}', [CanchaController::class, 'show']);
+
 
