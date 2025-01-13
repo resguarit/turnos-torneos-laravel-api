@@ -6,62 +6,71 @@ use Illuminate\Http\Request;
 use App\Models\Turno;
 use App\Models\Cancha;
 use App\Models\Horario;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class disponibilidadController extends Controller
 {
     public function getHorariosNoDisponibles()
     {
-        
         $fecha_inicio = now()->startOfDay();
         $fecha_fin = now()->addDays(30)->endOfDay();
 
         $canchas_count = Cancha::count();
-        $horarios = Horario::all();
 
-        $turnos = Turno::whereBetween('fecha_turno', [$fecha_inicio, $fecha_fin])
-                            ->with('horario')
-                            ->get();
+        $turnos = Turno::select(
+            'fecha_turno',
+            'horario_id',
+            DB::raw('COUNT(*) as total_reservas')
+        )
+        ->whereBetween('fecha_turno', [$fecha_inicio, $fecha_fin])
+        ->groupBy('fecha_turno', 'horario_id')
+        ->having('total_reservas', '>=', $canchas_count)
+        ->with(['horario:id,hora_inicio,hora_fin'])
+        ->where('estado', "!=", "Cancelado")
+        ->get();
 
-        $no_disponibles = [];
+        // Group by date and merge consecutive times
+        $result = $turnos->groupBy(function($turno) {
+            return $turno->fecha_turno->format('Y-m-d');
+        })->map(function($grupoTurnos) {
+            $horarios = $grupoTurnos->sortBy(function($turno) {
+                return $turno->horario->hora_inicio;
+            });
 
-        foreach ($turnos as $turnos) {
-            $fecha = $turnos->fecha_turno->format('Y-m-d');
-            $horario = $turnos->horario;
-            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
+            $merged = [];
+            $current = null;
 
-            if (!isset($no_disponibles[$fecha])) {
-                $no_disponibles[$fecha] = [];
-            }
+            foreach ($horarios as $turno) {
+                $horaInicio = $turno->horario->hora_inicio;
+                $horaFin = $turno->horario->hora_fin;
 
-            if (!isset($no_disponibles[$fecha][$intervalo])) {
-                $no_disponibles[$fecha][$intervalo] = 0;
-            }
-
-            $no_disponibles[$fecha][$intervalo]++;
-        }
-
-        $result = [];
-
-        foreach ($no_disponibles as $fecha => $horarios) {
-            foreach ($horarios as $intervalo => $count) {
-                if ($count >= $canchas_count) {
-                    if (!isset($result[$fecha])) {
-                        $result[$fecha] = [];
+                if ($current === null) {
+                    $current = ['inicio' => $horaInicio, 'fin' => $horaFin];
+                } else {
+                    // If current end time equals this start time, extend the range
+                    if ($current['fin'] === $horaInicio) {
+                        $current['fin'] = $horaFin;
+                    } else {
+                        // Add completed range and start new one
+                        $merged[] = $current['inicio'] . '-' . $current['fin'];
+                        $current = ['inicio' => $horaInicio, 'fin' => $horaFin];
                     }
-                    $result[$fecha][] = $intervalo;
                 }
             }
-        }
 
-        return response()->json($result, 200);
+            if ($current !== null) {
+                $merged[] = $current['inicio'] . '-' . $current['fin'];
+            }
+            return $merged;
+        })->toArray();
+
+        return $result;
     }
 
     public function getHorariosDisponiblesPorFecha(Request $request)
     {
-
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
         ]);
@@ -79,9 +88,11 @@ class disponibilidadController extends Controller
         $canchas_count = Cancha::count();
         $horarios = Horario::where('activo', true)->get();
 
+        // Modificar la consulta para excluir turnos cancelados
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                            ->with('horario')
-                            ->get();
+                        ->where('estado', '!=', 'Cancelado')
+                        ->with('horario')
+                        ->get();
 
         $no_disponibles = [];
 
