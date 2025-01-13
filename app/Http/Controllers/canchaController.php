@@ -28,11 +28,7 @@ class CanchaController extends Controller
 
     public function show ($id){
         
-<<<<<<< HEAD
        // $user = Auth::user();
-=======
-        // $user = Auth::user();
->>>>>>> f891f2c3978be26f2df9b0dfbb356fcfc8e2bad3
 
         // abort_unless($user->tokenCan('cancha:showOne') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
