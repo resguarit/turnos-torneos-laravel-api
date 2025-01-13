@@ -16,8 +16,12 @@ class BloqueoTemporalController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless( $user->tokenCan('turnos:bloqueo') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
-
+        abort_unless(
+            $user->tokenCan('turnos:bloqueo') || 
+            $user->rol === 'admin',
+            403, 
+            'No tienes permisos para realizar esta acción'
+        );
 
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date',
@@ -62,7 +66,7 @@ class BloqueoTemporalController extends Controller
                 'expira_en' => now()->addMinutes(1),
             ]);
 
-            EliminarBloqueo::dispatch($bloqueo->id)->delay(now()->addMinutes(2));
+            EliminarBloqueo::dispatch($bloqueo->id)->delay(now()->addMinutes(10));
 
             DB::commit(); // Confirma la transacción
 
@@ -70,6 +74,41 @@ class BloqueoTemporalController extends Controller
         } catch (\Exception $e) {
             DB::rollBack(); // Revierte la transacción en caso de error
             return response()->json(['message' => 'Error al bloquear el horario.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+
+    public function cancelarBloqueo($id)
+    {
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('turnos:cancelarBloqueo') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        try {
+            $bloqueo = BloqueoTemporal::where('id', $id)
+                ->where('usuario_id', $user->id)
+                ->first();
+
+            if (!$bloqueo) {
+                return response()->json([
+                    'message' => 'No se encontró el bloqueo temporal',
+                    'status' => 404
+                ], 404);
+            }
+
+            $bloqueo->delete();
+
+            return response()->json([
+                'message' => 'Bloqueo temporal cancelado exitosamente',
+                'status' => 200
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al cancelar el bloqueo temporal',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
         }
     }
 }

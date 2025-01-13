@@ -52,7 +52,7 @@ class User extends Authenticatable
     const ROLES = [
         'cliente' => [
             'canchas:show',
-            'turno:bloqueo',
+            'turnos:bloqueo',
             'horariosNoDisponible:show',
             'turnos:ownShow',
             'turnos:show',
@@ -66,13 +66,13 @@ class User extends Authenticatable
             "usuario:showOne",
             "horarios:fecha",
             "disponibilidad:canchas",
-            "turnos:bloqueo",
+            "turnos:cancelarBloqueo",
         ],
         'moderador' => [
             'canchas:show',
             "cancha:showOne",
             'canchas:update',
-            'turno:bloqueo',
+            'turnos:bloqueo',
             'horariosNoDisponible:show',
             'horarios:show',
             'horarios:create',
@@ -90,7 +90,7 @@ class User extends Authenticatable
             "horarios:indisponibilizar",
             "horarios:fecha",
             "disponibilidad:canchas",
-            "turnos:bloqueo",
+            "turnos:cancelarBloqueo",
         ],
         'admin' => ['*'],
     ];

@@ -27,9 +27,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/turnos/turnofijo', [TurnoController::class, 'storeTurnoFijo']);
     Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
     Route::delete('/turnos/{id}', [TurnoController::class, 'destroy']);
+
     Route::get('/grilla', [TurnoController::class, 'grid']);
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
+    Route::delete('/turnos/cancelarbloqueo/{id}', [BloqueoTemporalController::class, 'cancelarBloqueo']);
 
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::post('/horarios', [HorarioController::class, 'store']);
