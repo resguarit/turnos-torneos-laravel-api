@@ -38,6 +38,7 @@ class horarioController extends Controller
         $validator = Validator::make($request->all(), [
             'hora_inicio' => 'required|date_format:H:i|unique:horarios,hora_inicio',  
             'hora_fin' => 'required|date_format:H:i|after:hora_inicio|unique:horarios,hora_fin',
+            'dia' => 'requiered|in:l,m,x,j,v,s,d',
             'activo' => 'required|boolean',
         ]);
 
@@ -53,6 +54,7 @@ class horarioController extends Controller
         $horario = Horario::create([
             'hora_inicio' => $request->hora_inicio,
             'hora_fin' => $request->hora_fin,
+            'dia'=> $request->dia,
             'activo' => $request->activo,
         ]);
 

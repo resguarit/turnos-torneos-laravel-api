@@ -11,7 +11,12 @@ class Horario extends Model
 
     protected $table = 'horarios';
 
-    protected $fillable = ['hora_inicio', 'hora_fin', 'activo'];
+    protected $fillable = [
+        'hora_inicio', 
+        'hora_fin', 
+        'activo',
+        'dia'
+    ];
 
     protected $hidden = ['created_at', 'updated_at'];
 
