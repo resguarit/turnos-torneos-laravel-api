@@ -84,34 +84,36 @@ class disponibilidadController extends Controller
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
 
-        $canchas_count = Cancha::count();
-        $horarios = Horario::where('activo', true)->get();
+        $canchasCount = Cancha::count();
+        $horarios = Horario::where('activo', true)
+                            ->where('dia', $diaSemana) // Filtrar por día de la semana
+                            ->get();
 
-        // Modificar la consulta para excluir turnos cancelados
-        $turnos = Turno::whereDate('fecha_turno', $fecha)
-                        ->where('estado', '!=', 'Cancelado')
-                        ->with('horario')
-                        ->get();
+        $reservas = Turno::whereDate('fecha_turno', $fecha)
+                            ->where('estado', '!=', 'Cancelado')
+                            ->with('horario')
+                            ->get();
 
-        $no_disponibles = [];
+        $noDisponibles = [];
 
-        foreach ($turnos as $turno) {
-            $horario = $turno->horario;
+        foreach ($reservas as $reserva) {
+            $horario = $reserva->horario;
             $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
 
-            if (!isset($no_disponibles[$intervalo])) {
-                $no_disponibles[$intervalo] = 0;
+            if (!isset($noDisponibles[$intervalo])) {
+                $noDisponibles[$intervalo] = 0;
             }
 
-            $no_disponibles[$intervalo]++;
+            $noDisponibles[$intervalo]++;
         }
 
         $result = [];
 
         foreach ($horarios as $horario) {
             $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
-            $disponible = !isset($no_disponibles[$intervalo]) || $no_disponibles[$intervalo] < $canchas_count;
+            $disponible = !isset($noDisponibles[$intervalo]) || $noDisponibles[$intervalo] < $canchasCount;
 
             $result[] = [
                 'id' => $horario->id,
@@ -124,9 +126,23 @@ class disponibilidadController extends Controller
         return response()->json(['horarios' => $result], 200);
     }
 
+    private function getNombreDiaSemana($diaSemana)
+    {
+        $dias = [
+            0 => 'domingo',
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábado'
+        ];
 
-    public function getCanchasPorHorarioFecha(Request $request){
+        return $dias[$diaSemana];
+    }
 
+    public function getCanchasPorHorarioFecha(Request $request)
+    {
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
             'horario_id' => 'required|exists:horarios,id',
@@ -141,34 +157,44 @@ class disponibilidadController extends Controller
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
 
-        $horario = Horario::find($request->horario_id);
+        $horario = Horario::where('id', $request->horario_id)
+                          ->where('dia', $diaSemana) // Filtrar por día de la semana
+                          ->first();
+
+        if (!$horario) {
+            return response()->json([
+                'message' => 'Horario no encontrado para el día especificado',
+                'status' => 404
+            ], 404);
+        }
 
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                            ->where('horario_id', $horario->id)
-                            ->where('estado', "!=", "Cancelado")
-                            ->with('cancha')
-                            ->get();
+                        ->where('horario_id', $horario->id)
+                        ->where('estado', '!=', 'Cancelado')
+                        ->with('cancha')
+                        ->get();
 
         $canchas = Cancha::all();
 
-        $no_disponibles = [];
+        $noDisponibles = [];
 
         foreach ($turnos as $turno) {
             $cancha = $turno->cancha;
-            $no_disponibles[] = $cancha->id;
+            $noDisponibles[] = $cancha->id;
         }
 
         $result = [];
 
         foreach ($canchas as $cancha) {
-            $disponible = !in_array($cancha->id, $no_disponibles);
+            $disponible = !in_array($cancha->id, $noDisponibles);
 
             $result[] = [
                 'id' => $cancha->id,
                 'nro' => $cancha->nro,
-                'tipo' => $cancha->tipo_cancha,
-                'disponible' => $disponible,
+                'tipo' => $cancha->tipo_cancha, // Cambiar 'tipo_cancha' a 'tipo'
+                'disponible' => $disponible, // Agregar 'disponible'
             ];
         }
 
