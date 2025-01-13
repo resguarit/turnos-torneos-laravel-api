@@ -6,59 +6,75 @@ use Illuminate\Http\Request;
 use App\Models\Turno;
 use App\Models\Cancha;
 use App\Models\Horario;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
-use  Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
-class DisponibilidadController extends Controller
-{   
+class disponibilidadController extends Controller
+{
     public function getHorariosNoDisponibles()
     {
         $fecha_inicio = now()->startOfDay();
         $fecha_fin = now()->addDays(30)->endOfDay();
-        
-        // Obtenemos el conteo de canchas una sola vez
-        $canchas_count = Cache::remember('canchas_count', now()->addDay(), function() {
-            return Cancha::count();
-        });
-    
-        // Usamos SQL para agrupar y contar directamente en la base de datos
+
+        $canchas_count = Cancha::count();
+
         $turnos = Turno::select(
-                'fecha_turno',
-                'horario_id',
-                DB::raw('COUNT(*) as total_reservas')
-            )
-            ->whereBetween('fecha_turno', [$fecha_inicio, $fecha_fin])
-            ->groupBy('fecha_turno', 'horario_id')
-            ->having('total_reservas', '>=', $canchas_count)
-            ->with(['horario:id,hora_inicio,hora_fin'])
-            ->get();
-    
-        // Transformamos los resultados directamente al formato deseado
+            'fecha_turno',
+            'horario_id',
+            DB::raw('COUNT(*) as total_reservas')
+        )
+        ->whereBetween('fecha_turno', [$fecha_inicio, $fecha_fin])
+        ->groupBy('fecha_turno', 'horario_id')
+        ->having('total_reservas', '>=', $canchas_count)
+        ->with(['horario:id,hora_inicio,hora_fin'])
+        ->where('estado', "!=", "Cancelado")
+        ->get();
+
+        // Group by date and merge consecutive times
         $result = $turnos->groupBy(function($turno) {
             return $turno->fecha_turno->format('Y-m-d');
         })->map(function($grupoTurnos) {
-            return $grupoTurnos->map(function($turno) {
-                return $turno->horario->hora_inicio . '-' . $turno->horario->hora_fin;
-            })->values()->all();
+            $horarios = $grupoTurnos->sortBy(function($turno) {
+                return $turno->horario->hora_inicio;
+            });
+
+            $merged = [];
+            $current = null;
+
+            foreach ($horarios as $turno) {
+                $horaInicio = $turno->horario->hora_inicio;
+                $horaFin = $turno->horario->hora_fin;
+
+                if ($current === null) {
+                    $current = ['inicio' => $horaInicio, 'fin' => $horaFin];
+                } else {
+                    // If current end time equals this start time, extend the range
+                    if ($current['fin'] === $horaInicio) {
+                        $current['fin'] = $horaFin;
+                    } else {
+                        // Add completed range and start new one
+                        $merged[] = $current['inicio'] . '-' . $current['fin'];
+                        $current = ['inicio' => $horaInicio, 'fin' => $horaFin];
+                    }
+                }
+            }
+
+            if ($current !== null) {
+                $merged[] = $current['inicio'] . '-' . $current['fin'];
+            }
+            return $merged;
         })->toArray();
-    
+
         return $result;
     }
-    /**
-     * Obtiene los horarios disponibles para una fecha específica
-     * @param Request $request Contiene la fecha a consultar
-     * @return \Illuminate\Http\JsonResponse
-     */
+
     public function getHorariosDisponiblesPorFecha(Request $request)
     {
-        // Validación de la fecha recibida
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
         ]);
 
-        // Si la validación falla, retorna error
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Error en la validación',
@@ -67,62 +83,55 @@ class DisponibilidadController extends Controller
             ], 400);
         }
 
-        // Crear objeto Carbon con la fecha
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-        // Definir clave única para el caché
-        $cacheKey = "horarios_disponibles_{$fecha->format('Y-m-d')}";
 
-        // Retornar datos cacheados o generarlos si no existen
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($fecha) {
-            // Cachear el total de canchas por 24 horas
-            $canchas_count = Cache::remember('canchas_count', now()->addDay(), function() {
-                return Cancha::count();
-            });
+        $canchas_count = Cancha::count();
+        $horarios = Horario::where('activo', true)->get();
 
-            // Cachear horarios activos por 12 horas
-            $horarios = Cache::remember('horarios_activos', now()->addHours(2), function() {
-                return Horario::where('activo', true)
-                    ->select(['id', 'hora_inicio', 'hora_fin'])
-                    ->get();
-            });
+        // Modificar la consulta para excluir turnos cancelados
+        $turnos = Turno::whereDate('fecha_turno', $fecha)
+                        ->where('estado', '!=', 'Cancelado')
+                        ->with('horario')
+                        ->get();
 
-            // Obtener conteo de turnos agrupados por horario
-            $turnos_count = DB::table('turnos')
-                ->select('horario_id', DB::raw('COUNT(*) as total'))
-                ->whereDate('fecha_turno', $fecha)
-                ->groupBy('horario_id')
-                ->pluck('total', 'horario_id')
-                ->toArray();
+        $no_disponibles = [];
 
-            // Mapear horarios con su disponibilidad
-            $result = $horarios->map(function($horario) use ($turnos_count, $canchas_count) {
-                return [
-                    'id' => $horario->id,
-                    'hora_inicio' => $horario->hora_inicio,
-                    'hora_fin' => $horario->hora_fin,
-                    'disponible' => !isset($turnos_count[$horario->id]) || 
-                                    $turnos_count[$horario->id] < $canchas_count
-                ];
-            });
+        foreach ($turnos as $turno) {
+            $horario = $turno->horario;
+            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
 
-            return response()->json(['horarios' => $result], 200);
-        });
+            if (!isset($no_disponibles[$intervalo])) {
+                $no_disponibles[$intervalo] = 0;
+            }
+
+            $no_disponibles[$intervalo]++;
+        }
+
+        $result = [];
+
+        foreach ($horarios as $horario) {
+            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
+            $disponible = !isset($no_disponibles[$intervalo]) || $no_disponibles[$intervalo] < $canchas_count;
+
+            $result[] = [
+                'id' => $horario->id,
+                'hora_inicio' => $horario->hora_inicio,
+                'hora_fin' => $horario->hora_fin,
+                'disponible' => $disponible
+            ];
+        }
+
+        return response()->json(['horarios' => $result], 200);
     }
 
-    /**
-     * Obtiene las canchas disponibles para una fecha y horario específicos
-     * @param Request $request Contiene fecha y horario_id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getCanchasPorHorarioFecha(Request $request)
-    {
-        //Validación de datos recibidos
+
+    public function getCanchasPorHorarioFecha(Request $request){
+
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
             'horario_id' => 'required|exists:horarios,id',
         ]);
 
-        //Si la validación falla, retorna error
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Error en la validación',
@@ -131,52 +140,39 @@ class DisponibilidadController extends Controller
             ], 400);
         }
 
-        // Crear objeto Carbon y obtener horario_id
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-        $horarioId = $request->horario_id;
-        
-        // Definir clave única para el caché
-        $cacheKey = "canchas_disponibles_{$fecha->format('Y-m-d')}_{$horarioId}";
 
-        // Retornar datos cacheados o generarlos si no existen
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($fecha, $horarioId) {
-            // Obtener IDs de canchas ocupadas
-            $canchas_ocupadas = DB::table('turnos')
-                ->where('fecha_turno', $fecha)
-                ->where('horario_id', $horarioId)
-                ->pluck('cancha_id')
-                ->toArray();
+        $horario = Horario::find($request->horario_id);
 
-            // Cachear todas las canchas por 24 horas
-            $canchas = Cache::remember('todas_canchas', now()->addDay(), function() {
-                return Cancha::select(['id', 'nro', 'tipo_cancha'])->get();
-            });
+        $turnos = Turno::whereDate('fecha_turno', $fecha)
+                            ->where('horario_id', $horario->id)
+                            ->where('estado', "!=", "Cancelado")
+                            ->with('cancha')
+                            ->get();
 
-            // Mapear canchas con su disponibilidad
-            $result = $canchas->map(function($cancha) use ($canchas_ocupadas) {
-                return [
-                    'id' => $cancha->id,
-                    'nro' => $cancha->nro,
-                    'tipo' => $cancha->tipo_cancha,
-                    'disponible' => !in_array($cancha->id, $canchas_ocupadas),
-                ];
-            });
+        $canchas = Cancha::all();
 
-            return response()->json([
-                'canchas' => $result,
-                'status' => 200
-            ], 200);
-        });
+        $no_disponibles = [];
+
+        foreach ($turnos as $turno) {
+            $cancha = $turno->cancha;
+            $no_disponibles[] = $cancha->id;
+        }
+
+        $result = [];
+
+        foreach ($canchas as $cancha) {
+            $disponible = !in_array($cancha->id, $no_disponibles);
+
+            $result[] = [
+                'id' => $cancha->id,
+                'nro' => $cancha->nro,
+                'tipo' => $cancha->tipo_cancha,
+                'disponible' => $disponible,
+            ];
+        }
+
+        return response()->json(['canchas' => $result, 'status' => 200], 200);
     }
 
-    /**
-     * Método privado para limpiar el caché relacionado cuando se modifica un turno
-     * @param string $fecha Fecha del turno
-     * @param int $horarioId ID del horario
-     */
-    private function limpiarCacheRelacionado($fecha, $horarioId)
-    {
-        Cache::forget("horarios_disponibles_{$fecha}");
-        Cache::forget("canchas_disponibles_{$fecha}_{$horarioId}");
-    }
 }

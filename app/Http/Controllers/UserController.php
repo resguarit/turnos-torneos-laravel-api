@@ -118,6 +118,7 @@ class UserController extends Controller
                 'token' => $token->plainTextToken,
                 'user_id' => $user -> id,
                 'rol' => $user -> rol,
+                'username' => $user -> name,
             ];
         }
 
@@ -249,6 +250,17 @@ class UserController extends Controller
 
     }
 
+    public function logout(Request $request)
+    {
+        $user = Auth::user();
+
+        $user->tokens()->delete();
+
+        return response()->json([
+            'message' => 'Sesión cerrada con éxito',
+            'status' => 200
+        ], 200);
+    }
 }
 
 

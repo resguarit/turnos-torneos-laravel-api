@@ -54,6 +54,8 @@ class User extends Authenticatable
             'canchas:show',
             'turno:bloqueo',
             'horariosNoDisponible:show',
+            'turnos:ownShow',
+            'turnos:show',
             'horarios:show',
             'horarios:showOne',
             'turnos:create',
@@ -64,6 +66,7 @@ class User extends Authenticatable
             "usuario:showOne",
             "horarios:fecha",
             "disponibilidad:canchas",
+            "turnos:bloqueo",
         ],
         'moderador' => [
             'canchas:show',
@@ -87,6 +90,7 @@ class User extends Authenticatable
             "horarios:indisponibilizar",
             "horarios:fecha",
             "disponibilidad:canchas",
+            "turnos:bloqueo",
         ],
         'admin' => ['*'],
     ];

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Turno;
 use Illuminate\Support\Facades\Validator;
+use App\Jobs\EliminarBloqueo;
 
 class BloqueoTemporalController extends Controller
 {
@@ -18,16 +19,16 @@ class BloqueoTemporalController extends Controller
         abort_unless( $user->tokenCan('turnos:bloqueo') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
 
 
-        $validated = Validator::make($request->all(), [
-            'cancha_id' => 'required|exists:canchas,id',
-            'horario_id' => 'required|exists:horarios,id',
+        $validator = Validator::make($request->all(), [
             'fecha' => 'required|date',
+            'horario_id' => 'required|exists:horarios,id',
+            'cancha_id' => 'required|exists:canchas,id'
         ]);
         
-        if ($validated->fails()) {
+        if ($validator->fails()) {
             return response()->json([
-                'message' => 'Error en la validacion',
-                'errors' => $validated->errors(),
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
                 'status' => 400
             ], 400);
         }
@@ -49,7 +50,7 @@ class BloqueoTemporalController extends Controller
 
             if ($ya_reservado || $ya_bloqueado) {
                 DB::rollBack();
-                return response()->json(['message' => 'El horario ya no está disponible.'], 400);
+                return response()->json(['message' => 'El Turno ya no está disponible.'], 400);
             }
 
             // Crear el bloqueo temporal
@@ -58,8 +59,10 @@ class BloqueoTemporalController extends Controller
                 'horario_id' => $request->horario_id,
                 'cancha_id' => $request->cancha_id,
                 'fecha' => $request->fecha,
-                'expira_en' => now()->addMinutes(10),
+                'expira_en' => now()->addMinutes(1),
             ]);
+
+            EliminarBloqueo::dispatch($bloqueo->id)->delay(now()->addMinutes(2));
 
             DB::commit(); // Confirma la transacción
 
