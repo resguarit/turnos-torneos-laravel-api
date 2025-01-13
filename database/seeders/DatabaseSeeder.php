@@ -22,6 +22,15 @@ class DatabaseSeeder extends Seeder
             'telefono' => '1234567890',
             'rol' => 'admin',
         ]);
+
+        User::factory()->create([
+            'name' => 'moderador',
+            'email' => 'moderador@gmail.com',
+            'password' => bcrypt('password'),
+            'telefono' => '1234567890',
+            'rol' => 'moderador',
+        ]);
+
         User::factory()->create([
             'name' => 'cliente',
             'email' => 'cliente@gmail.com',
