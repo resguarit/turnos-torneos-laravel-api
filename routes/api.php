@@ -55,6 +55,7 @@ Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorari
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
+Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);
 Route::get('/canchas/{id}', [CanchaController::class, 'show']);
 
 

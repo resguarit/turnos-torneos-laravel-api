@@ -7,8 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
-class horarioController extends Controller
+class HorarioController extends Controller
 {
 
     public function index()
@@ -95,9 +96,7 @@ class horarioController extends Controller
             ];
             return response()->json($data, 404);
         }
-    }
-    
-    
+    }    
 
     public function destroy($id)
     {
@@ -121,5 +120,48 @@ class horarioController extends Controller
             ];
             return response()->json($data, 404);
         }
+    }
+
+    public function getPorDiaSemana(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'fecha' => 'required|date_format:Y-m-d',
+        ]);
+
+        if ($validator->fails()) {
+            $data = [
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 422
+            ];
+            return response()->json($data, 422);
+        }
+
+        $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
+
+        $horarios = Horario::where('dia', $diaSemana)->where('activo', true)->get();
+
+        $data = [
+            'horarios' => $horarios,
+            'status' => 200
+        ];
+
+        return response()->json($data, 200);
+    }
+
+    private function getNombreDiaSemana($diaSemana)
+    {
+        $dias = [
+            0 => 'domingo',
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábado'
+        ];
+
+        return $dias[$diaSemana];
     }
 }
