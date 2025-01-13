@@ -113,7 +113,7 @@ class TurnoController extends Controller
         }
 
         $monto_total = $cancha->precio_por_hora;        
-        $monto_seña = $cancha->senia;
+        $monto_seña = $cancha->seña;
 
         $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
             ->where('horario_id', $horario->id)
