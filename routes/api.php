@@ -12,7 +12,7 @@ use App\Http\Controllers\UserController;
 Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::get('/canchas', [CanchaController::class, 'index']);
-    Route::get('/canchas/{id}', [CanchaController::class, 'show']);
+
     Route::post('/canchas', [CanchaController::class, 'store']);
     Route::patch('/canchas/{id}', [CanchaController::class, 'update']);
     Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);
@@ -31,7 +31,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
 
     Route::get('/horarios', [HorarioController::class, 'index']);
-    Route::get('/horarios/{id}', [HorarioController::class, 'show']);
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
     
@@ -51,3 +50,5 @@ Route::post('/register', [UserController::class, 'register']);
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']); 
 Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
+Route::get('/horarios/{id}', [HorarioController::class, 'show']);
+Route::get('/canchas/{id}', [CanchaController::class, 'show']);
