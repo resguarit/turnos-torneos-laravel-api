@@ -8,6 +8,9 @@ use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\DisponibilidadController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\GoogleAuthController;
+
+
 
 Route::middleware(['auth:sanctum'])->group(function () {
     
@@ -26,9 +29,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/turnos/turnofijo', [TurnoController::class, 'storeTurnoFijo']);
     Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
     Route::delete('/turnos/{id}', [TurnoController::class, 'destroy']);
+
     Route::get('/grilla', [TurnoController::class, 'grid']);
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
+    Route::delete('/turnos/cancelarbloqueo/{id}', [BloqueoTemporalController::class, 'cancelarBloqueo']);
 
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::post('/horarios', [HorarioController::class, 'store']);
@@ -52,3 +57,7 @@ Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorari
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/canchas/{id}', [CanchaController::class, 'show']);
+
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);
+Route::post('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
+
