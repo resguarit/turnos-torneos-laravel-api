@@ -124,6 +124,7 @@ class TurnoController extends Controller
         $ya_bloqueado = BloqueoTemporal::where('fecha', $request->fecha_turno)
                                         ->where('horario_id', $request->horario_id)
                                         ->where('cancha_id', $request->cancha_id)
+                                        ->where('usuario_id','!=', $user->id)
                                         ->exists();
 
         if ($turnoExistente || $ya_bloqueado) {
