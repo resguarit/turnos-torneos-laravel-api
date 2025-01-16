@@ -40,6 +40,9 @@ class GoogleAuthController extends Controller
             $email = $payload['email'];
             $name = $payload['name'];
             $phone = $payload['phone_number'] ?? null;
+            
+            // For Google auth, we'll generate a temporary DNI that can be updated later
+            $tempDni = 'G' . substr($googleId, -8); // Use part of Google ID as temp DNI
 
             // Create or update user
             $user = User::firstOrCreate(
@@ -47,6 +50,7 @@ class GoogleAuthController extends Controller
                 [
                     'name' => $name,
                     'google_id' => $googleId,
+                    'dni' => $tempDni,
                     'telefono' => $phone,
                     'password' => bcrypt(str()->random(24)),
                     'rol' => 'cliente',

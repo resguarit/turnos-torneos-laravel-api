@@ -21,3 +21,4 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+database/migrations/2025_01_16_140952_rename_senia_to_seña_in_canchas_table.php
