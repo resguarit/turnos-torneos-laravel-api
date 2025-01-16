@@ -69,7 +69,7 @@ class CanchaController extends Controller
             'nro' => 'required|unique:canchas',
             'tipo_cancha' => 'required|max:200',
             'precio_por_hora' => 'required|numeric',
-            'senia' => 'required|numeric',
+            'seña' => 'required|numeric', // Changed from senia to seña
             'activa' => 'required|boolean'
         ]);
 
@@ -85,7 +85,7 @@ class CanchaController extends Controller
             'nro' => $request->nro,
             'tipo_cancha' => $request->tipo_cancha,
             'precio_por_hora' => $request->precio_por_hora,
-            'senia' => $request->senia,
+            'seña' => $request->seña,
             'activa' => $request->activa
         ]);
 
@@ -118,7 +118,7 @@ class CanchaController extends Controller
             'nro' => 'sometimes|unique:canchas,nro,' . $id,
             'tipo_cancha' => 'sometimes|max:200',
             'precio_por_hora' => 'sometimes|numeric',
-            'senia' => 'sometimes|numeric',
+            'seña' => 'sometimes|numeric', // Changed from senia to seña
             'activa' => 'sometimes|boolean'
         ]);
 
