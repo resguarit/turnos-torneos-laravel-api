@@ -95,7 +95,7 @@ class TurnoController extends Controller
 
         abort_unless($user->tokenCan('turnos:create') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        $validated = $request->validate([
+        $validator = $request->validate([
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
@@ -113,7 +113,7 @@ class TurnoController extends Controller
         }
 
         $monto_total = $cancha->precio_por_hora;        
-        $monto_seña = $cancha->seña;
+        $monto_seña = $cancha->senia;
 
         $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
             ->where('horario_id', $horario->id)

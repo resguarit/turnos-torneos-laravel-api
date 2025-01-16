@@ -70,7 +70,7 @@ class BloqueoTemporalController extends Controller
 
             DB::commit(); // Confirma la transacción
 
-            return response()->json(['message' => 'Bloqueo temporal creado con éxito.', 'bloqueo' => $bloqueo], 200);
+            return response()->json(['message' => 'Bloqueo temporal creado con éxito.', 'bloqueo' => $bloqueo], 201);
         } catch (\Exception $e) {
             DB::rollBack(); // Revierte la transacción en caso de error
             return response()->json(['message' => 'Error al bloquear el horario.', 'error' => $e->getMessage()], 500);
