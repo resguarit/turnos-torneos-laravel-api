@@ -102,6 +102,7 @@ class TurnoController extends Controller
             'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
 
+
         $horario = Horario::find($request->horario_id);
         $cancha = Cancha::find($request->cancha_id);
 
