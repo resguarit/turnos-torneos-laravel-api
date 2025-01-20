@@ -113,7 +113,14 @@ class TurnoController extends Controller
         }
 
         $monto_total = $cancha->precio_por_hora;        
-        $monto_seña = $cancha->senia;
+        $monto_seña = $cancha->seña; // Ensure this is not null
+
+        if (is_null($monto_seña)) {
+            return response()->json([
+                'message' => 'El monto de la seña no puede ser nulo',
+                'status' => 400
+            ], 400);
+        }
 
         $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
             ->where('horario_id', $horario->id)
