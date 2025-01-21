@@ -56,7 +56,7 @@ class UserController extends Controller
     $validator = Validator::make($request->all(), [
         'name' => 'required|string',
         'email' => 'required|string|email|unique:users',
-        'dni' => 'required|string|unique:users', // Add DNI validation
+        'dni' => 'required|string|unique:users', 
         'telefono' => 'required|string|max:15',
         'password' => 'required|string|min:8|confirmed',
         'rol' => 'required|string|in:cliente,moderador,admin'
