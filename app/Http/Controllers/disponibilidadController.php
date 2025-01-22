@@ -179,7 +179,9 @@ class disponibilidadController extends Controller
                 'id' => $cancha->id,
                 'nro' => $cancha->nro,
                 'tipo' => $cancha->tipo_cancha, // Cambiar 'tipo_cancha' a 'tipo'
-                'disponible' => $disponible, // Agregar 'disponible'
+                'disponible' => $disponible, // Agregar 'disponible',
+                'precio_por_hora' => $cancha->precio_por_hora,
+                'seña' => $cancha->seña
             ];
         }
 

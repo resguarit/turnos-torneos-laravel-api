@@ -542,28 +542,27 @@ class TurnoController extends Controller
     }
 
     public function getTurnosByUser()
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
 
-        abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+    abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        $turnos = Turno::where('usuario_id', $user->id)
-            ->with(['cancha', 'horario'])
-            ->get();
+    $turnos = Turno::where('usuario_id', $user->id)
+        ->with(['cancha', 'horario'])
+        ->get();
 
-        $data = [
-            'turnos' => TurnoResource::collection($turnos),
-            'status' => 200
-        ];
+    if ($turnos->isEmpty()) {
+        return response()->json([
+            'message' => 'No se encontraron turnos para este usuario',
+            'status' => 404
+        ], 200);
+    }
 
-        if ($turnos->isEmpty()) {
-            return response()->json([
-                'message' => 'No se encontraron turnos para este usuario',
-                'status' => 404
-            ], 404);
-
-        return response()->json($data, 200);
-    }}
+    return response()->json([
+        'turnos' => TurnoResource::collection($turnos),
+        'status' => 200
+    ], 200);
+}
 
     public function getProximos(){
         $user = Auth::user();
