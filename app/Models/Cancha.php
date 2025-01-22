@@ -12,7 +12,7 @@ class Cancha extends Model
 
     protected $table = 'canchas';
 
-    protected $fillable = ['nro', 'tipo_cancha', 'precio_por_hora', 'senia', 'activa'];
+    protected $fillable = ['nro', 'tipo_cancha', 'precio_por_hora', 'seña', 'activa'];
 
     protected $hidden = ['created_at', 'updated_at'];
 

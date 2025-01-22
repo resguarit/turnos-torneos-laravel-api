@@ -15,6 +15,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
             'email' => 'required|string|email|unique:users',
+            'dni' => 'required|string|unique:users', // Add DNI validation
             'telefono' => 'required|numeric',
             'password' => 'required|string|min:8|confirmed',
         ]);
@@ -32,6 +33,7 @@ class UserController extends Controller
         $user = new User([
             'name' => $request->name,
             'email' => $request->email,
+            'dni' => $request->dni, // Add DNI
             'telefono' => $request->telefono,
             'password' => Hash::make($request->password),
             'rol' => 'cliente' 
@@ -54,6 +56,7 @@ class UserController extends Controller
     $validator = Validator::make($request->all(), [
         'name' => 'required|string',
         'email' => 'required|string|email|unique:users',
+        'dni' => 'required|string|unique:users', 
         'telefono' => 'required|string|max:15',
         'password' => 'required|string|min:8|confirmed',
         'rol' => 'required|string|in:cliente,moderador,admin'
@@ -72,6 +75,7 @@ class UserController extends Controller
     $user = new User([
         'name' => $request->name,
         'email' => $request->email,
+        'dni' => $request->dni, // Add DNI
         'telefono' => $request->telefono,
         'password' => Hash::make($request->password),
         'rol' => $request->rol
@@ -88,7 +92,7 @@ class UserController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|string',
+            'dni' => 'required|string', // Change email to DNI
             'password' => 'required|string'
         ]);
 
@@ -102,7 +106,7 @@ class UserController extends Controller
             return response()->json($data, 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('dni', $request->dni)->first(); // Search by DNI instead of email
 
         if (!$user) {
             return response()->json([
@@ -200,6 +204,7 @@ class UserController extends Controller
     $validator = Validator::make($request->all(), [
         'name' => 'sometimes|string|unique:users,name,' . $id,
         'email' => 'sometimes|string|email|unique:users,email,' . $id,
+        'dni' => 'sometimes|string|unique:users,dni,' . $id, // Add DNI validation
         'telefono' => 'sometimes|string|max:15',
         'password' => 'sometimes|string|min:8|confirmed',
         'current_password' => 'sometimes|required_with:password|string',

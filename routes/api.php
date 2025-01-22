@@ -2,13 +2,13 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CanchaController;
-use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\DisponibilidadController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\TurnoController;
 
 
 
@@ -49,7 +49,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
 
-});
+}); 
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
