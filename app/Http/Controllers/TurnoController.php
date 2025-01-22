@@ -113,7 +113,14 @@ class TurnoController extends Controller
         }
 
         $monto_total = $cancha->precio_por_hora;        
-        $monto_seña = $cancha->seña;
+        $monto_seña = $cancha->seña; // Ensure this is not null
+
+        if (is_null($monto_seña)) {
+            return response()->json([
+                'message' => 'El monto de la seña no puede ser nulo',
+                'status' => 400
+            ], 400);
+        }
 
         $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
             ->where('horario_id', $horario->id)
@@ -164,20 +171,13 @@ class TurnoController extends Controller
 
         abort_unless($user->tokenCan('turnos:createTurnoFijo') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        $validator = Validator::make($request->all(), [
+        $validator = $request->validate([
+            'usuario_id' => 'required|exists:users,id',
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
             'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Error en la validacion',
-                'errors' => $validator->errors(),
-                'status' => 400
-            ], 400);
-        }
 
         $horario = Horario::find($request->horario_id);
         $cancha = Cancha::find($request->cancha_id);
@@ -189,9 +189,15 @@ class TurnoController extends Controller
             ], 404);
         }
 
-        // Calculate amounts based on cancha values
         $monto_total = $cancha->precio_por_hora;
-        $monto_seña = $cancha->seña;
+        $monto_seña = $cancha->seña; // Ensure this is not null
+
+        if (is_null($monto_seña)) {
+            return response()->json([
+                'message' => 'El monto de la seña no puede ser nulo',
+                'status' => 400
+            ], 400);
+        }
 
         DB::beginTransaction();
 
@@ -226,7 +232,7 @@ class TurnoController extends Controller
                     'fecha_reserva' => now(),
                     'horario_id' => $request->horario_id,
                     'cancha_id' => $request->cancha_id,
-                    'usuario_id' => $user->id,
+                    'usuario_id' => $request->usuario_id,
                     'monto_total' => $monto_total,
                     'monto_seña' => $monto_seña,
                     'estado' => $request->estado,

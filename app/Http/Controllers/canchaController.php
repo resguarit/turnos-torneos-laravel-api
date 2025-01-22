@@ -86,6 +86,7 @@ class CanchaController extends Controller
             'tipo_cancha' => $request->tipo_cancha,
             'precio_por_hora' => $request->precio_por_hora,
             'seña' => $request->seña,
+            'seña' => $request->seña,
             'activa' => $request->activa
         ]);
 
