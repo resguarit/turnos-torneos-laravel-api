@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'admin',
             'email' => 'admin@gmail.com',
+            'dni' => '45396791',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
             'rol' => 'admin',
@@ -26,6 +27,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'moderador',
             'email' => 'moderador@gmail.com',
+            'dni' => '11223344',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
             'rol' => 'moderador',
@@ -34,6 +36,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'cliente',
             'email' => 'cliente@gmail.com',
+            'dni' => '87654321',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
             'rol' => 'cliente',
@@ -42,6 +45,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'Mora Gentil',
             'email' => 'moragentil@gmail.com',
+            'dni' => '12345678',
             'password' => bcrypt('12345678'),
             'telefono' => '1234567890',
             'rol' => 'cliente',
