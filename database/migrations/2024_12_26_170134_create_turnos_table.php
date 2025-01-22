@@ -16,7 +16,7 @@ return new class extends Migration
             $table->date('fecha_reserva')->default(now());
             $table->date('fecha_turno');
             $table->decimal('monto_total',8,2);
-            $table->decimal('monto_seña', 8, 2);
+            $table->decimal('monto_seña', 8, 2)->default(0);
             $table->string('estado')->default('Pendiente');
             $table->string('tipo')->default('unico');
             $table->timestamps();

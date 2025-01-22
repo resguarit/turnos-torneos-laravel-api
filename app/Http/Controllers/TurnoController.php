@@ -102,6 +102,7 @@ class TurnoController extends Controller
             'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
         ]);
 
+
         $horario = Horario::find($request->horario_id);
         $cancha = Cancha::find($request->cancha_id);
 
@@ -171,7 +172,7 @@ class TurnoController extends Controller
 
         abort_unless($user->tokenCan('turnos:createTurnoFijo') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        $validator = $request->validate([
+        $validator = Validator::make($request->all(), [
             'usuario_id' => 'required|exists:users,id',
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
@@ -232,7 +233,7 @@ class TurnoController extends Controller
                     'fecha_reserva' => now(),
                     'horario_id' => $request->horario_id,
                     'cancha_id' => $request->cancha_id,
-                    'usuario_id' => $request->usuario_id,
+                    'usuario_id' => $request->user_id,
                     'monto_total' => $monto_total,
                     'monto_seña' => $monto_seña,
                     'estado' => $request->estado,
