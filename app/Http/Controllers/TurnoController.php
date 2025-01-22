@@ -540,7 +540,7 @@ class TurnoController extends Controller
         return response()->json([
             'message' => 'No se encontraron turnos para este usuario',
             'status' => 404
-        ], 404);
+        ], 200);
     }
 
     return response()->json([
