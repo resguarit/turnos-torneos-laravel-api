@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@gmail.com',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
+            'dni' => '123',
             'rol' => 'admin',
         ]);
 
@@ -28,6 +29,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'moderador@gmail.com',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
+            'dni' => '456',
             'rol' => 'moderador',
         ]);
 
@@ -36,6 +38,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'cliente@gmail.com',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
+            'dni' => '789',
             'rol' => 'cliente',
         ]);
 
@@ -44,6 +47,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'moragentil@gmail.com',
             'password' => bcrypt('12345678'),
             'telefono' => '1234567890',
+            'dni' => '12345678',
             'rol' => 'cliente',
         ]);
     }
