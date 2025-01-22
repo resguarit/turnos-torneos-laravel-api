@@ -17,7 +17,8 @@ class disponibilidadController extends Controller
         $fecha_inicio = now()->startOfDay();
         $fecha_fin = now()->addDays(30)->endOfDay();
 
-        $canchas_count = Cancha::count();
+        // Obtener solo canchas activas
+        $canchas_count = Cancha::where('activa', true)->count();
 
         $turnos = Turno::select(
             'fecha_turno',
@@ -25,48 +26,32 @@ class disponibilidadController extends Controller
             DB::raw('COUNT(*) as total_reservas')
         )
         ->whereBetween('fecha_turno', [$fecha_inicio, $fecha_fin])
+        ->where('estado', '!=', 'Cancelado')
         ->groupBy('fecha_turno', 'horario_id')
-        ->having('total_reservas', '>=', $canchas_count)
+        ->having('total_reservas', '>=', $canchas_count) 
         ->with(['horario:id,hora_inicio,hora_fin'])
-        ->where('estado', "!=", "Cancelado")
         ->get();
 
-        // Group by date and merge consecutive times
         $result = $turnos->groupBy(function($turno) {
             return $turno->fecha_turno->format('Y-m-d');
-        })->map(function($grupoTurnos) {
-            $horarios = $grupoTurnos->sortBy(function($turno) {
-                return $turno->horario->hora_inicio;
+        })->map(function($grupoTurnos) use ($canchas_count) {
+            $horarios = $grupoTurnos->map(function($turno) use ($canchas_count) {
+                return [
+                    'hora_inicio' => $turno->horario->hora_inicio,
+                    'hora_fin' => $turno->horario->hora_fin,
+                    'reservas' => $turno->total_reservas,
+                    'disponibles' => $canchas_count - $turno->total_reservas
+                ];
             });
 
-            $merged = [];
-            $current = null;
-
-            foreach ($horarios as $turno) {
-                $horaInicio = $turno->horario->hora_inicio;
-                $horaFin = $turno->horario->hora_fin;
-
-                if ($current === null) {
-                    $current = ['inicio' => $horaInicio, 'fin' => $horaFin];
-                } else {
-                    // If current end time equals this start time, extend the range
-                    if ($current['fin'] === $horaInicio) {
-                        $current['fin'] = $horaFin;
-                    } else {
-                        // Add completed range and start new one
-                        $merged[] = $current['inicio'] . '-' . $current['fin'];
-                        $current = ['inicio' => $horaInicio, 'fin' => $horaFin];
-                    }
-                }
-            }
-
-            if ($current !== null) {
-                $merged[] = $current['inicio'] . '-' . $current['fin'];
-            }
-            return $merged;
+            return $horarios;
         })->toArray();
 
-        return $result;
+        return response()->json([
+            'horarios_no_disponibles' => $result,
+            'canchas_totales' => $canchas_count,
+            'status' => 200
+        ], 200);
     }
 
     public function getHorariosDisponiblesPorFecha(Request $request)
