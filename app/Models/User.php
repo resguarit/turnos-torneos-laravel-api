@@ -93,6 +93,8 @@ class User extends Authenticatable
             "horarios:fecha",
             "disponibilidad:canchas",
             "turnos:cancelarBloqueo",
+            'horarios:update',
+            'franjasNoDisponible:show',
         ],
         'admin' => ['*'],
     ];
