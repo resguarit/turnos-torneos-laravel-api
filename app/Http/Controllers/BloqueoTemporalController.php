@@ -45,11 +45,13 @@ class BloqueoTemporalController extends Controller
             $ya_reservado = Turno::where('fecha_turno', $request->fecha)
                 ->where('horario_id', $request->horario_id)
                 ->where('cancha_id', $request->cancha_id)
+                ->where('estado', '!=', 'Cancelado')
                 ->exists();
 
             $ya_bloqueado = BloqueoTemporal::where('fecha', $request->fecha)
                 ->where('horario_id', $request->horario_id)
                 ->where('cancha_id', $request->cancha_id)
+                ->where('estado', '!=', 'Cancelado')
                 ->exists();
 
             if ($ya_reservado || $ya_bloqueado) {
