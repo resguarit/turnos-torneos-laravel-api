@@ -71,7 +71,7 @@ class disponibilidadController extends Controller
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
         $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
 
-        $canchasCount = Cancha::count();
+        $canchasCount = Cancha::where('activa', true)->count();
         $horarios = Horario::where('activo', true)
                             ->where('dia', $diaSemana) // Filtrar por día de la semana
                             ->get();
@@ -161,7 +161,7 @@ class disponibilidadController extends Controller
                         ->with('cancha')
                         ->get();
 
-        $canchas = Cancha::all();
+        $canchas = Cancha::where('activa', true)->get();
 
         $noDisponibles = [];
 

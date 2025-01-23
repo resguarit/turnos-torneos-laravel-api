@@ -208,6 +208,7 @@ class UserController extends Controller
         'telefono' => 'sometimes|string|max:15',
         'password' => 'sometimes|string|min:8|confirmed',
         'current_password' => 'sometimes|required_with:password|string',
+        'rol' => 'sometimes|string|in:cliente,moderador,admin'
     ]);
 
     // Manejar errores de validación
@@ -242,6 +243,10 @@ class UserController extends Controller
 
     if ($request->has('password')) {
         $userToUpdate->password = Hash::make($request->password);
+    }
+
+    if ($request->has('rol')){
+        $userToUpdate->rol = $request->rol;
     }
 
     // Guardar los cambios en la base de datos
