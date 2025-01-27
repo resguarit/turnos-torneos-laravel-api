@@ -128,75 +128,28 @@ class horarioController extends Controller
 
     public function deshabilitarFranjaHoraria(Request $request)
     {
-        $user = Auth::user();
-        $diasValidos = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    
-        abort_unless(
-            $user->tokenCan('horarios:update') || 
-            $user->rol === 'admin',
-            403, 
-            'No tienes permisos para realizar esta acción'
-        );
-    
         $validator = Validator::make($request->all(), [
-            'dia' => ['required', 'string', Rule::in($diasValidos)],
+            'dia' => 'required|string|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
             'hora_inicio' => 'required|date_format:H:i',
             'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
         ]);
-    
+
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
-                'status' => 400
-            ], 400);
+                'status' => 422
+            ], 422);
         }
-    
+
+        DB::beginTransaction();
+
         try {
-            DB::beginTransaction();
-            
-            $horaInicio = Carbon::createFromFormat('H:i', $request->hora_inicio);
-            $horaFin = Carbon::createFromFormat('H:i', $request->hora_fin);
-    
-            // Manejar el caso en que la hora de fin es "00:00"
-            if ($horaFin->eq(Carbon::createFromFormat('H:i', '00:00'))) {
-                $horaFin = $horaFin->addDay();
-            }
-    
-            // Verificar si ya existe una franja horaria deshabilitada en el rango especificado
-            $horariosDeshabilitados = Horario::where('dia', $request->dia)
-                ->where('activo', false)
-                ->where(function($query) use ($horaInicio, $horaFin) {
-                    $query->whereBetween('hora_inicio', [$horaInicio->format('H:i:s'), $horaFin->format('H:i:s')])
-                          ->orWhereBetween('hora_fin', [$horaInicio->format('H:i:s'), $horaFin->format('H:i:s')])
-                          ->orWhere(function($query) use ($horaInicio, $horaFin) {
-                              $query->where('hora_inicio', '<', $horaFin->format('H:i:s'))
-                                    ->where('hora_fin', '>', $horaInicio->format('H:i:s'));
-                          });
-                })
-                ->get();
-    
-            if (!$horariosDeshabilitados->isEmpty()) {
-                DB::rollBack();
-                return response()->json([
-                    'message' => 'Ya existe una franja horaria deshabilitada en ese rango para el día especificado',
-                    'horarios' => $horariosDeshabilitados,
-                    'status' => 409
-                ], 409);
-            }
-    
-            // Deshabilitar los horarios en el rango especificado
             $horarios = Horario::where('dia', $request->dia)
-                ->where(function($query) use ($horaInicio, $horaFin) {
-                    $query->whereBetween('hora_inicio', [$horaInicio->format('H:i:s'), $horaFin->format('H:i:s')])
-                          ->orWhereBetween('hora_fin', [$horaInicio->format('H:i:s'), $horaFin->format('H:i:s')])
-                          ->orWhere(function($query) use ($horaInicio, $horaFin) {
-                              $query->where('hora_inicio', '<', $horaFin->format('H:i:s'))
-                                    ->where('hora_fin', '>', $horaInicio->format('H:i:s'));
-                          });
-                })
+                ->whereTime('hora_inicio', '>=', $request->hora_inicio)
+                ->whereTime('hora_fin', '<=', $request->hora_fin)
                 ->get();
-    
+
             if ($horarios->isEmpty()) {
                 DB::rollBack();
                 return response()->json([
@@ -204,24 +157,79 @@ class horarioController extends Controller
                     'status' => 404
                 ], 404);
             }
-    
+
             foreach ($horarios as $horario) {
                 $horario->activo = false;
                 $horario->save();
             }
-    
+
             DB::commit();
-    
+
             return response()->json([
                 'message' => 'Franja horaria deshabilitada correctamente para el día ' . $request->dia,
                 'horarios' => $horarios,
                 'status' => 200
             ], 200);
-    
+
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'message' => 'Error al deshabilitar la franja horaria',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
+    }
+
+    public function habilitarFranjaHoraria(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'dia' => 'required|string|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
+            'hora_inicio' => 'required|date_format:H:i',
+            'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 422
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $horarios = Horario::where('dia', $request->dia)
+                ->whereTime('hora_inicio', '>=', $request->hora_inicio)
+                ->whereTime('hora_fin', '<=', $request->hora_fin)
+                ->get();
+
+            if ($horarios->isEmpty()) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'No se encontraron horarios en ese rango para el día especificado',
+                    'status' => 404
+                ], 404);
+            }
+
+            foreach ($horarios as $horario) {
+                $horario->activo = true;
+                $horario->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Franja horaria habilitada correctamente para el día ' . $request->dia,
+                'horarios' => $horarios,
+                'status' => 200
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al habilitar la franja horaria',
                 'error' => $e->getMessage(),
                 'status' => 500
             ], 500);
@@ -242,5 +250,26 @@ class horarioController extends Controller
         ];
 
         return response()->json($data, 200);
+    }
+
+    public function getHorariosExtremosActivos()
+    {
+        $horarios = Horario::select('dia', DB::raw('MIN(hora_inicio) as hora_inicio'), DB::raw('MAX(hora_fin) as hora_fin'))
+            ->where('activo', true)
+            ->groupBy('dia')
+            ->orderBy(DB::raw('FIELD(dia, "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")'))
+            ->get();
+
+        if ($horarios->isEmpty()) {
+            return response()->json([
+                'message' => 'No se encontraron horarios activos',
+                'status' => 404
+            ], 404);
+        }
+
+        return response()->json([
+            'horarios_extremos' => $horarios,
+            'status' => 200
+        ], 200);
     }
 }

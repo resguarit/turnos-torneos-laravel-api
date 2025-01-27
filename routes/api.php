@@ -41,6 +41,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::post('/configurar-horarios', [ConfigController::class, 'configurarHorarios']);
     Route::put('/deshabilitar-franja-horaria', [HorarioController::class, 'deshabilitarFranjaHoraria']);
+    Route::put('/habilitar-franja-horaria', [HorarioController::class, 'habilitarFranjaHoraria']);
     Route::get('/franjas-horarias-no-disponibles', [HorarioController::class, 'showFranjasHorariasNoDisponibles']);
 
     Route::get('/usuarios', [UserController::class, 'index']);
@@ -65,4 +66,5 @@ Route::get('/canchas/{id}', [CanchaController::class, 'show']);
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::post('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
+Route::get('/horarios-extremos-activos', [HorarioController::class, 'getHorariosExtremosActivos']);
 
