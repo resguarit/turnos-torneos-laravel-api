@@ -541,13 +541,20 @@ class TurnoController extends Controller
         return $dias[$diaSemana];
     }
 
-    public function getTurnosByUser()
+    public function getTurnosByUser($id = null)
 {
     $user = Auth::user();
 
     abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-    $turnos = Turno::where('usuario_id', $user->id)
+    if ($id) {
+        abort_unless($user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+        $userId = $id;
+    } else {
+        $userId = $user->id;
+    }
+
+    $turnos = Turno::where('usuario_id', $userId)
         ->with(['cancha', 'horario'])
         ->get();
 

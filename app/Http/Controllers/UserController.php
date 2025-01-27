@@ -137,20 +137,50 @@ class UserController extends Controller
         return $user->getAbilities();
     }
 
-    public function index(){
-        
+    public function index(Request $request)
+    {
         $user = Auth::user();
 
         abort_unless($user->tokenCan('usuario:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        $users = User::all();
+        $perPage = $request->query('limit', 10); // Número de resultados por página, por defecto 10
+        $sortBy = $request->query('sortBy', 'created_at'); // Campo por el que ordenar, por defecto 'created_at'
+        $order = $request->query('order', 'desc'); // Orden de la ordenación, por defecto 'desc'
+        $page = $request->query('page', 1); // Página solicitada, por defecto 1
+
+        // Parámetros de búsqueda
+        $searchType = $request->query('searchType');
+        $searchTerm = $request->query('searchTerm');
+
+        // Validar los parámetros de consulta
+        $request->validate([
+            'limit' => 'integer|min:1',
+            'sortBy' => 'string|in:name,email,created_at,dni,telefono', // Añade los campos permitidos para ordenar
+            'order' => 'string|in:asc,desc',
+            'page' => 'integer|min:1',
+            'searchType' => 'string|nullable|in:name,email,dni,telefono',
+            'searchTerm' => 'string|nullable',
+        ]);
+
+        $query = User::orderBy($sortBy, $order);
+
+        // Aplicar filtro de búsqueda si se proporciona
+        if ($searchType && $searchTerm) {
+            $query->where($searchType, 'like', "%{$searchTerm}%");
+        }
+
+        $users = $query->paginate($perPage, ['*'], 'page', $page);
 
         $data = [
-            'usuarios' => $users,
-            'status' => 200
+            'usuarios' => $users->items(),
+            'status' => 200,
+            'totalUsuarios' => $users->total(),
+            'totalPages' => $users->lastPage(),
+            'currentPage' => $users->currentPage(),
+            'perPage' => $users->perPage(),
         ];
 
-        return response()->json($data,200);
+        return response()->json($data, 200);
     }
     
     public function show ($id){
