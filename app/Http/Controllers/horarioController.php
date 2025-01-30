@@ -236,40 +236,97 @@ class horarioController extends Controller
         }
     }
 
-    public function showFranjasHorariasNoDisponibles(){
-
-        $user=Auth::user();
-
-        abort_unless($user->tokenCan('franjasNoDisponible:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
-
-        $horarios = Horario::where('activo', false)->get();
-
-        $data = [
-            'horarios' => $horarios,
-            'status' => 200
-        ];
-
-        return response()->json($data, 200);
-    }
-
-    public function getHorariosExtremosActivos()
+    public function showFranjasHorariasNoDisponibles()
     {
-        $horarios = Horario::select('dia', DB::raw('MIN(hora_inicio) as hora_inicio'), DB::raw('MAX(hora_fin) as hora_fin'))
-            ->where('activo', true)
-            ->groupBy('dia')
-            ->orderBy(DB::raw('FIELD(dia, "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")'))
-            ->get();
+        $user = Auth::user();
 
-        if ($horarios->isEmpty()) {
-            return response()->json([
-                'message' => 'No se encontraron horarios activos',
-                'status' => 404
-            ], 404);
-        }
+        abort_unless($user->tokenCan('franjasNoDisponible:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        // Obtener todos los horarios inactivos
+        $inactivos = Horario::where('activo', false)->get();
+
+        // Agrupar los horarios inactivos por día
+        $agrupadosPorDia = $inactivos->groupBy('dia');
+
+        // Procesar cada día
+        $result = $agrupadosPorDia->map(function ($itemsInactivos, $dia) {
+            $totalDia = Horario::where('dia', $dia)->count();            // todos los horarios del día
+            $inactivosDia = $itemsInactivos->count();                    // horarios inactivos del día
+
+            if ($inactivosDia === $totalDia) {
+                // Si todos los horarios del día están inactivos, devolver solo los extremos
+                return [[
+                    'dia' => $dia,
+                    'hora_inicio' => $itemsInactivos->min('hora_inicio'),
+                    'hora_fin' => $itemsInactivos->max('hora_fin'),
+                    'completamente_inactivo' => true
+                ]];
+            } else {
+                // Si hay horarios activos, devolver todos los horarios inactivos
+                return $itemsInactivos->map(function ($horario) {
+                    return [
+                        'dia' => $horario->dia,
+                        'hora_inicio' => $horario->hora_inicio,
+                        'hora_fin' => $horario->hora_fin,
+                        'completamente_inactivo' => false
+                    ];
+                });
+            }
+        })->flatten(1)->values();
 
         return response()->json([
-            'horarios_extremos' => $horarios,
+            'horarios' => $result,
             'status' => 200
         ], 200);
     }
+
+    public function getHorariosExtremosActivos()
+{
+    // Get all days in correct order
+    $dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    
+    $result = collect($dias)->map(function($dia) {
+        // Get current active schedules for the day
+        $horariosActivos = Horario::where('dia', $dia)
+            ->where('activo', true)
+            ->get();
+
+        // If there are active schedules, return their min and max times
+        if ($horariosActivos->isNotEmpty()) {
+            return [
+                'dia' => $dia,
+                'hora_inicio' => $horariosActivos->min('hora_inicio'),
+                'hora_fin' => $horariosActivos->max('hora_fin')
+            ];
+        }
+
+        // If no active schedules, get the last 2 schedules that were active
+        $ultimosHorarios = Horario::where('dia', $dia)
+            ->orderBy('hora_inicio')
+            ->get()
+            ->take(2);
+
+        // If there are previous schedules, return their times
+        if ($ultimosHorarios->isNotEmpty()) {
+            return [
+                'dia' => $dia,
+                'hora_inicio' => $ultimosHorarios->first()->hora_inicio,
+                'hora_fin' => $ultimosHorarios->last()->hora_fin,
+                'inactivo' => true // Flag to indicate these are inactive schedules
+            ];
+        }
+
+        // If no schedules at all, return null values
+        return [
+            'dia' => $dia,
+            'hora_inicio' => null,
+            'hora_fin' => null
+        ];
+    });
+
+    return response()->json([
+        'horarios_extremos' => $result,
+        'status' => 200
+    ], 200);
+}
 }

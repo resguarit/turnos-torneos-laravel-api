@@ -20,8 +20,8 @@ class configController extends Controller
 
         $validator = Validator::make($request->all(), [
             'dias' => 'required|array',
-            'dias.*.hora_apertura' => 'required_with:dias.*.hora_cierre|date_format:H:i',
-            'dias.*.hora_cierre' => 'required_with:dias.*.hora_apertura|date_format:H:i|after:dias.*.hora_apertura',
+            'dias.*.hora_apertura' => 'nullable|date_format:H:i',
+            'dias.*.hora_cierre' => 'nullable|date_format:H:i|after:dias.*.hora_apertura',
         ]);
 
         if ($validator->fails()) {
@@ -35,6 +35,16 @@ class configController extends Controller
         $dias = $request->input('dias');
 
         foreach ($dias as $dia => $horas) {
+            // Si ambos valores son NULL, deshabilitar todos los horarios del día
+            if (is_null($horas['hora_apertura']) && is_null($horas['hora_cierre'])) {
+                // Actualizar todos los horarios del día a inactivo
+                $horariosActualizados = Horario::where('dia', $dia)
+                    ->update(['activo' => false]);
+
+                continue; 
+            }
+
+            // Proceso normal para configurar horarios cuando hay valores
             if (isset($horas['hora_apertura']) && isset($horas['hora_cierre'])) {
                 $horaApertura = Carbon::createFromFormat('H:i', $horas['hora_apertura']);
                 $horaCierre = Carbon::createFromFormat('H:i', $horas['hora_cierre']);
