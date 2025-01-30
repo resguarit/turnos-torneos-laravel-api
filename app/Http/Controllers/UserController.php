@@ -83,10 +83,13 @@ class UserController extends Controller
 
     $user->save();
 
-    return response()->json([
+    $data = [
+        'user' => $user,
         'message' => 'Usuario creado con éxito',
         'status' => 201
-    ], 201);
+    ];
+
+    return response()->json($data, 201);
 }
 
     public function login(Request $request)
@@ -125,7 +128,7 @@ class UserController extends Controller
                 'username' => $user -> name,
             ];
         }
-
+        
         return response()->json([
             'message' => 'Credenciales incorrectas',
             'status' => 401
