@@ -19,6 +19,7 @@ class TurnoResource extends JsonResource
             'usuario' => [
                 'usuario_id' => $this->usuario->id,
                 'nombre' => $this->usuario->name,
+                'dni' => $this->usuario->dni,
                 'telefono' => $this->usuario->telefono,
                 'email' => $this->usuario->email,
             ],
