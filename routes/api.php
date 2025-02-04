@@ -6,6 +6,7 @@ use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\DisponibilidadController;
 use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\TurnoController;
@@ -20,9 +21,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/canchas/{id}', [CanchaController::class, 'update']);
     Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);
 
+    Route::get('/dashboard/total-reservas', [DashboardController::class, 'totalReservas']);
+    Route::get('/dashboard/usuarios-activos', [DashboardController::class, 'usuariosActivos']);
+    Route::get('/dashboard/ingresos', [DashboardController::class, 'ingresos']);
+    Route::get('/dashboard/tasa-ocupacion', [DashboardController::class, 'tasaOcupacion']);
+    Route::get('/dashboard/cancha-mas-popular', [DashboardController::class, 'canchaMasPopular']);
+    Route::get('/dashboard/horas-pico', [DashboardController::class, 'horasPico']);
+    Route::get('/dashboard/reservas-por-mes', [DashboardController::class, 'reservasPorMes']);
+
     Route::get('/turnos', [TurnoController::class, 'index']);
     Route::get('/turnos-all', [TurnoController::class, 'getAll']);
-    Route::get('turnos/user', [TurnoController::class, 'getTurnosByUser']);
+    Route::get('turnos/user/{id?}', [TurnoController::class, 'getTurnosByUser']);
     Route::get('turnos/user-proximos', [TurnoController::class, 'getProximos']);
     Route::get('/turnos/{id}', [TurnoController::class, 'show']);
     Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
@@ -62,6 +71,7 @@ Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorari
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
+Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);
 Route::get('/canchas/{id}', [CanchaController::class, 'show']);
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);

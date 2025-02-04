@@ -28,7 +28,9 @@ class TurnoController extends Controller
         $validator = Validator::make($request->all(), [
             'fecha' => 'date|nullable',
             'fecha_inicio' => 'date|nullable',
-            'fecha_fin' => 'date|nullable|required_with:fecha_turno|after_or_equal:fecha_inicio',
+            'fecha_fin' => 'date|nullable|required_with:fecha_inicio|after_or_equal:fecha_inicio',
+            'searchType' => 'string|nullable|in:name,email,dni,telefono',
+            'searchTerm' => 'string|nullable',
         ]);
 
         if ($validator->fails()) {
@@ -51,8 +53,18 @@ class TurnoController extends Controller
             $query->whereBetween('fecha_turno', [$request->fecha_inicio, $request->fecha_fin]);
         }
 
-        if(!$request->has('fecha') && !$request->has('fecha_inicio') && !$request->has('fecha_fin')){
+        if(!$request->has('fecha') && !$request->has('fecha_inicio') && !$request->has('fecha_fin') && !$request->has('searchTerm')){
             $query->whereDate('fecha_turno', '>=', $fechaHoy);
+        }
+
+        // Filtrar por searchType y searchTerm si se proporcionan
+        if ($request->has('searchType') && $request->has('searchTerm')) {
+            $searchType = $request->searchType;
+            $searchTerm = $request->searchTerm;
+
+            $query->whereHas('usuario', function ($q) use ($searchType, $searchTerm) {
+                $q->where($searchType, 'like', "%{$searchTerm}%");
+            });
         }
 
         $turnos = $query->with([
@@ -479,11 +491,12 @@ class TurnoController extends Controller
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
 
         $horarios = Horario::where('activo', true)
-        ->orderBy('hora_inicio', 'asc')
-        ->get();
+                            ->where('dia', $diaSemana) // Filtrar por día de la semana
+                            ->orderBy('hora_inicio', 'asc')
+                            ->get();
 
         $canchas = Cancha::where('activa', true)->get();
 
@@ -521,21 +534,42 @@ class TurnoController extends Controller
                 ];
             }
         }
-        
+
         return response()->json([
             'grid' => $grid,
-            // 'horarios'=> $horarios,
             'status' => 200
         ], 200);
     }
 
-    public function getTurnosByUser()
+    private function getNombreDiaSemana($diaSemana)
+    {
+        $dias = [
+            0 => 'domingo',
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábado'
+        ];
+
+        return $dias[$diaSemana];
+    }
+
+    public function getTurnosByUser($id = null)
 {
     $user = Auth::user();
 
     abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-    $turnos = Turno::where('usuario_id', $user->id)
+    if ($id) {
+        abort_unless($user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+        $userId = $id;
+    } else {
+        $userId = $user->id;
+    }
+
+    $turnos = Turno::where('usuario_id', $userId)
         ->with(['cancha', 'horario'])
         ->get();
 
