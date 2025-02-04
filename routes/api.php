@@ -6,6 +6,7 @@ use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\BloqueoTemporalController;
 use App\Http\Controllers\DisponibilidadController;
 use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\TurnoController;
@@ -19,6 +20,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/canchas', [CanchaController::class, 'store']);
     Route::patch('/canchas/{id}', [CanchaController::class, 'update']);
     Route::delete('/canchas/{id}', [CanchaController::class, 'destroy']);
+
+    Route::get('/dashboard/total-reservas', [DashboardController::class, 'totalReservas']);
+    Route::get('/dashboard/usuarios-activos', [DashboardController::class, 'usuariosActivos']);
+    Route::get('/dashboard/ingresos', [DashboardController::class, 'ingresos']);
+    Route::get('/dashboard/tasa-ocupacion', [DashboardController::class, 'tasaOcupacion']);
+    Route::get('/dashboard/cancha-mas-popular', [DashboardController::class, 'canchaMasPopular']);
+    Route::get('/dashboard/horas-pico', [DashboardController::class, 'horasPico']);
+    Route::get('/dashboard/reservas-por-mes', [DashboardController::class, 'reservasPorMes']);
 
     Route::get('/turnos', [TurnoController::class, 'index']);
     Route::get('/turnos-all', [TurnoController::class, 'getAll']);

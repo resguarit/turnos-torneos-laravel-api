@@ -102,4 +102,8 @@ class User extends Authenticatable
         return self::ROLES[$this->rol] ?? [];
     }
 
+    public function turnos(){
+        return $this->hasMany(Turno::class, 'usuario_id');
+    }
+
 }
