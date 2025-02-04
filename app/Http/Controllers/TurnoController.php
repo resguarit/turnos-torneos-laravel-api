@@ -371,7 +371,10 @@ class TurnoController extends Controller
                     // Al estar cancelado, este turno ya no bloqueará el horario ni la cancha
                     // porque en las consultas de disponibilidad se excluyen los turnos cancelados
                 }
-                
+                BloqueoTemporal::where('fecha', $turno->fecha_turno)
+                    ->where('horario_id', $turno->horario_id)
+                    ->where('cancha_id', $turno->cancha_id)
+                    ->delete();
                 $turno->save();
                 DB::commit();
 
