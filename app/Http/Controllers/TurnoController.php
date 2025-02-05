@@ -524,6 +524,7 @@ class TurnoController extends Controller
                         'usuario' => [
                             'usuario_id' => $turno->usuario->id,
                             'nombre' => $turno->usuario->name,
+                            'dni' => $turno->usuario->dni,
                             'telefono' => $turno->usuario->telefono,
                         ],
                         'monto_total' => $turno->monto_total,

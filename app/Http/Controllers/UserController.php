@@ -95,7 +95,8 @@ class UserController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'dni' => 'required|string', // Change email to DNI
+            'dni' => 'required_without:email|string',
+            'email' => 'required_without:dni|email',
             'password' => 'required|string'
         ]);
 
@@ -109,12 +110,17 @@ class UserController extends Controller
             return response()->json($data, 422);
         }
 
-        $user = User::where('dni', $request->dni)->first(); // Search by DNI instead of email
+        if ($request->has('dni')) {
+            $user = User::where('dni', $request->dni)->first();
+        } else {
+            $user = User::where('email', $request->email)->first();
+        }
+
 
         if (!$user) {
             return response()->json([
                 'message' => 'Usuario no encontrado',
-                'status' => 404
+                'status' => 404 
             ], 404);
         }
 
