@@ -37,7 +37,7 @@ class TurnoResource extends JsonResource
             'monto_seña' => $this->monto_seña,
             'estado' => $this->estado,
             'tipo' => $this->tipo,
-            
+            'created_at' => $this->created_at,
         ];
     }
 }

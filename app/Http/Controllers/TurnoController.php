@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\TurnoResource;
 use App\Models\Horario;
 use App\Models\Cancha;
+use App\Models\TurnoCancelacion;
 use Illuminate\Http\Request;
 use App\Models\Turno;
 use Illuminate\Support\Facades\Validator;
@@ -605,5 +606,62 @@ class TurnoController extends Controller
         ];
 
         return response()->json($data, 200);
+    }
+
+    public function cancel($id){
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        $turno = Turno::with(['horario','usuario'])->find($id);
+
+        if(!$turno){
+            return response()->json([
+                'message' => 'Turno no encontrado',
+                'status' => 404
+            ], 404);
+        }
+
+        if($turno->estado === 'Cancelado'){
+            return response()->json([
+                'message' => 'El turno ya ha sido cancelado',
+                'status' => 400
+            ], 400);
+        }
+
+        if($turno->fecha_turno < now()->startOfDay()){
+            return response()->json([
+                'message' => 'No puedes cancelar un turno que ya ha pasado',
+                'status' => 400
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $turno->estado = 'Cancelado';
+            $turno->save();
+
+            // Registro de auditoria para la cancelacion
+            TurnoCancelacion::create([
+                'turno_id' => $turno->id,
+                'cancelado_por' => $user->id,
+                'motivo' => $request->motivo ?? 'No especificado',
+                'fecha_cancelacion' => now()
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Turno cancelado correctamente',
+                'status' => 200
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'message' => 'Error al cancelar el turno',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 }
