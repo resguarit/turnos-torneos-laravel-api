@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Turno extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'turnos';
 
@@ -17,7 +19,7 @@ class Turno extends Model
     protected $hidden = ['created_at', 'updated_at'];
 
     
-    protected $dates = ['fecha_turno', 'fecha_reserva'];
+    protected $dates = ['fecha_turno', 'fecha_reserva', 'deleted_at'];
 
     public function getFechaTurnoAttribute($value)
     {
@@ -38,5 +40,9 @@ class Turno extends Model
 
     public function cancelaciones(){
         return $this->hasMany(TurnoCancelacion::class);
+    }
+
+    public function modificaciones(){
+        return $this->hasMany(TurnoModificacion::class);
     }
 }
