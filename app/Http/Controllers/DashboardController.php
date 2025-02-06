@@ -124,14 +124,23 @@ class DashboardController extends Controller
             ->where('dia', $this->getNombreDiaSemana($diaSemana))
             ->count();
 
-        $tasaOcupacionActual = ($turnosHoy / ($canchasCount * $horariosCount)) * 100;
+        if ($turnosHoy == 0 || ($canchasCount * $horariosCount) == 0) {
+            $tasaOcupacionActual = 0;
+        } else {
+            $tasaOcupacionActual = ($turnosHoy / ($canchasCount * $horariosCount)) * 100;
+        }
 
         $fechaAyer = Carbon::yesterday()->startOfDay();
         $turnosAyer = Turno::whereDate('fecha_turno', $fechaAyer)
             ->where('estado', '!=', 'Cancelado')
             ->count();
-        $tasaOcupacionAnterior = ($turnosAyer / ($canchasCount * $horariosCount)) * 100;
-
+        
+            if ($turnosAyer == 0 || ($canchasCount * $horariosCount) == 0) {
+                $tasaOcupacionAnterior = 0;
+            } else {
+                $tasaOcupacionAnterior = ($turnosAyer / ($canchasCount * $horariosCount)) * 100;
+            }
+        
         if ($tasaOcupacionAnterior > 0) {
             $cambio = (($tasaOcupacionActual - $tasaOcupacionAnterior) / $tasaOcupacionAnterior) * 100;
         } else {
