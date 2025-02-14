@@ -22,6 +22,9 @@ class EliminarBloqueo implements ShouldQueue
 
     public function handle()
     {
-        BloqueoTemporal::find($this->bloqueoId)->delete();
+        $bloqueo = BloqueoTemporal::find($this->bloqueoId);
+        if ($bloqueo) {
+            $bloqueo->delete();
+        }
     }
 }

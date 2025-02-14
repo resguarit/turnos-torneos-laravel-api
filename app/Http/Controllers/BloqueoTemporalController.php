@@ -64,10 +64,10 @@ class BloqueoTemporalController extends Controller
                 'horario_id' => $request->horario_id,
                 'cancha_id' => $request->cancha_id,
                 'fecha' => $request->fecha,
-                'expira_en' => now()->addMinutes(1),
+                'expira_en' => now()->setTimezone('America/Argentina/Buenos_Aires')->addMinutes(1),
             ]);
 
-            EliminarBloqueo::dispatch($bloqueo->id)->delay(now()->addMinutes(10));
+            EliminarBloqueo::dispatch($bloqueo->id)->delay(now()->setTimezone('America/Argentina/Buenos_Aires')->addMinutes(1));
 
             DB::commit(); // Confirma la transacción
 
@@ -86,25 +86,39 @@ class BloqueoTemporalController extends Controller
         abort_unless($user->tokenCan('turnos:cancelarBloqueo') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
         try {
-            $bloqueo = BloqueoTemporal::where('id', $id)
+            DB::beginTransaction();
+            
+            $bloqueo = BloqueoTemporal::lockForUpdate()
+                ->where('id', $id)
                 ->where('usuario_id', $user->id)
                 ->first();
 
             if (!$bloqueo) {
+                DB::rollBack();
                 return response()->json([
                     'message' => 'No se encontró el bloqueo temporal',
                     'status' => 404
                 ], 404);
             }
 
-            $bloqueo->delete();
+            $deleted = $bloqueo->delete();
 
+            if (!$deleted) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Error al eliminar el bloqueo temporal',
+                    'status' => 500
+                ], 500);
+            }
+
+            DB::commit();
             return response()->json([
                 'message' => 'Bloqueo temporal cancelado exitosamente',
                 'status' => 200
             ], 200);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => 'Error al cancelar el bloqueo temporal',
                 'error' => $e->getMessage(),
