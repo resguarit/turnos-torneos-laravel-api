@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  laravel:
+    build: .
+    container_name: laravel_app
+    ports:
+      - "8000:80"  # Mapeamos el puerto 8000 del host al 80 del contenedor
+    volumes:
+      - .:/var/www/html  # Sincronizamos el código con el contenedor
+    depends_on:
+      - mysql
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=rockandogolBD
+      - DB_USERNAME=root
+      - DB_PASSWORD=mariano10
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mariano10
+      MYSQL_DATABASE: rockandogolBD
+    ports:
+      - "3307:3306"  # Asegúrate de que este puerto no esté en uso por otro proceso
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+
