@@ -322,52 +322,55 @@ class HorarioController extends Controller
     }
 
     public function getHorariosExtremosActivos()
-{
-    // Get all days in correct order
-    $dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    {
+        $dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        
+        $result = collect($dias)->map(function($dia) {
+            // Get current active schedules for the day
+            $horariosActivos = Horario::where('dia', $dia)
+                ->where('activo', true)
+                ->get();
     
-    $result = collect($dias)->map(function($dia) {
-        // Get current active schedules for the day
-        $horariosActivos = Horario::where('dia', $dia)
-            ->where('activo', true)
-            ->get();
-
-        // If there are active schedules, return their min and max times
-        if ($horariosActivos->isNotEmpty()) {
+            // If there are active schedules, return their min and max times
+            if ($horariosActivos->isNotEmpty()) {
+                return [
+                    'dia' => $dia,
+                    'hora_inicio' => $horariosActivos->min('hora_inicio'),
+                    'hora_fin' => $horariosActivos->max('hora_fin'),
+                    'inactivo' => false
+                ];
+            }
+    
+            // If no active schedules, get the last modified schedules for this day
+            $ultimosHorarios = Horario::where('dia', $dia)
+                ->orderBy('updated_at', 'desc')
+                ->orderBy('hora_inicio', 'asc')
+                ->get()
+                ->groupBy('updated_at')
+                ->first();
+    
+            // If there are last modified schedules, return their extreme times
+            if ($ultimosHorarios && $ultimosHorarios->isNotEmpty()) {
+                return [
+                    'dia' => $dia,
+                    'hora_inicio' => $ultimosHorarios->min('hora_inicio'),
+                    'hora_fin' => $ultimosHorarios->max('hora_fin'),
+                    'inactivo' => true
+                ];
+            }
+    
+            // If no schedules at all, return null values
             return [
                 'dia' => $dia,
-                'hora_inicio' => $horariosActivos->min('hora_inicio'),
-                'hora_fin' => $horariosActivos->max('hora_fin')
+                'hora_inicio' => null,
+                'hora_fin' => null,
+                'inactivo' => null
             ];
-        }
-
-        // If no active schedules, get the last 2 schedules that were active
-        $ultimosHorarios = Horario::where('dia', $dia)
-            ->orderBy('hora_inicio')
-            ->get()
-            ->take(2);
-
-        // If there are previous schedules, return their times
-        if ($ultimosHorarios->isNotEmpty()) {
-            return [
-                'dia' => $dia,
-                'hora_inicio' => $ultimosHorarios->first()->hora_inicio,
-                'hora_fin' => $ultimosHorarios->last()->hora_fin,
-                'inactivo' => true // Flag to indicate these are inactive schedules
-            ];
-        }
-
-        // If no schedules at all, return null values
-        return [
-            'dia' => $dia,
-            'hora_inicio' => null,
-            'hora_fin' => null
-        ];
-    });
-
-    return response()->json([
-        'horarios_extremos' => $result,
-        'status' => 200
-    ], 200);
-}
+        });
+    
+        return response()->json([
+            'horarios_extremos' => $result,
+            'status' => 200
+        ], 200);
+    }
 }

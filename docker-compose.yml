@@ -24,7 +24,7 @@ services:
       MYSQL_ROOT_PASSWORD: mariano10
       MYSQL_DATABASE: rockandogolBD
     ports:
-      - "3307:3306"  # Asegúrate de que este puerto no esté en uso por otro proceso
+      - "3307:3306"  
     volumes:
       - mysql_data:/var/lib/mysql
 
