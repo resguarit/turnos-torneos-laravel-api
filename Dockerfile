@@ -25,8 +25,16 @@ COPY . .
 # 7️⃣ Instalamos las dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
 
+RUN php artisan migrate --force
+
 # 8️⃣ Damos permisos a storage y bootstrap/cache
 RUN chmod -R 777 storage bootstrap/cache
+
+RUN echo '<Directory /var/www/html>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' > /etc/apache2/sites-available/000-default.conf
 
 # 9️⃣ Exponemos el puerto 8080 (Railway asigna un puerto dinámico)
 EXPOSE 8080
