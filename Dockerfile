@@ -25,8 +25,6 @@ COPY . .
 # 7️⃣ Instalamos las dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-RUN php artisan migrate --force
-
 # 8️⃣ Damos permisos a storage y bootstrap/cache
 RUN chmod -R 777 storage bootstrap/cache
 
