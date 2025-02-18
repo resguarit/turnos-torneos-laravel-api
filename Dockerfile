@@ -16,11 +16,6 @@ RUN a2enmod rewrite
 # 4️⃣ Instalamos Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-#  Copiamos el archivo de configuración de Apache
-COPY ./000-default.conf /etc/apache2/sites-available/000-default.conf
-
-RUN a2ensite 000-default.conf && service apache2 reload
-
 # 5️⃣ Configuramos el directorio de trabajo
 WORKDIR /var/www/html
 
@@ -33,8 +28,9 @@ RUN composer install --no-dev --optimize-autoloader
 # 8️⃣ Damos permisos a storage y bootstrap/cache
 RUN chmod -R 777 storage bootstrap/cache
 
-# 9️⃣ Exponemos el puerto 80 para Apache
-EXPOSE 80
+# 9️⃣ Exponemos el puerto 8080 (Railway asigna un puerto dinámico)
+EXPOSE 8080
+ENV APACHE_RUN_PORT=8080
 
 # 🔟 Comando de inicio del contenedor
-CMD ["apache2-foreground"]
+CMD ["sh", "-c", "apachectl -D FOREGROUND"]
