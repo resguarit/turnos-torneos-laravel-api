@@ -28,11 +28,16 @@ RUN composer install --no-dev --optimize-autoloader
 # 8️⃣ Damos permisos a storage y bootstrap/cache
 RUN chmod -R 777 storage bootstrap/cache
 
-RUN echo '<Directory /var/www/html>\n\
-    Options Indexes FollowSymLinks\n\
-    AllowOverride All\n\
-    Require all granted\n\
-</Directory>' > /etc/apache2/sites-available/000-default.conf
+RUN echo '<VirtualHost *:80>\n\
+    DocumentRoot /var/www/html/public\n\
+    <Directory /var/www/html/public>\n\
+        Options Indexes FollowSymLinks\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
+</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
 # 9️⃣ Exponemos el puerto 8080 (Railway asigna un puerto dinámico)
 EXPOSE 8080
