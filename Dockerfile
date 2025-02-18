@@ -28,20 +28,17 @@ RUN composer install --no-dev --optimize-autoloader
 # 8️⃣ Damos permisos a storage y bootstrap/cache
 RUN chmod -R 777 storage bootstrap/cache
 
-RUN echo '<VirtualHost *:80>\n\
+RUN echo '<VirtualHost *:${APACHE_RUN_PORT}>\n\
     DocumentRoot /var/www/html/public\n\
     <Directory /var/www/html/public>\n\
         Options Indexes FollowSymLinks\n\
         AllowOverride All\n\
         Require all granted\n\
     </Directory>\n\
-    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
-# 9️⃣ Exponemos el puerto 8080 (Railway asigna un puerto dinámico)
-EXPOSE 8080
-ENV APACHE_RUN_PORT=8080
+EXPOSE $PORT
+ENV APACHE_RUN_PORT=$PORT
 
 # 🔟 Comando de inicio del contenedor
 CMD ["sh", "-c", "apachectl -D FOREGROUND"]
