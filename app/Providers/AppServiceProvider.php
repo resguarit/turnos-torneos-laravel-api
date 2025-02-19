@@ -15,6 +15,8 @@ use App\Services\Interface\BloqueoTemporalServiceInterface;
 use App\Services\Implementation\BloqueoTemporalService;
 use App\Services\Interface\ConfigServiceInterface;
 use App\Services\Implementation\ConfigService;
+use App\Services\Interface\DashboardServiceInterface;
+use App\Services\Implementation\DashboardService;
 
 
 
@@ -31,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DisponibilidadServiceInterface::class, DisponibilidadService::class);
         $this->app->bind(BloqueoTemporalServiceInterface::class, BloqueoTemporalService::class);
         $this->app->bind(ConfigServiceInterface::class, ConfigService::class);
+        $this->app->bind(DashboardServiceInterface::class, DashboardService::class);
     }
 
     /**
