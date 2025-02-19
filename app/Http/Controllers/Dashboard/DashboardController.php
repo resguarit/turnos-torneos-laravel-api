@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Http\Controllers\Api\Controller;
 use Illuminate\Http\Request;
 use App\Models\Turno;
 use Carbon\Carbon;

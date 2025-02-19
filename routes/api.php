@@ -1,15 +1,15 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CanchaController;
-use App\Http\Controllers\HorarioController;
-use App\Http\Controllers\BloqueoTemporalController;
-use App\Http\Controllers\DisponibilidadController;
-use App\Http\Controllers\ConfigController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\GoogleAuthController;
-use App\Http\Controllers\TurnoController;
+use App\Http\Controllers\Api\CanchaController;
+use App\Http\Controllers\Api\HorarioController;
+use App\Http\Controllers\Api\BloqueoTemporalController;
+use App\Http\Controllers\Api\DisponibilidadController;
+use App\Http\Controllers\Api\ConfigController;
+use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Api\TurnoController;
 
 
 
