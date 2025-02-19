@@ -8,10 +8,8 @@ use App\Http\Controllers\Api\DisponibilidadController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\GoogleAuthController;
-use App\Http\Controllers\TurnoController;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Api\TurnoController;
 
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/register', [RegisterController::class, 'register']);
