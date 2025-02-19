@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Implementation;
 
 use App\Models\Turno;
 use App\Models\TurnoModificacion;
