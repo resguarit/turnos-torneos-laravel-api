@@ -69,5 +69,96 @@ class UserService implements UserServiceInterface
         ];
     }
 
-    // Implement other methods...
+    public function getUsers($request)
+    {
+        $perPage = $request->query('limit', 10);
+        $sortBy = $request->query('sortBy', 'created_at');
+        $order = $request->query('order', 'desc');
+        $page = $request->query('page', 1);
+        $searchType = $request->query('searchType');
+        $searchTerm = $request->query('searchTerm');
+
+        $query = User::orderBy($sortBy, $order);
+
+        if ($searchType && $searchTerm) {
+            $query->where($searchType, 'like', "%{$searchTerm}%");
+        }
+
+        $users = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'usuarios' => $users->items(),
+            'status' => 200,
+            'totalUsuarios' => $users->total(),
+            'totalPages' => $users->lastPage(),
+            'currentPage' => $users->currentPage(),
+            'perPage' => $users->perPage(),
+        ];
+    }
+
+    public function show($id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return [
+                'message' => 'Usuario no encontrado',
+                'status' => 404
+            ];
+        }
+
+        return [
+            'user' => $user,
+            'status' => 200
+        ];
+    }
+
+    public function update($id, array $data)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return [
+                'message' => 'Usuario no encontrado',
+                'status' => 404
+            ];
+        }
+
+        if (isset($data['password'])) {
+            if (!Hash::check($data['current_password'], $user->password)) {
+                return [
+                    'message' => 'La contraseña actual no es correcta',
+                    'status' => 401
+                ];
+            }
+            $data['password'] = Hash::make($data['password']);
+        }
+
+        $user->fill($data);
+        $user->save();
+
+        return [
+            'message' => 'Usuario actualizado correctamente',
+            'status' => 200
+        ];
+    }
+
+    public function destroy($id)
+    {
+        $user = User::find($id);
+        
+        if (!$user) {
+            return [
+                'message' => 'Usuario no encontrado',
+                'status' => 404
+            ];
+        }
+
+        $user->delete();
+
+        return [
+            'message' => 'Usuario eliminado con éxito',
+            'status' => 200
+        ];
+    }
 }
