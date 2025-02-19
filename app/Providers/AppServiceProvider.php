@@ -3,12 +3,15 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use App\Services\TurnoServiceInterface;
-use App\Services\TurnoService;
+use App\Services\Interface\TurnoServiceInterface;
+use App\Services\Implementation\TurnoService;
 use App\Services\Interface\CanchaServiceInterface;
 use App\Services\Implementation\CanchaService;
 use App\Services\Interface\HorarioServiceInterface;
 use App\Services\Implementation\HorarioService;
+use App\Services\Interface\DisponibilidadServiceInterface;
+use App\Services\Implementation\DisponibilidadService;
+
 
 
 class AppServiceProvider extends ServiceProvider
@@ -21,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TurnoServiceInterface::class, TurnoService::class);
         $this->app->bind(CanchaServiceInterface::class, CanchaService::class);
         $this->app->bind(HorarioServiceInterface::class, HorarioService::class);
+        $this->app->bind(DisponibilidadServiceInterface::class, DisponibilidadService::class);
     }
 
     /**
