@@ -11,6 +11,10 @@ use App\Services\Interface\HorarioServiceInterface;
 use App\Services\Implementation\HorarioService;
 use App\Services\Interface\DisponibilidadServiceInterface;
 use App\Services\Implementation\DisponibilidadService;
+use App\Services\Interface\BloqueoTemporalServiceInterface;
+use App\Services\Implementation\BloqueoTemporalService;
+use App\Services\Interface\ConfigServiceInterface;
+use App\Services\Implementation\ConfigService;
 
 
 
@@ -25,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CanchaServiceInterface::class, CanchaService::class);
         $this->app->bind(HorarioServiceInterface::class, HorarioService::class);
         $this->app->bind(DisponibilidadServiceInterface::class, DisponibilidadService::class);
+        $this->app->bind(BloqueoTemporalServiceInterface::class, BloqueoTemporalService::class);
+        $this->app->bind(ConfigServiceInterface::class, ConfigService::class);
     }
 
     /**
