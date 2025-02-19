@@ -17,7 +17,7 @@ RUN a2enmod rewrite
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 #  Copiamos el archivo de configuración de Apache
-# COPY ./000-default.conf /etc/apache2/sites-available/000-default.conf
+COPY ./000-default.conf /etc/apache2/sites-available/000-default.conf
 
 # RUN a2ensite 000-default.conf && service apache2 reload
 
