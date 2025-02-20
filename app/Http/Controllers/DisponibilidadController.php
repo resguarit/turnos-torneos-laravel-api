@@ -189,4 +189,21 @@ class disponibilidadController extends Controller
         return response()->json(['canchas' => $result, 'status' => 200], 200);
     }
 
+    public function getDiasNoDisponibles()
+    {
+        $inactiveDays = [];
+
+        for ($i = 0; $i < 7; $i++) {
+            $horarios = Horario::where('dia', $this->getNombreDiaSemana($i))->get();
+
+            if ($horarios->isEmpty() || $horarios->every(function ($horario) {
+                return !$horario->activo;
+            })) {
+                $inactiveDays[] = $i;
+            }
+        }
+
+        return response()->json(['inactiveDays' => $inactiveDays, 'status' => 200], 200);
+    }
+
 }
