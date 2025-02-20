@@ -1,17 +1,18 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CanchaController;
-use App\Http\Controllers\HorarioController;
-use App\Http\Controllers\BloqueoTemporalController;
-use App\Http\Controllers\DisponibilidadController;
-use App\Http\Controllers\ConfigController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\GoogleAuthController;
-use App\Http\Controllers\TurnoController;
+use App\Http\Controllers\Api\CanchaController;
+use App\Http\Controllers\Api\HorarioController;
+use App\Http\Controllers\Api\BloqueoTemporalController;
+use App\Http\Controllers\Api\DisponibilidadController;
+use App\Http\Controllers\Api\ConfigController;
+use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Api\TurnoController;
 
-
+Route::post('/login', [UserController::class, 'login']);
+Route::post('/register', [UserController::class, 'register']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     
@@ -48,6 +49,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
+    Route::get('/horarios-extremos-activos', [HorarioController::class, 'getHorariosExtremosActivos']);
+
     
     Route::post('/configurar-horarios', [ConfigController::class, 'configurarHorarios']);
     Route::put('/deshabilitar-franja-horaria', [HorarioController::class, 'deshabilitarFranjaHoraria']);
@@ -64,9 +67,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 }); 
 
-Route::post('/login', [UserController::class, 'login']);
-Route::post('/register', [UserController::class, 'register']);
-
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
 Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
@@ -77,5 +77,4 @@ Route::get('/canchas/{id}', [CanchaController::class, 'show']);
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::post('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
-Route::get('/horarios-extremos-activos', [HorarioController::class, 'getHorariosExtremosActivos']);
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Implementation;
 
 use App\Models\Turno;
 use App\Models\TurnoModificacion;
@@ -15,6 +15,8 @@ use App\Http\Resources\TurnoResource;
 use App\Models\Horario;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\TurnoCancelacion;
+use App\Services\Interface\TurnoServiceInterface;
+
 
 class TurnoService implements TurnoServiceInterface
 {

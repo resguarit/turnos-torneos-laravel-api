@@ -1,57 +1,59 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Services\Implementation;
 
 use App\Models\Horario;
+use App\Services\Interface\HorarioServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
-class HorarioController extends Controller
+class HorarioService implements HorarioServiceInterface
 {
-
-    public function index()
+    public function getHorarios()
     {
-        // $user = Auth::user();
-
-        // abort_unless( $user->tokenCan('horarios:show') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
-        
         $horarios = Horario::all();
         
-        $data = [
-
+        return response()->json([
             'horarios' => $horarios,
             'status' => 200
-
-        ];
-
-        return response()->json($data,200);
+        ], 200);
     }
 
-    public function store(Request $request)
+    public function showHorario($id)
     {
-        // $user = Auth::user();
+        try {
+            $horario = Horario::findOrFail($id);
+            return response()->json([
+                'horario' => $horario,
+                'status' => 200
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Horario no encontrado',
+                'status' => 404
+            ], 404);
+        }
+    }
 
-        // abort_unless( $user->tokenCan('horarios:create') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
-
+    public function storeHorario(Request $request)
+    {
         $validator = Validator::make($request->all(), [
             'hora_inicio' => 'required|date_format:H:i|unique:horarios,hora_inicio',  
             'hora_fin' => 'required|date_format:H:i|after:hora_inicio|unique:horarios,hora_fin',
-            'dia' => 'requiered|in:l,m,x,j,v,s,d',
+            'dia' => 'required|in:l,m,x,j,v,s,d',
             'activo' => 'required|boolean',
         ]);
 
         if ($validator->fails()) {
-            $data = [
+            return response()->json([
                 'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 422
-            ];
-            return response()->json($data, 422);
+            ], 422);
         }
 
         $horario = Horario::create([
@@ -62,94 +64,62 @@ class HorarioController extends Controller
         ]);
 
         if (!$horario) {
-            $data = [
+            return response()->json([
                 'message' => 'Error al crear el horario',
                 'status' => 500
-            ];
-            return response()->json($data, 500);
+            ], 500);
         }
-        $data = [
+
+        return response()->json([
             'message' => 'Horario creado correctamente',
             'horario' => $horario,
             'status' => 201
-        ];
-
-        return response()->json($data, 201);
+        ], 201);
     }
 
-    public function show($id)
+    public function deleteHorario($id)
     {
-        // $user = Auth::user();
-
-        // abort_unless( $user->tokenCan('horarios:showOne') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
-
-        try {
-            $horario = Horario::findOrFail($id);
-
-            $data = [
-                'horario' => $horario,
-                'status' => 200
-            ];
-            return response()->json($data, 200);
-        } catch (ModelNotFoundException $e) {
-            $data = [
-                'message' => 'Horario no encontrado',
-                'status' => 404
-            ];
-            return response()->json($data, 404);
-        }
-    }    
-
-    public function destroy($id)
-    {
-        // $user = Auth::user();
-
-        // abort_unless( $user->tokenCan('horarios:delete') || $user->rol === 'admin',403, 'No tienes permisos para realizar esta acción');
-
         try {
             $horario = Horario::findOrFail($id);
             $horario->delete();
 
-            $data = [
+            return response()->json([
                 'message' => 'Horario eliminado correctamente',
                 'status' => 200
-            ];
-            return response()->json($data, 200);
+            ], 200);
         } catch (ModelNotFoundException $e) {
-            $data = [
+            return response()->json([
                 'message' => 'Horario no encontrado',
                 'status' => 404
-            ];
-            return response()->json($data, 404);
+            ], 404);
         }
     }
 
-    public function getPorDiaSemana(Request $request)
+    public function getHorariosPorDiaSemana(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
         ]);
 
         if ($validator->fails()) {
-            $data = [
+            return response()->json([
                 'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 422
-            ];
-            return response()->json($data, 422);
+            ], 422);
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
         $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
 
-        $horarios = Horario::where('dia', $diaSemana)->where('activo', true)->get();
+        $horarios = Horario::where('dia', $diaSemana)
+            ->where('activo', true)
+            ->get();
 
-        $data = [
+        return response()->json([
             'horarios' => $horarios,
             'status' => 200
-        ];
-
-        return response()->json($data, 200);
+        ], 200);
     }
 
     private function getNombreDiaSemana($diaSemana)
@@ -279,23 +249,14 @@ class HorarioController extends Controller
 
     public function showFranjasHorariasNoDisponibles()
     {
-        $user = Auth::user();
-
-        abort_unless($user->tokenCan('franjasNoDisponible:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-
-        // Obtener todos los horarios inactivos
         $inactivos = Horario::where('activo', false)->get();
-
-        // Agrupar los horarios inactivos por día
         $agrupadosPorDia = $inactivos->groupBy('dia');
 
-        // Procesar cada día
         $result = $agrupadosPorDia->map(function ($itemsInactivos, $dia) {
-            $totalDia = Horario::where('dia', $dia)->count();            // todos los horarios del día
-            $inactivosDia = $itemsInactivos->count();                    // horarios inactivos del día
+            $totalDia = Horario::where('dia', $dia)->count();
+            $inactivosDia = $itemsInactivos->count();
 
             if ($inactivosDia === $totalDia) {
-                // Si todos los horarios del día están inactivos, devolver solo los extremos
                 return [[
                     'dia' => $dia,
                     'hora_inicio' => $itemsInactivos->min('hora_inicio'),
@@ -303,7 +264,6 @@ class HorarioController extends Controller
                     'completamente_inactivo' => true
                 ]];
             } else {
-                // Si hay horarios activos, devolver todos los horarios inactivos
                 return $itemsInactivos->map(function ($horario) {
                     return [
                         'dia' => $horario->dia,
@@ -326,12 +286,10 @@ class HorarioController extends Controller
         $dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
         
         $result = collect($dias)->map(function($dia) {
-            // Get current active schedules for the day
             $horariosActivos = Horario::where('dia', $dia)
                 ->where('activo', true)
                 ->get();
     
-            // If there are active schedules, return their min and max times
             if ($horariosActivos->isNotEmpty()) {
                 return [
                     'dia' => $dia,
@@ -341,7 +299,6 @@ class HorarioController extends Controller
                 ];
             }
     
-            // If no active schedules, get the last modified schedules for this day
             $ultimosHorarios = Horario::where('dia', $dia)
                 ->orderBy('updated_at', 'desc')
                 ->orderBy('hora_inicio', 'asc')
@@ -349,7 +306,6 @@ class HorarioController extends Controller
                 ->groupBy('updated_at')
                 ->first();
     
-            // If there are last modified schedules, return their extreme times
             if ($ultimosHorarios && $ultimosHorarios->isNotEmpty()) {
                 return [
                     'dia' => $dia,
@@ -359,7 +315,6 @@ class HorarioController extends Controller
                 ];
             }
     
-            // If no schedules at all, return null values
             return [
                 'dia' => $dia,
                 'hora_inicio' => null,

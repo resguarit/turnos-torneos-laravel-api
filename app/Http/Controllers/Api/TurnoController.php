@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Resources\TurnoResource;
 use App\Models\Horario;
@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\BloqueoTemporal;
 use Carbon\Carbon;
 use App\Models\TurnoModificacion;
-use App\Services\TurnoServiceInterface;
+use App\Services\Interface\TurnoServiceInterface;
+use App\Http\Controllers\Controller;
 
 class TurnoController extends Controller
 {

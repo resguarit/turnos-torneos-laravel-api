@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Auth;
 
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Http\Request;
