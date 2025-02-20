@@ -2,7 +2,7 @@
 
 namespace App\Services\Implementation;
 
-use App\Services\Interfaces\UserServiceInterface;
+use App\Services\Interface\UserServiceInterface;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 

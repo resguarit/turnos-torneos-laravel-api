@@ -16,6 +16,7 @@ use App\Models\BloqueoTemporal;
 use Carbon\Carbon;
 use App\Models\TurnoModificacion;
 use App\Services\Interface\TurnoServiceInterface;
+use App\Http\Controllers\Controller;
 
 class TurnoController extends Controller
 {

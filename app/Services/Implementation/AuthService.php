@@ -4,7 +4,7 @@ namespace App\Services\Implementation;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use App\Services\Interfaces\AuthServiceInterface;
+use App\Services\Interface\AuthServiceInterface;
 
 class AuthService implements AuthServiceInterface
 {

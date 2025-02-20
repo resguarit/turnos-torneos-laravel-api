@@ -17,9 +17,9 @@ use App\Services\Interface\ConfigServiceInterface;
 use App\Services\Implementation\ConfigService;
 use App\Services\Interface\DashboardServiceInterface;
 use App\Services\Implementation\DashboardService;
-use App\Services\Interfaces\UserServiceInterface;
+use App\Services\Interface\UserServiceInterface;
 use App\Services\Implementation\UserService;
-use App\Services\Interfaces\AuthServiceInterface;
+use App\Services\Interface\AuthServiceInterface;
 use App\Services\Implementation\AuthService;
 
 class AppServiceProvider extends ServiceProvider

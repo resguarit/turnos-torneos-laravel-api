@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\Interface\CanchaServiceInterface;
+use App\Http\Controllers\Controller;
 
 class CanchaController extends Controller
 {

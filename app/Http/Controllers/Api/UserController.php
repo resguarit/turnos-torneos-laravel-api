@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\Interfaces\UserServiceInterface;
-use App\Services\Interfaces\AuthServiceInterface;
+use App\Services\Interface\UserServiceInterface;
+use App\Services\Interface\AuthServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard;
 
-use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Controller;
 use App\Services\Interface\DashboardServiceInterface;
 
 class DashboardController extends Controller
