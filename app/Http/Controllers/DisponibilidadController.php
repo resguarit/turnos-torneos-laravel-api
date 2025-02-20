@@ -74,6 +74,7 @@ class disponibilidadController extends Controller
         $canchasCount = Cancha::where('activa', true)->count();
         $horarios = Horario::where('activo', true)
                             ->where('dia', $diaSemana) // Filtrar por día de la semana
+                            ->orderBy('hora_inicio')
                             ->get();
 
         $reservas = Turno::whereDate('fecha_turno', $fecha)
