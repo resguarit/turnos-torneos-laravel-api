@@ -5,6 +5,8 @@ namespace App\Services\Implementation;
 use App\Services\Interface\UserServiceInterface;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class UserService implements UserServiceInterface
 {
@@ -159,6 +161,50 @@ class UserService implements UserServiceInterface
         return [
             'message' => 'Usuario eliminado con éxito',
             'status' => 200
+        ];
+    }
+
+    public function index(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'limit' => 'integer|min:1',
+            'sortBy' => 'string|in:name,email,created_at,dni,telefono',
+            'order' => 'string|in:asc,desc',
+            'page' => 'integer|min:1',
+            'searchType' => 'string|nullable|in:name,email,dni,telefono',
+            'searchTerm' => 'string|nullable',
+        ]);
+
+        if ($validator->fails()) {
+            return [
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 422
+            ];
+        }
+
+        $perPage = $request->query('limit', 10);
+        $sortBy = $request->query('sortBy', 'created_at');
+        $order = $request->query('order', 'desc');
+        $page = $request->query('page', 1);
+        $searchType = $request->query('searchType');
+        $searchTerm = $request->query('searchTerm');
+
+        $query = User::orderBy($sortBy, $order);
+
+        if ($searchType && $searchTerm) {
+            $query->where($searchType, 'like', "%{$searchTerm}%");
+        }
+
+        $users = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'usuarios' => $users->items(),
+            'status' => 200,
+            'totalUsuarios' => $users->total(),
+            'totalPages' => $users->lastPage(),
+            'currentPage' => $users->currentPage(),
+            'perPage' => $users->perPage(),
         ];
     }
 }

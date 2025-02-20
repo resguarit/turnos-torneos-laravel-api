@@ -153,4 +153,13 @@ class UserController extends Controller
             'status' => 200
         ], 200);
     }
+
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        abort_unless($user->tokenCan('usuario:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+        
+        $result = $this->userService->index($request);
+        return response()->json($result, $result['status'] ?? 200);
+    }
 }
