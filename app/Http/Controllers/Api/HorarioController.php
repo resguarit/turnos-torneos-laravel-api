@@ -27,9 +27,6 @@ class HorarioController extends Controller
 
     public function show($id)
     {
-        $user = Auth::user();
-        abort_unless($user->tokenCan('horarios:showOne') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-        
         return $this->horarioService->showHorario($id);
     }
 
