@@ -73,11 +73,7 @@ class DisponibilidadService implements DisponibilidadServiceInterface
 
         $canchasCount = Cancha::where('activa', true)->count();
         $horarios = Horario::where('activo', true)
-<<<<<<<< HEAD:app/Http/Controllers/DisponibilidadController.php
-                            ->where('dia', $diaSemana) // Filtrar por día de la semana
-========
                             ->where('dia', $diaSemana)
->>>>>>>> mariano:app/Services/Implementation/DisponibilidadService.php
                             ->orderBy('hora_inicio')
                             ->get();
 
@@ -194,9 +190,6 @@ class DisponibilidadService implements DisponibilidadServiceInterface
 
         return response()->json(['inactiveDays' => $inactiveDays, 'status' => 200], 200);
     }
-
-<<<<<<<< HEAD:app/Http/Controllers/DisponibilidadController.php
-========
     private function getNombreDiaSemana($diaSemana)
     {
         $dias = [
@@ -211,5 +204,4 @@ class DisponibilidadService implements DisponibilidadServiceInterface
 
         return $dias[$diaSemana];
     }
->>>>>>>> mariano:app/Services/Implementation/DisponibilidadService.php
 }
