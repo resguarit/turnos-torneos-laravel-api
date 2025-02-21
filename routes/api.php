@@ -60,6 +60,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/usuarios', [UserController::class, 'index']);
     Route::get('/usuarios/{id}', [UserController::class, 'show']);
     Route::patch('/usuarios/{id}', [UserController::class, 'update']);
+    Route::delete('/usuarios/{id}', [UserController::class, 'destroy']);
     Route::post('/create-user', [UserController::class, 'createUser']);
     Route::post('/logout', [UserController::class, 'logout']);
 

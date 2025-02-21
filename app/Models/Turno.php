@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TurnoEstado;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
@@ -18,8 +19,13 @@ class Turno extends Model
 
     protected $hidden = ['created_at', 'updated_at'];
 
-    
     protected $dates = ['fecha_turno', 'fecha_reserva', 'deleted_at'];
+
+    protected $casts = [
+        'estado' => TurnoEstado::class,
+        'fecha_turno' => 'datetime',
+        'fecha_reserva' => 'datetime'
+    ];
 
     public function getFechaTurnoAttribute($value)
     {

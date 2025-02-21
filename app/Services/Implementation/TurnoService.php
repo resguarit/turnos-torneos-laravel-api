@@ -16,7 +16,8 @@ use App\Models\Horario;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\TurnoCancelacion;
 use App\Services\Interface\TurnoServiceInterface;
-
+use App\Enums\TurnoEstado;
+use Illuminate\Validation\Rule;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -97,7 +98,7 @@ class TurnoService implements TurnoServiceInterface
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
-            'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
+            'estado' => ['required', Rule::enum(TurnoEstado::class)],
         ]);
 
         if ($validator->fails()) {
@@ -178,7 +179,7 @@ class TurnoService implements TurnoServiceInterface
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
-            'estado' => 'required|in:Pendiente,Señado,Pagado,Cancelado',
+            'estado' => ['required', Rule::enum(TurnoEstado::class)],
         ]);
 
         $horario = Horario::find($request->horario_id);
@@ -293,7 +294,7 @@ class TurnoService implements TurnoServiceInterface
             'fecha_turno' => 'sometimes|date',
             'horario_id' => 'sometimes|required_with:fecha_turno|exists:horarios,id',
             'cancha_id' => 'sometimes|required_with:fecha_turno|exists:canchas,id',
-            'estado' => 'sometimes|in:Pendiente,Señado,Pagado,Cancelado',
+            'estado' => ['sometimes', Rule::enum(TurnoEstado::class)],
             'motivo' => 'nullable|string|max:255'
         ]); 
 
@@ -350,7 +351,7 @@ class TurnoService implements TurnoServiceInterface
                     $precioDistinto = $nuevaCancha->precio_por_hora != $turno->monto_total;
     
                     if ($precioDistinto) {
-                        if ($turno->estado === 'Pagado') {
+                        if ($turno->estado === TurnoEstado::PAGADO) {
                             DB::rollBack();
                             return response()->json([
                                 'message' => 'No se puede cambiar a una cancha con diferente precio en un turno pagado',
@@ -358,7 +359,7 @@ class TurnoService implements TurnoServiceInterface
                             ], 400);
                         }
     
-                        if ($turno->estado === 'Pendiente') {
+                        if ($turno->estado === TurnoEstado::PENDIENTE) {
                             $turno->monto_total = $nuevaCancha->precio_por_hora;
                             $turno->monto_seña = $nuevaCancha->seña;
                         } elseif ($turno->estado === 'Señado') {
@@ -627,7 +628,7 @@ class TurnoService implements TurnoServiceInterface
 
         DB::beginTransaction();
         try {
-            $turno->estado = 'Cancelado';
+            $turno->estado = TurnoEstado::PENDIENTE;
             $turno->save();
 
             // Registro de auditoria para la cancelacion
