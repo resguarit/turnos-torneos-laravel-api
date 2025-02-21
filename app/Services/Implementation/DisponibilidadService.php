@@ -74,6 +74,7 @@ class DisponibilidadService implements DisponibilidadServiceInterface
         $canchasCount = Cancha::where('activa', true)->count();
         $horarios = Horario::where('activo', true)
                             ->where('dia', $diaSemana)
+                            ->orderBy('hora_inicio')
                             ->get();
 
         $reservas = Turno::whereDate('fecha_turno', $fecha)
@@ -171,6 +172,23 @@ class DisponibilidadService implements DisponibilidadServiceInterface
         }
 
         return response()->json(['canchas' => $result, 'status' => 200], 200);
+    }
+
+    public function getDiasNoDisponibles()
+    {
+        $inactiveDays = [];
+
+        for ($i = 0; $i < 7; $i++) {
+            $horarios = Horario::where('dia', $this->getNombreDiaSemana($i))->get();
+
+            if ($horarios->isEmpty() || $horarios->every(function ($horario) {
+                return !$horario->activo;
+            })) {
+                $inactiveDays[] = $i;
+            }
+        }
+
+        return response()->json(['inactiveDays' => $inactiveDays, 'status' => 200], 200);
     }
 
     private function getNombreDiaSemana($diaSemana)

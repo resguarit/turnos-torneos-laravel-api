@@ -66,6 +66,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
+Route::get('/disponibilidad/dias', [DisponibilidadController::class, 'getDiasNoDisponibles']);
 Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 

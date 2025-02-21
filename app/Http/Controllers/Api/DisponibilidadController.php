@@ -29,4 +29,9 @@ class DisponibilidadController extends Controller
     {
         return $this->disponibilidadService->getCanchasPorHorarioFecha($request);
     }
+
+    public function getDiasNoDisponibles()
+    {
+        return $this->disponibilidadService->getDiasNoDisponibles();
+    }
 }

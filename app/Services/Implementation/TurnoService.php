@@ -63,11 +63,16 @@ class TurnoService implements TurnoServiceInterface
             });
         }
 
-        $turnos = $query->with(['usuario', 'cancha', 'horario'])->get();
+        $turnos = $query->with(['usuario', 'cancha', 'horario'])
+        ->join('horarios', 'turnos.horario_id', '=', 'horarios.id')
+        ->orderBy('horarios.hora_inicio', 'asc')
+        ->select('turnos.*')
+        ->get();
 
         $data = [
             'turnos' => TurnoResource::collection($turnos),
-            'status' => 200
+            'status' => 200,
+            'prueba' => 'asd'   
         ];
 
         return response()->json($data, 200);
