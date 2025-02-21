@@ -63,8 +63,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/create-user', [UserController::class, 'createUser']);
     Route::post('/logout', [UserController::class, 'logout']);
 
-    Route::post('/turnos/turnounico', [TurnoController::class, 'storeTurnoUnico']);
-
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
