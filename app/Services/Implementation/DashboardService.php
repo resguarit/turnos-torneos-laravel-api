@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Services\Implementation;
 
-use Illuminate\Http\Request;
 use App\Models\Turno;
-use Carbon\Carbon;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use App\Models\Cancha;
 use App\Models\Horario;
+use App\Services\Interface\DashboardServiceInterface;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
-class DashboardController extends Controller
+class DashboardService implements DashboardServiceInterface
 {
     public function totalReservas()
     {
@@ -29,18 +29,16 @@ class DashboardController extends Controller
         if ($totalReservasAnterior > 0) {
             $cambio = (($totalReservasActual - $totalReservasAnterior) / $totalReservasAnterior) * 100;
         } else {
-            $cambio = $totalReservasActual * 100; 
+            $cambio = $totalReservasActual * 100;
         }
 
         $tendencia = $cambio > 0 ? 'subida' : ($cambio < 0 ? 'bajada' : 'neutral');
 
-        $response = [
+        return response()->json([
             'total_reservas' => $totalReservasActual,
             'cambio' => number_format(abs($cambio), 2),
             'tendencia' => $tendencia
-        ];
-
-        return response()->json($response, 200);
+        ], 200);
     }
 
     public function usuariosActivos()
@@ -60,18 +58,16 @@ class DashboardController extends Controller
         if ($usuariosActivosAnterior > 0) {
             $cambio = (($usuariosActivosActual - $usuariosActivosAnterior) / $usuariosActivosAnterior) * 100;
         } else {
-            $cambio = $usuariosActivosActual * 100; 
+            $cambio = $usuariosActivosActual * 100;
         }
 
         $tendencia = $cambio > 0 ? 'subida' : ($cambio < 0 ? 'bajada' : 'neutral');
 
-        $response = [
+        return response()->json([
             'usuarios_activos' => $usuariosActivosActual,
             'cambio' => number_format(abs($cambio), 2),
             'tendencia' => $tendencia
-        ];
-
-        return response()->json($response, 200);
+        ], 200);
     }
 
     public function ingresos()
@@ -95,30 +91,26 @@ class DashboardController extends Controller
         if ($ingresosAnterior > 0) {
             $cambio = (($ingresosActual - $ingresosAnterior) / $ingresosAnterior) * 100;
         } else {
-            $cambio = $ingresosActual * 100; 
+            $cambio = $ingresosActual * 100;
         }
 
         $tendencia = $cambio > 0 ? 'subida' : ($cambio < 0 ? 'bajada' : 'neutral');
 
-        $response = [
+        return response()->json([
             'ingresos' => number_format($ingresosActual, 2),
             'cambio' => number_format($cambio, 2),
             'tendencia' => $tendencia
-        ];
-
-        return response()->json($response, 200);
+        ], 200);
     }
 
     public function tasaOcupacion()
     {
         $fechaHoy = Carbon::today()->startOfDay();
-
         $turnosHoy = Turno::whereDate('fecha_turno', $fechaHoy)
             ->where('estado', '!=', 'Cancelado')
             ->count();
 
         $canchasCount = Cancha::where('activa', true)->count();
-
         $diaSemana = $fechaHoy->dayOfWeek;
         $horariosCount = Horario::where('activo', true)
             ->where('dia', $this->getNombreDiaSemana($diaSemana))
@@ -134,43 +126,26 @@ class DashboardController extends Controller
         $turnosAyer = Turno::whereDate('fecha_turno', $fechaAyer)
             ->where('estado', '!=', 'Cancelado')
             ->count();
-        
-            if ($turnosAyer == 0 || ($canchasCount * $horariosCount) == 0) {
-                $tasaOcupacionAnterior = 0;
-            } else {
-                $tasaOcupacionAnterior = ($turnosAyer / ($canchasCount * $horariosCount)) * 100;
-            }
-        
+
+        if ($turnosAyer == 0 || ($canchasCount * $horariosCount) == 0) {
+            $tasaOcupacionAnterior = 0;
+        } else {
+            $tasaOcupacionAnterior = ($turnosAyer / ($canchasCount * $horariosCount)) * 100;
+        }
+
         if ($tasaOcupacionAnterior > 0) {
             $cambio = (($tasaOcupacionActual - $tasaOcupacionAnterior) / $tasaOcupacionAnterior) * 100;
         } else {
-            $cambio = $tasaOcupacionActual * 100; // Si no hay ocupación el día anterior, el cambio es el total actual
+            $cambio = $tasaOcupacionActual * 100;
         }
 
         $tendencia = $cambio > 0 ? 'subida' : ($cambio < 0 ? 'bajada' : 'neutral');
 
-        $response = [
+        return response()->json([
             'tasa_ocupacion' => number_format($tasaOcupacionActual, 2),
             'cambio' => number_format(abs($cambio)),
             'tendencia' => $tendencia
-        ];
-
-        return response()->json($response, 200);
-    }
-
-    private function getNombreDiaSemana($diaSemana)
-    {
-        $dias = [
-            0 => 'domingo',
-            1 => 'lunes',
-            2 => 'martes',
-            3 => 'miércoles',
-            4 => 'jueves',
-            5 => 'viernes',
-            6 => 'sábado'
-        ];
-
-        return $dias[$diaSemana];
+        ], 200);
     }
 
     public function canchaMasPopular()
@@ -183,19 +158,17 @@ class DashboardController extends Controller
 
         if ($canchaMasPopular) {
             $cancha = Cancha::find($canchaMasPopular->cancha_id);
-            $response = [
+            return response()->json([
                 'cancha_id' => $cancha->id,
                 'nro' => $cancha->nro,
                 'tipo' => $cancha->tipo_cancha,
                 'total_reservas' => $canchaMasPopular->total_reservas
-            ];
-        } else {
-            $response = [
-                'message' => 'No se encontraron reservas'
-            ];
+            ], 200);
         }
 
-        return response()->json($response, 200);
+        return response()->json([
+            'message' => 'No se encontraron reservas'
+        ], 200);
     }
 
     public function horasPico()
@@ -206,7 +179,7 @@ class DashboardController extends Controller
             ->with('horario')
             ->get();
 
-         $horasReservadas = $turnosDelMes->groupBy(function ($turno) {
+        $horasReservadas = $turnosDelMes->groupBy(function ($turno) {
             return $turno->horario->hora_inicio . ' - ' . $turno->horario->hora_fin;
         })->map(function ($group) {
             return $group->count();
@@ -215,12 +188,10 @@ class DashboardController extends Controller
         $horaPico = $horasReservadas->sortDesc()->keys()->first();
         $totalReservas = $horasReservadas->sortDesc()->first();
 
-        $response = [
+        return response()->json([
             'hora_pico' => $horaPico,
             'total_reservas' => $totalReservas
-        ];
-
-        return response()->json($response, 200);
+        ], 200);
     }
 
     public function reservasPorMes()
@@ -247,5 +218,20 @@ class DashboardController extends Controller
         }
 
         return response()->json($response, 200);
+    }
+
+    private function getNombreDiaSemana($diaSemana)
+    {
+        $dias = [
+            0 => 'domingo',
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábado'
+        ];
+
+        return $dias[$diaSemana];
     }
 }

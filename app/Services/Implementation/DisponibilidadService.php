@@ -1,23 +1,23 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Services\Implementation;
 
-use Illuminate\Http\Request;
 use App\Models\Turno;
 use App\Models\Cancha;
 use App\Models\Horario;
+use App\Services\Interface\DisponibilidadServiceInterface;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
-class disponibilidadController extends Controller
+class DisponibilidadService implements DisponibilidadServiceInterface
 {
     public function getHorariosNoDisponibles()
     {
         $fecha_inicio = now()->startOfDay();
         $fecha_fin = now()->addDays(30)->endOfDay();
 
-        // Obtener solo canchas activas
         $canchas_count = Cancha::where('activa', true)->count();
 
         $turnos = Turno::select(
@@ -69,11 +69,15 @@ class disponibilidadController extends Controller
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
 
         $canchasCount = Cancha::where('activa', true)->count();
         $horarios = Horario::where('activo', true)
+<<<<<<<< HEAD:app/Http/Controllers/DisponibilidadController.php
                             ->where('dia', $diaSemana) // Filtrar por día de la semana
+========
+                            ->where('dia', $diaSemana)
+>>>>>>>> mariano:app/Services/Implementation/DisponibilidadService.php
                             ->orderBy('hora_inicio')
                             ->get();
 
@@ -112,21 +116,6 @@ class disponibilidadController extends Controller
         return response()->json(['horarios' => $result], 200);
     }
 
-    private function getNombreDiaSemana($diaSemana)
-    {
-        $dias = [
-            0 => 'domingo',
-            1 => 'lunes',
-            2 => 'martes',
-            3 => 'miércoles',
-            4 => 'jueves',
-            5 => 'viernes',
-            6 => 'sábado'
-        ];
-
-        return $dias[$diaSemana];
-    }
-
     public function getCanchasPorHorarioFecha(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -143,10 +132,10 @@ class disponibilidadController extends Controller
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
 
         $horario = Horario::where('id', $request->horario_id)
-                          ->where('dia', $diaSemana) // Filtrar por día de la semana
+                          ->where('dia', $diaSemana)
                           ->first();
 
         if (!$horario) {
@@ -179,8 +168,8 @@ class disponibilidadController extends Controller
             $result[] = [
                 'id' => $cancha->id,
                 'nro' => $cancha->nro,
-                'tipo' => $cancha->tipo_cancha, // Cambiar 'tipo_cancha' a 'tipo'
-                'disponible' => $disponible, // Agregar 'disponible',
+                'tipo' => $cancha->tipo_cancha,
+                'disponible' => $disponible,
                 'precio_por_hora' => $cancha->precio_por_hora,
                 'seña' => $cancha->seña
             ];
@@ -206,4 +195,21 @@ class disponibilidadController extends Controller
         return response()->json(['inactiveDays' => $inactiveDays, 'status' => 200], 200);
     }
 
+<<<<<<<< HEAD:app/Http/Controllers/DisponibilidadController.php
+========
+    private function getNombreDiaSemana($diaSemana)
+    {
+        $dias = [
+            0 => 'domingo',
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábado'
+        ];
+
+        return $dias[$diaSemana];
+    }
+>>>>>>>> mariano:app/Services/Implementation/DisponibilidadService.php
 }
