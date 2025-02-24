@@ -34,4 +34,9 @@ class DisponibilidadController extends Controller
     {
         return $this->disponibilidadService->getDiasNoDisponibles();
     }
+
+    public function getHorariosDisponiblesTurnosFijos(Request $request)
+    {
+        return $this->disponibilidadService->getHorariosDisponiblesTurnosFijos($request);
+    }
 }

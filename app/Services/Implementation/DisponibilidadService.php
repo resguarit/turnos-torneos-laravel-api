@@ -191,6 +191,93 @@ class DisponibilidadService implements DisponibilidadServiceInterface
         return response()->json(['inactiveDays' => $inactiveDays, 'status' => 200], 200);
     }
 
+    public function getHorariosDisponiblesTurnosFijos(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'fecha_inicio' => 'required|date_format:Y-m-d',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $fechaInicio = Carbon::createFromFormat('Y-m-d', $request->fecha_inicio);
+        $diaSemana = $this->getNombreDiaSemana($fechaInicio->dayOfWeek);
+        $canchasCount = Cancha::where('activa', true)->count();
+
+        // Obtener los horarios activos para ese día de la semana
+        $horarios = Horario::where('activo', true)
+                            ->where('dia', $diaSemana)
+                            ->orderBy('hora_inicio')
+                            ->get();
+
+        // Verificar disponibilidad para las próximas 4 semanas
+        $fechas = [];
+        for ($i = 0; $i < 4; $i++) {
+            $fecha = $fechaInicio->copy()->addWeeks($i);
+            $fechas[] = $fecha;
+        }
+
+        // Obtener todas las reservas existentes para esas fechas
+        $reservas = Turno::whereIn('fecha_turno', $fechas)
+                        ->where('estado', '!=', 'Cancelado')
+                        ->with('horario')
+                        ->get();
+
+        $noDisponibles = [];
+
+        // Contar reservas por horario y fecha
+        foreach ($reservas as $reserva) {
+            $horario = $reserva->horario;
+            $fecha = $reserva->fecha_turno->format('Y-m-d');
+            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
+
+            if (!isset($noDisponibles[$fecha][$intervalo])) {
+                $noDisponibles[$fecha][$intervalo] = 0;
+            }
+
+            $noDisponibles[$fecha][$intervalo]++;
+        }
+
+        // Preparar resultado
+        $result = [];
+        foreach ($horarios as $horario) {
+            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
+            $disponibleTodasLasSemanas = true;
+
+            $disponibilidadPorFecha = [];
+            foreach ($fechas as $fecha) {
+                $fechaStr = $fecha->format('Y-m-d');
+                $reservasEnHorario = $noDisponibles[$fechaStr][$intervalo] ?? 0;
+                $disponible = $reservasEnHorario < $canchasCount;
+                
+                if (!$disponible) {
+                    $disponibleTodasLasSemanas = false;
+                }
+
+                $disponibilidadPorFecha[$fechaStr] = $disponible;
+            }
+
+            $result[] = [
+                'id' => $horario->id,
+                'hora_inicio' => $horario->hora_inicio,
+                'hora_fin' => $horario->hora_fin,
+                'disponible' => $disponibleTodasLasSemanas,
+                'disponibilidad_por_fecha' => $disponibilidadPorFecha
+            ];
+        }
+
+        return response()->json([
+            'horarios' => $result,
+            'fechas' => $fechas,
+            'status' => 200
+        ], 200);
+    }
+
     private function getNombreDiaSemana($diaSemana)
     {
         $dias = [

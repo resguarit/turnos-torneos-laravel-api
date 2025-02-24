@@ -10,4 +10,5 @@ interface DisponibilidadServiceInterface
     public function getHorariosDisponiblesPorFecha(Request $request);
     public function getCanchasPorHorarioFecha(Request $request);
     public function getDiasNoDisponibles();
+    public function getHorariosDisponiblesTurnosFijos(Request $request);
 }
