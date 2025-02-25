@@ -220,56 +220,45 @@ class DisponibilidadService implements DisponibilidadServiceInterface
         $fechas = [];
         for ($i = 0; $i < 4; $i++) {
             $fecha = $fechaInicio->copy()->addWeeks($i);
-            $fechas[] = $fecha;
+            $fechas[] = $fecha->format('Y-m-d');
         }
 
         // Obtener todas las reservas existentes para esas fechas
         $reservas = Turno::whereIn('fecha_turno', $fechas)
                         ->where('estado', '!=', 'Cancelado')
-                        ->with('horario')
-                        ->get();
-
-        $noDisponibles = [];
-
-        // Contar reservas por horario y fecha
-        foreach ($reservas as $reserva) {
-            $horario = $reserva->horario;
-            $fecha = $reserva->fecha_turno->format('Y-m-d');
-            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
-
-            if (!isset($noDisponibles[$fecha][$intervalo])) {
-                $noDisponibles[$fecha][$intervalo] = 0;
-            }
-
-            $noDisponibles[$fecha][$intervalo]++;
-        }
+                        ->get()
+                        ->groupBy(function($turno) {
+                            return $turno->fecha_turno->format('Y-m-d') . '_' . $turno->horario_id;
+                        });
 
         // Preparar resultado
         $result = [];
         foreach ($horarios as $horario) {
-            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
             $disponibleTodasLasSemanas = true;
-
             $disponibilidadPorFecha = [];
+
             foreach ($fechas as $fecha) {
-                $fechaStr = $fecha->format('Y-m-d');
-                $reservasEnHorario = $noDisponibles[$fechaStr][$intervalo] ?? 0;
+                $key = $fecha . '_' . $horario->id;
+                $reservasEnHorario = isset($reservas[$key]) ? count($reservas[$key]) : 0;
                 $disponible = $reservasEnHorario < $canchasCount;
-                
+
                 if (!$disponible) {
                     $disponibleTodasLasSemanas = false;
                 }
 
-                $disponibilidadPorFecha[$fechaStr] = $disponible;
+                $disponibilidadPorFecha[$fecha] = $disponible;
             }
 
-            $result[] = [
-                'id' => $horario->id,
-                'hora_inicio' => $horario->hora_inicio,
-                'hora_fin' => $horario->hora_fin,
-                'disponible' => $disponibleTodasLasSemanas,
-                'disponibilidad_por_fecha' => $disponibilidadPorFecha
-            ];
+            // Solo incluir el horario si está disponible en todas las semanas
+            if ($disponibleTodasLasSemanas) {
+                $result[] = [
+                    'id' => $horario->id,
+                    'hora_inicio' => $horario->hora_inicio,
+                    'hora_fin' => $horario->hora_fin,
+                    'disponible' => $disponibleTodasLasSemanas,
+                    'disponibilidad_por_fecha' => $disponibilidadPorFecha
+                ];
+            }
         }
 
         return response()->json([
