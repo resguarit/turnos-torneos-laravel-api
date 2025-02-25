@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  laravel:
+    build: .
+    container_name: laravel_app
+    ports:
+      - "8000:80"  # Mapeamos el puerto 8000 del host al 80 del contenedor
+    volumes:
+      - .:/var/www/html  # Sincronizamos el código con el contenedor
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=rockandogolBD
+      - DB_USERNAME=root
+      - DB_PASSWORD=mariano10
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+      - REDIS_CLIENT=predis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mariano10
+      MYSQL_DATABASE: rockandogolBD
+    ports:
+      - "3307:3306"  
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:latest
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:

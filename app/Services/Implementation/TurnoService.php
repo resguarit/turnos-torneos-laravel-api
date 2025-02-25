@@ -4,7 +4,6 @@ namespace App\Services\Implementation;
 
 use App\Models\Turno;
 use App\Models\TurnoModificacion;
-use App\Models\BloqueoTemporal;
 use App\Models\Cancha;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +15,8 @@ use App\Models\Horario;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\TurnoCancelacion;
 use App\Services\Interface\TurnoServiceInterface;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 
 
 class TurnoService implements TurnoServiceInterface
@@ -139,14 +140,25 @@ class TurnoService implements TurnoServiceInterface
             ->where('estado', '!=', 'Cancelado') 
             ->first();
 
-        $ya_bloqueado = BloqueoTemporal::where('fecha', $request->fecha_turno)
-                                        ->where('horario_id', $request->horario_id)
-                                        ->where('cancha_id', $request->cancha_id)
-                                        ->where('usuario_id','!=', $user->id)
-                                        ->exists();
+        if ($turnoExistente) {
+            return response()->json([
+                'message' => 'El Turno no está disponible.',
+                'status' => 400
+            ], 400);
+        }
 
-        if ($turnoExistente || $ya_bloqueado) {
-            return response()->json(['message' => 'El Turno ya no está disponible.'], 400);
+        $clave = "bloqueo:{$request->fecha_turno}:{$request->horario_id}:{$request->cancha_id}";
+        $bloqueo = Redis::get($clave);
+
+        if ($bloqueo) {
+            $bloqueo = json_decode($bloqueo, true);
+
+            if($bloqueo['usuario_id'] !== $user->id){
+                return response()->json([
+                    'message' => 'El Turno ya no está disponible.',
+                    'status' => 400
+                ], 400);
+            }
         }
 
         // Crear una nueva reserva
@@ -168,6 +180,9 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 500
             ], 500);
         }
+
+        // Eliminar el bloqueo en Redis después de crear el turno
+        Redis::del($clave);
 
         return response()->json([
             'message' => 'Turno creado correctamente',
@@ -227,12 +242,6 @@ class TurnoService implements TurnoServiceInterface
                         'status' => 400
                     ], 400);
                 }
-
-                // Delete any existing temporary block
-                BloqueoTemporal::where('fecha', $fecha_turno_actual)
-                    ->where('horario_id', $request->horario_id)
-                    ->where('cancha_id', $request->cancha_id)
-                    ->delete();
 
                 $turno = Turno::create([
                     'fecha_turno' => $fecha_turno_actual,
@@ -336,16 +345,21 @@ class TurnoService implements TurnoServiceInterface
                     ->where('estado', '!=', 'Cancelado')
                     ->first();
 
-                $bloqueoExistente = BloqueoTemporal::where('fecha', $fecha_comparar)
-                    ->where('horario_id', $horario_comparar)
-                    ->where('cancha_id', $cancha_comparar)
-                    ->where('usuario_id', '!=', $turno->usuario_id)
-                    ->first();
-    
-                if($turnoExistente || $bloqueoExistente) {
+                $clave = "bloqueo:{$fecha_comparar}:{$horario_comparar}:{$cancha_comparar}";
+                $bloqueo = Redis::get($clave);
+
+                if ($bloqueo) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'Ya existe un turno o bloqueo para esa cancha en esta fecha y horario',
+                        'message' => 'El Turno esta bloqueado temporalmente.',
+                        'status' => 409
+                    ], 409);
+                }
+    
+                if($turnoExistente) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'El turno ya esta reservado',
                         'status' => 409
                     ], 409);
                 }

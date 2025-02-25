@@ -7,5 +7,6 @@ use Illuminate\Http\Request;
 interface BloqueoTemporalServiceInterface
 {
     public function bloquearHorario(Request $request);
-    public function cancelarBloqueo($id);
+    public function cancelarBloqueo(Request $request);
+    public function listarBloqueos();
 }

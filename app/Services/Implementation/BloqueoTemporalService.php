@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\EliminarBloqueo;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 
 class BloqueoTemporalService implements BloqueoTemporalServiceInterface
 {
@@ -29,95 +31,91 @@ class BloqueoTemporalService implements BloqueoTemporalServiceInterface
             ], 400);
         }
 
-        try {
-            DB::beginTransaction();
+        $clave = "bloqueo:{$request->fecha}:{$request->horario_id}:{$request->cancha_id}";
 
-            $ya_reservado = Turno::where('fecha_turno', $request->fecha)
-                ->where('horario_id', $request->horario_id)
-                ->where('cancha_id', $request->cancha_id)
-                ->where('estado', '!=', 'Cancelado')
-                ->exists();
+        // Verificar si el turno ya está reservado
+        $ya_reservado = Turno::where('fecha_turno', $request->fecha)
+            ->where('horario_id', $request->horario_id)
+            ->where('cancha_id', $request->cancha_id)
+            ->where('estado', '!=', 'Cancelado')
+            ->exists();
 
-            $ya_bloqueado = BloqueoTemporal::where('fecha', $request->fecha)
-                ->where('horario_id', $request->horario_id)
-                ->where('cancha_id', $request->cancha_id)
-                ->exists();
-
-            if ($ya_reservado || $ya_bloqueado) {
-                DB::rollBack();
-                return response()->json(['message' => 'El Turno ya no está disponible.'], 400);
-            }
-
-            $bloqueo = BloqueoTemporal::create([
-                'usuario_id' => Auth::id(),
-                'horario_id' => $request->horario_id,
-                'cancha_id' => $request->cancha_id,
-                'fecha' => $request->fecha,
-                'expira_en' => now()->setTimezone('America/Argentina/Buenos_Aires')->addMinutes(1),
-            ]);
-
-            EliminarBloqueo::dispatch($bloqueo->id)
-                ->delay(now()->setTimezone('America/Argentina/Buenos_Aires')->addMinutes(1));
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Bloqueo temporal creado con éxito.',
-                'bloqueo' => $bloqueo,
-                'status' => 201
-            ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Error al bloquear el horario.',
-                'error' => $e->getMessage(),
-                'status' => 500
-            ], 500);
+        if ($ya_reservado) {
+            return response()->json(['message' => 'El Turno ya no está disponible.'], 400);
         }
+
+        // Verificar si el turno ya está bloqueado en Redis
+        if (Redis::exists($clave)) {
+            return response()->json(['message' => 'El Turno esta siendo reservado por alguien mas.'], 400);
+        }
+
+        // Crear el bloqueo en Redis con un tiempo de expiración de 10 minutos
+        Redis::set($clave, json_encode([
+            'usuario_id' => Auth::id(),
+            'horario_id' => $request->horario_id,
+            'cancha_id' => $request->cancha_id,
+            'fecha' => $request->fecha,
+        ]));    
+
+        Redis::expire($clave, 180);
+
+        return response()->json([
+            'message' => 'Bloqueo temporal creado con éxito.',
+            'status' => 201
+        ], 201);
+
     }
 
-    public function cancelarBloqueo($id)
+    public function cancelarBloqueo(Request $request)
     {
-        try {
-            DB::beginTransaction();
-            
-            $bloqueo = BloqueoTemporal::lockForUpdate()
-                ->where('id', $id)
-                ->where('usuario_id', Auth::id())
-                ->first();
-
-            if (!$bloqueo) {
-                DB::rollBack();
-                return response()->json([
-                    'message' => 'No se encontró el bloqueo temporal',
-                    'status' => 404
-                ], 404);
-            }
-
-            $deleted = $bloqueo->delete();
-
-            if (!$deleted) {
-                DB::rollBack();
-                return response()->json([
-                    'message' => 'Error al eliminar el bloqueo temporal',
-                    'status' => 500
-                ], 500);
-            }
-
-            DB::commit();
+        $validator = Validator::make($request->all(), [
+            'fecha' => 'required|date',
+            'horario_id' => 'required|exists:horarios,id',
+            'cancha_id' => 'required|exists:canchas,id'
+        ]);
+        
+        if ($validator->fails()) {
             return response()->json([
-                'message' => 'Bloqueo temporal cancelado exitosamente',
-                'status' => 200
-            ], 200);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Error al cancelar el bloqueo temporal',
-                'error' => $e->getMessage(),
-                'status' => 500
-            ], 500);
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
         }
+
+        $clave = "bloqueo:{$request->fecha}:{$request->horario_id}:{$request->cancha_id}";
+
+        // Verificar si el bloqueo existe
+        if (!Redis::exists($clave)) {
+            return response()->json([
+                'message' => 'No hay un bloqueo activo para este turno.',
+                'status' => '404'
+            ], 404);
+        }
+
+        // Eliminar el bloqueo de Redis
+        Redis::del($clave);
+
+        return response()->json([
+            'message' => 'Bloqueo cancelado con éxito.',
+            'status' => 200
+        ], 200);
+    }
+
+    public function listarBloqueos()
+    {
+        $claves = Redis::keys('bloqueo:*');
+    
+        // Recuperar los valores de cada clave
+        $bloqueos = [];
+        foreach ($claves as $clave) {
+            $bloqueos[] = [
+                'clave' => $clave,
+                'valor' => json_decode(Redis::get($clave), true),
+            ];
+        }
+    
+        return response()->json([
+            'bloqueos' => $bloqueos,
+        ]);
     }
 }

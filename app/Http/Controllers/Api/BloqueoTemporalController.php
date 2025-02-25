@@ -24,11 +24,19 @@ class BloqueoTemporalController extends Controller
         return $this->bloqueoTemporalService->bloquearHorario($request);
     }
 
-    public function cancelarBloqueo($id)
+    public function cancelarBloqueo(Request $request)
     {
         $user = Auth::user();
         abort_unless($user->tokenCan('turnos:cancelarBloqueo') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
         
-        return $this->bloqueoTemporalService->cancelarBloqueo($id);
+        return $this->bloqueoTemporalService->cancelarBloqueo($request);
+    }
+
+    public function listarBloqueos()
+    {
+        $user = Auth::user();
+        abort_unless($user->tokenCan('turnos:cancelarBloqueo') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        return $this->bloqueoTemporalService->listarBloqueos();
     }
 }
