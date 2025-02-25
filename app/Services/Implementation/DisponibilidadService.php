@@ -167,7 +167,8 @@ class DisponibilidadService implements DisponibilidadServiceInterface
                 'tipo' => $cancha->tipo_cancha,
                 'disponible' => $disponible,
                 'precio_por_hora' => $cancha->precio_por_hora,
-                'seña' => $cancha->seña
+                'seña' => $cancha->seña,
+                'descripcion' => $cancha->descripcion
             ];
         }
 
