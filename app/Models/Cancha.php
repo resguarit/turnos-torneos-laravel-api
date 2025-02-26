@@ -4,15 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Cancha extends Model
 {
-    //
     use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'canchas';
 
-    protected $fillable = ['nro', 'tipo_cancha', 'precio_por_hora', 'seña', 'activa'];
+    protected $fillable = ['nro', 'tipo_cancha', 'precio_por_hora', 'seña', 'activa', 'descripcion'];
 
     protected $hidden = ['created_at', 'updated_at'];
 

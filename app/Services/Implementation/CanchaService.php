@@ -56,7 +56,8 @@ class CanchaService implements CanchaServiceInterface
             'tipo_cancha' => 'required|max:200',
             'precio_por_hora' => 'required|numeric',
             'seña' => 'required|numeric',
-            'activa' => 'required|boolean'
+            'activa' => 'required|boolean',
+            'descripcion' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -72,7 +73,8 @@ class CanchaService implements CanchaServiceInterface
             'tipo_cancha' => $request->tipo_cancha,
             'precio_por_hora' => $request->precio_por_hora,
             'seña' => $request->seña,
-            'activa' => $request->activa
+            'activa' => $request->activa,
+            'descripcion' => $request->descripcion
         ]);
 
         return response()->json([
@@ -98,7 +100,8 @@ class CanchaService implements CanchaServiceInterface
             'tipo_cancha' => 'sometimes|max:200',
             'precio_por_hora' => 'sometimes|numeric',
             'seña' => 'sometimes|numeric',
-            'activa' => 'sometimes|boolean'
+            'activa' => 'sometimes|boolean',
+            'descripcion' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -127,6 +130,10 @@ class CanchaService implements CanchaServiceInterface
 
         if($request->has('activa')){
             $cancha->activa = $request->activa;
+        }
+
+        if($request->has('descripcion')){
+            $cancha->descripcion = $request->descripcion;
         }
 
         $cancha->save();

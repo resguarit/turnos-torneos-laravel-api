@@ -40,6 +40,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
     Route::delete('/turnos/{id}', [TurnoController::class, 'destroy']);
     Route::put('/turnos/cancelar/{id}', [TurnoController::class, 'cancel']);
+    Route::get('/disponibilidad/turnos-fijos', [DisponibilidadController::class, 'getHorariosDisponiblesTurnosFijos']);
 
     Route::get('/grilla', [TurnoController::class, 'grid']);
 
@@ -61,6 +62,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/usuarios', [UserController::class, 'index']);
     Route::get('/usuarios/{id}', [UserController::class, 'show']);
     Route::patch('/usuarios/{id}', [UserController::class, 'update']);
+    Route::delete('/usuarios/{id}', [UserController::class, 'destroy']);
     Route::post('/create-user', [UserController::class, 'createUser']);
     Route::post('/logout', [UserController::class, 'logout']);
 
@@ -70,6 +72,7 @@ Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDi
 Route::get('/disponibilidad/dias', [DisponibilidadController::class, 'getDiasNoDisponibles']);
 Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
+
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);
