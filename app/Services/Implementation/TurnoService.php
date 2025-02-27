@@ -569,7 +569,7 @@ class TurnoService implements TurnoServiceInterface
     public function getTurnosByUser($userId)
     {
         $turnos = Turno::where('usuario_id', $userId)
-        ->with(['cancha', 'horario', 'motivo_cancelacion'])
+        ->with(['cancha', 'horario'])
         ->get();
 
         if ($turnos->isEmpty()) {
@@ -617,13 +617,12 @@ class TurnoService implements TurnoServiceInterface
             ], 404);
         }
 
-        if ($turno->estado === TurnoEstado::CANCELADO) {
+         if ($turno->estado === TurnoEstado::CANCELADO) {
             return response()->json([
                 'message' => 'El turno ya ha sido cancelado',
                 'status' => 400
             ], 400);
         }
-        
         if($turno->fecha_turno < now()->startOfDay()){
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
