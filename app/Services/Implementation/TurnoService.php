@@ -569,7 +569,7 @@ class TurnoService implements TurnoServiceInterface
     public function getTurnosByUser($userId)
     {
         $turnos = Turno::where('usuario_id', $userId)
-        ->with(['cancha', 'horario'])
+        ->with(['cancha', 'horario', 'motivo_cancelacion'])
         ->get();
 
         if ($turnos->isEmpty()) {
