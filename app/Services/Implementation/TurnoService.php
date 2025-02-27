@@ -514,10 +514,10 @@ class TurnoService implements TurnoServiceInterface
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
 
         $horarios = Horario::where('activo', true)
-                            ->where('dia', $diaSemana) // Filtrar por día de la semana
+                            ->where('dia', $diaSemana)
                             ->orderBy('hora_inicio', 'asc')
                             ->get();
 
@@ -536,7 +536,7 @@ class TurnoService implements TurnoServiceInterface
 
             foreach ($canchas as $cancha) {
                 $turno = $turnos->first(function ($t) use ($horario, $cancha) {
-                    return $t->horario->id === $horario->id && $t->cancha->id === $cancha->id;
+                    return $t->horario_id == $horario->id && $t->cancha_id == $cancha->id;
                 });
 
                 $grid[$hora][$cancha->nro] = [
@@ -647,7 +647,7 @@ class TurnoService implements TurnoServiceInterface
 
         DB::beginTransaction();
         try {
-            $turno->estado = TurnoEstado::PENDIENTE;
+            $turno->estado = TurnoEstado::CANCELADO;
             $turno->save();
 
             // Registro de auditoria para la cancelacion
