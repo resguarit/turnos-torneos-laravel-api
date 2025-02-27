@@ -132,11 +132,11 @@ class TurnoController extends Controller
         return $this->turnoService->getProximosTurnos();
     }
 
-    public function cancel($id){
+    public function cancel($id, Request $request){
         $user = Auth::user();
 
         abort_unless($user->tokenCan('turnos:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
 
-        return $this->turnoService->cancelTurno($id);
+        return $this->turnoService->cancelTurno($id, $request);
     }
 }

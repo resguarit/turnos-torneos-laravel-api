@@ -17,5 +17,5 @@ interface TurnoServiceInterface
     public function gridTurnos(Request $request);
     public function getTurnosByUser($userId);
     public function getProximosTurnos();
-    public function cancelTurno($id);
+    public function cancelTurno($id, Request $request);
 }
