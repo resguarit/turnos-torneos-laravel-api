@@ -18,6 +18,7 @@ use App\Models\TurnoCancelacion;
 use App\Services\Interface\TurnoServiceInterface;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
+use function Symfony\Component\Clock\now;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -39,7 +40,7 @@ class TurnoService implements TurnoServiceInterface
             ], 400);
         }
 
-        $fechaHoy = now()->startOfDay();
+        $fechaHoy = Carbon::today();
         $query = Turno::query();
 
         if ($request->has('fecha')) {
@@ -72,8 +73,7 @@ class TurnoService implements TurnoServiceInterface
 
         $data = [
             'turnos' => TurnoResource::collection($turnos),
-            'status' => 200,
-            'prueba' => 'asd'   
+            'status' => 200
         ];
 
         return response()->json($data, 200);
@@ -93,7 +93,7 @@ class TurnoService implements TurnoServiceInterface
         ];
 
         return response()->json($data, 200);
-    }
+    }   
 
     public function storeTurnoUnico(Request $request)
     {
@@ -584,9 +584,21 @@ class TurnoService implements TurnoServiceInterface
 
     public function getTurnosByUser($userId)
     {
+        $fechaHoy = Carbon::today();
+
+        // Obtener todos los turnos del usuario
         $turnos = Turno::where('usuario_id', $userId)
-        ->with(['cancha', 'horario'])
-        ->get();
+            ->with(['cancha', 'horario'])
+            ->get();
+
+        // Calcular la diferencia de días respecto a la fecha de hoy
+        $turnos = $turnos->map(function ($turno) use ($fechaHoy) {
+            $turno->diferencia_dias = $fechaHoy->diffInDays($turno->fecha_turno, true);
+            return $turno;
+        });
+
+        // Ordenar los turnos por la diferencia de días
+        $turnos = $turnos->sortBy('diferencia_dias')->values();
 
         if ($turnos->isEmpty()) {
             return response()->json([
@@ -605,7 +617,7 @@ class TurnoService implements TurnoServiceInterface
     {
         $user = Auth::user();
 
-        $fechaHoy = now()->startOfDay();
+        $fechaHoy = Carbon::today();
 
         $turnos = Turno::where('usuario_id', $user->id)
             ->whereDate('fecha_turno', '>=', $fechaHoy)
