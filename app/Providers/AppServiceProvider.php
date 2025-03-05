@@ -23,6 +23,16 @@ use App\Services\Interface\AuthServiceInterface;
 use App\Services\Implementation\AuthService;
 use App\Services\Interface\AuditoriaServiceInterface;
 use App\Services\Implementation\AuditoriaService;
+use App\Services\Interface\DeporteServiceInterface;
+use App\Services\Implementation\DeporteService;
+use App\Services\Interface\EquipoServiceInterface;
+use App\Services\Implementation\EquipoService;
+use App\Services\Interface\TorneoServiceInterface;
+use App\Services\Implementation\TorneoService;
+use App\Services\Interface\JugadorServiceInterface;
+use App\Services\Implementation\JugadorService;
+use App\Services\Interface\ZonaServiceInterface;
+use App\Services\Implementation\ZonaService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -41,6 +51,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ConfigServiceInterface::class, ConfigService::class);
         $this->app->bind(DashboardServiceInterface::class, DashboardService::class);
         $this->app->bind(AuditoriaServiceInterface::class, AuditoriaService::class);
+        $this->app->bind(DeporteServiceInterface::class, DeporteService::class);
+        $this->app->bind(EquipoServiceInterface::class, EquipoService::class);
+        $this->app->bind(TorneoServiceInterface::class, TorneoService::class);
+        $this->app->bind(JugadorServiceInterface::class, JugadorService::class);
+        $this->app->bind(ZonaServiceInterface::class, ZonaService::class);
     }
 
     /**
