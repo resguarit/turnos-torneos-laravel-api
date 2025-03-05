@@ -10,7 +10,7 @@ class Zona extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre', 'formato', 'año'];
+    protected $fillable = ['nombre', 'formato', 'año', 'torneo_id'];
 
     public function fechas()
     {
@@ -19,6 +19,11 @@ class Zona extends Model
 
     public function equipos()
     {
-        return $this->belongsToMany(Equipo::class);
+        return $this->hasMany(Equipo::class);
+    }
+
+    public function torneo()
+    {
+        return $this->belongsTo(Torneo::class);
     }
 }

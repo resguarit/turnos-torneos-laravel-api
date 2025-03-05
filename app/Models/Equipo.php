@@ -10,10 +10,15 @@ class Equipo extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre', 'escudo'];
+    protected $fillable = ['nombre', 'escudo', 'zona_id'];
 
     public function jugadores()
     {
         return $this->hasMany(Jugador::class);
+    }
+    
+    public function zona()
+    {
+        return $this->belongsTo(Zona::class);
     }
 }

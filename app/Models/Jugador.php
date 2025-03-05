@@ -10,5 +10,10 @@ class Jugador extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre', 'apellido', 'dni', 'telefono', 'fecha_nacimiento'];
+    protected $fillable = ['nombre', 'apellido', 'dni', 'telefono', 'fecha_nacimiento', 'equipo_id'];
+
+    public function equipo()
+    {
+        return $this->belongsTo(Equipo::class);
+    }
 }
