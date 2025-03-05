@@ -51,4 +51,8 @@ class Turno extends Model
     public function modificaciones(){
         return $this->hasMany(TurnoModificacion::class);
     }
+
+    public function motivo_cancelacion(){
+        return $this->hasOne(TurnoCancelacion::class, 'turno_id')->latest();
+    }
 }
