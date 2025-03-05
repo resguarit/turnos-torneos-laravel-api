@@ -19,6 +19,7 @@ use App\Services\Interface\TurnoServiceInterface;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
 use function Symfony\Component\Clock\now;
+use App\Services\Implementation\AuditoriaService;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -169,6 +170,15 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 500
             ], 500);
         }
+
+        // Registrar auditoría
+        AuditoriaService::registrar(
+            'crear', 
+            'turnos', 
+            $turno->id, 
+            null, 
+            $turno->toArray()
+        );
 
         return response()->json([
             'message' => 'Turno creado correctamente',
@@ -391,6 +401,9 @@ class TurnoService implements TurnoServiceInterface
 
             }
 
+            // Obtener datos anteriores para auditoría
+            $datosAnteriores = $turno->toArray();
+
             $turno->fill($request->only([
                 'fecha_turno',
                 'horario_id',
@@ -399,6 +412,15 @@ class TurnoService implements TurnoServiceInterface
             ]));
 
             $turno->save();
+
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'modificar', 
+                'turnos', 
+                $id, 
+                $datosAnteriores, 
+                $turno->fresh()->toArray()
+            );
 
             $datosNuevos = [
                 'fecha_turno' => $turno->fecha_turno->format('Y-m-d'),
@@ -441,7 +463,18 @@ class TurnoService implements TurnoServiceInterface
     {
         try {
             $turno = Turno::findOrFail($id);
+            $datosAnteriores = $turno->toArray();
+            
             $turno->delete();
+            
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'eliminar', 
+                'turnos', 
+                $id, 
+                $datosAnteriores, 
+                null
+            );
 
             $data = [
                 'message' => 'Turno eliminado correctamente',

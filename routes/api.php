@@ -10,6 +10,7 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\TurnoController;
+use App\Http\Controllers\Api\AuditoriaController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -64,6 +65,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/usuarios/{id}', [UserController::class, 'destroy']);
     Route::post('/create-user', [UserController::class, 'createUser']);
     Route::post('/logout', [UserController::class, 'logout']);
+    
+    Route::get('/auditorias', [AuditoriaController::class, 'index']);
 
 }); 
 
