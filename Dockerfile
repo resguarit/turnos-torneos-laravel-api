@@ -22,6 +22,12 @@ COPY ./000-default.conf /etc/apache2/sites-available/000-default.conf
 # 5️⃣ Configuramos el directorio de trabajo
 WORKDIR /var/www/html
 
+# Copiamos SOLO los archivos necesarios para instalar dependencias
+COPY composer.json composer.lock ./
+
+# Instalamos las dependencias de Laravel (sin scripts para evitar problemas)
+RUN composer install --no-dev --no-scripts --no-autoloader --no-progress --no-suggest
+
 # 6️⃣ Copiamos los archivos del proyecto al contenedor
 COPY . .
 
