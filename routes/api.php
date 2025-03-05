@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\TurnoController;
 use App\Http\Controllers\Api\AuditoriaController;
 use App\Http\Controllers\Api\DeporteController;
+use App\Http\Controllers\Api\TorneoController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -75,6 +76,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/deportes', [DeporteController::class, 'store']);
     Route::put('/deportes/{id}', [DeporteController::class, 'update']);
     Route::delete('/deportes/{id}', [DeporteController::class, 'destroy']);
+
+    Route::get('/torneos', [TorneoController::class, 'index']);
+    Route::get('/torneos/{id}', [TorneoController::class, 'show']);
+    Route::post('/torneos', [TorneoController::class, 'store']);
+    Route::put('/torneos/{id}', [TorneoController::class, 'update']);
+    Route::delete('/torneos/{id}', [TorneoController::class, 'destroy']);
 
 }); 
 
