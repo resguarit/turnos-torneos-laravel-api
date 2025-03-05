@@ -15,7 +15,6 @@ use App\Models\Horario;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\TurnoCancelacion;
 use App\Services\Interface\TurnoServiceInterface;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
@@ -698,7 +697,7 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 400
             ], 400);
         }
-        if($turno->fecha_turno < now()->startOfDay()){
+        if($turno->fecha_turno < Carbon::today()){
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
                 'status' => 400
@@ -719,6 +718,9 @@ class TurnoService implements TurnoServiceInterface
 
         DB::beginTransaction();
         try {
+            // Guardar el estado anterior para la auditoría
+            $estadoAnterior = $turno->estado->value;
+            
             $turno->estado = TurnoEstado::CANCELADO;
             $turno->save();
 
@@ -729,6 +731,15 @@ class TurnoService implements TurnoServiceInterface
                 'motivo' => $request->motivo ?? 'No especificado',
                 'fecha_cancelacion' => now()
             ]);
+
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'cancelar', 
+                'turnos', 
+                $id, 
+                ['estado' => 'antes: ' . $estadoAnterior], 
+                ['estado' => 'después: ' . TurnoEstado::CANCELADO->value]
+            );
 
             DB::commit();
 
