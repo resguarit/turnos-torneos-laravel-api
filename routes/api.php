@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\DeporteController;
 use App\Http\Controllers\Api\TorneoController;
 use App\Http\Controllers\Api\EquipoController;
 use App\Http\Controllers\Api\JugadorController;
+use App\Http\Controllers\Api\ZonaController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -96,6 +97,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/jugadores', [JugadorController::class, 'store']);
     Route::put('/jugadores/{id}', [JugadorController::class, 'update']);
     Route::delete('/jugadores/{id}', [JugadorController::class, 'destroy']);
+
+    Route::get('/zonas', [ZonaController::class, 'index']);
+    Route::get('/zonas/{id}', [ZonaController::class, 'show']);
+    Route::post('/zonas', [ZonaController::class, 'store']);
+    Route::put('/zonas/{id}', [ZonaController::class, 'update']);
+    Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
 
 }); 
 
