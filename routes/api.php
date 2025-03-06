@@ -98,6 +98,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/jugadores', [JugadorController::class, 'store']);
     Route::put('/jugadores/{id}', [JugadorController::class, 'update']);
     Route::delete('/jugadores/{id}', [JugadorController::class, 'destroy']);
+    Route::get('/equipos/{equipoId}/jugadores', [JugadorController::class, 'getByEquipo']);
 
     Route::get('/zonas', [ZonaController::class, 'index']);
     Route::get('/zonas/{id}', [ZonaController::class, 'show']);

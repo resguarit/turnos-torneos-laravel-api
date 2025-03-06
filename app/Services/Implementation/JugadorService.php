@@ -103,4 +103,9 @@ class JugadorService implements JugadorServiceInterface
             'status' => 200
         ], 200);
     }
+
+    public function getByEquipo($equipoId)
+    {
+        return Jugador::where('equipo_id', $equipoId)->get();
+    }
 }

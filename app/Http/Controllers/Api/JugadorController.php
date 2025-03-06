@@ -48,4 +48,9 @@ class JugadorController extends Controller
     {
         return $this->jugadorService->delete($id);
     }
+
+    public function getByEquipo($equipoId)
+    {
+        return response()->json($this->jugadorService->getByEquipo($equipoId), 200);
+    }
 }
