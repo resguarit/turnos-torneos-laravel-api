@@ -33,6 +33,8 @@ use App\Services\Interface\JugadorServiceInterface;
 use App\Services\Implementation\JugadorService;
 use App\Services\Interface\ZonaServiceInterface;
 use App\Services\Implementation\ZonaService;
+use App\Services\Interface\FechaServiceInterface;
+use App\Services\Implementation\FechaService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -56,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TorneoServiceInterface::class, TorneoService::class);
         $this->app->bind(JugadorServiceInterface::class, JugadorService::class);
         $this->app->bind(ZonaServiceInterface::class, ZonaService::class);
+        $this->app->bind(FechaServiceInterface::class, FechaService::class);
     }
 
     /**
