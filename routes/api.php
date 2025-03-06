@@ -103,6 +103,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/zonas', [ZonaController::class, 'store']);
     Route::put('/zonas/{id}', [ZonaController::class, 'update']);
     Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
+    Route::get('/torneos/{torneoId}/zonas', [ZonaController::class, 'getByTorneo']);
 
 }); 
 

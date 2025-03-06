@@ -99,4 +99,9 @@ class ZonaService implements ZonaServiceInterface
             'status' => 200
         ], 200);
     }
+
+    public function getByTorneo($torneoId)
+    {
+        return Zona::where('torneo_id', $torneoId)->with('equipos', 'fechas')->get();
+    }
 }

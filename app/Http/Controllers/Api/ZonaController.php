@@ -49,4 +49,9 @@ class ZonaController extends Controller
     {
         return $this->zonaService->delete($id);
     }
+
+    public function getByTorneo($torneoId)
+    {
+        return response()->json($this->zonaService->getByTorneo($torneoId), 200);
+    }
 }
