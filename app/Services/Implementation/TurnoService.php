@@ -618,7 +618,7 @@ class TurnoService implements TurnoServiceInterface
         return response()->json($data, 200);
     }
 
-    public function cancelTurno($id)
+    public function cancelTurno($id, Request $request)
     {
         $user = Auth::user();
 
@@ -631,16 +631,27 @@ class TurnoService implements TurnoServiceInterface
             ], 404);
         }
 
-        if($turno->estado === 'Cancelado'){
+         if ($turno->estado === TurnoEstado::CANCELADO) {
             return response()->json([
                 'message' => 'El turno ya ha sido cancelado',
                 'status' => 400
             ], 400);
         }
-
         if($turno->fecha_turno < now()->startOfDay()){
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
+                'status' => 400
+            ], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'motivo' => 'sometimes|string|max:255'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
                 'status' => 400
             ], 400);
         }

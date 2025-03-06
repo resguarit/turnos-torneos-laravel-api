@@ -39,7 +39,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/turnos/turnofijo', [TurnoController::class, 'storeTurnoFijo']);
     Route::patch('/turnos/{id}', [TurnoController::class, 'update']);
     Route::delete('/turnos/{id}', [TurnoController::class, 'destroy']);
-    Route::put('/turnos/cancelar/{id}', [TurnoController::class, 'cancel']);
+    Route::post('/turnos/cancelar/{id}', [TurnoController::class, 'cancel']);
     Route::get('/disponibilidad/turnos-fijos', [DisponibilidadController::class, 'getHorariosDisponiblesTurnosFijos']);
 
     Route::get('/grilla', [TurnoController::class, 'grid']);

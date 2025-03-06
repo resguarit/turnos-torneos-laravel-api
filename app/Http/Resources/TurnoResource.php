@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Enums\TurnoEstado;
 
 class TurnoResource extends JsonResource
 {
@@ -31,6 +32,9 @@ class TurnoResource extends JsonResource
                 'nro' => $this->cancha->nro,
                 'tipo_cancha' => $this->cancha->tipo_cancha,
             ],
+            'motivo_cancelacion' => $this->when($this->estado === TurnoEstado::CANCELADO, function () {
+                return $this->motivo_cancelacion ? $this->motivo_cancelacion->motivo : null;
+            }),
             'fecha_reserva' => $this->fecha_reserva,
             'fecha_turno' => $this->fecha_turno->format('Y-m-d'),
             'monto_total' => $this->monto_total,
