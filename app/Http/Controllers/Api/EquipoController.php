@@ -1,64 +1,52 @@
 <?php
+// app/Http/Controllers/Api/EquipoController.php
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
+use App\Services\Interface\EquipoServiceInterface;
 use Illuminate\Http\Request;
 
 class EquipoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    protected $equipoService;
+
+    public function __construct(EquipoServiceInterface $equipoService)
+    {
+        $this->equipoService = $equipoService;
+    }
+
     public function index()
     {
-        //
+        return response()->json($this->equipoService->getAll(), 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function show($id)
     {
-        //
+        $equipo = $this->equipoService->getById($id);
+
+        if (!$equipo) {
+            return response()->json([
+                'message' => 'Equipo no encontrado',
+                'status' => 404
+            ], 404);
+        }
+
+        return response()->json($equipo, 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        return $this->equipoService->create($request);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(Request $request, $id)
     {
-        //
+        return $this->equipoService->update($request, $id);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function destroy($id)
     {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return $this->equipoService->delete($id);
     }
 }
