@@ -37,6 +37,8 @@ use App\Services\Interface\FechaServiceInterface;
 use App\Services\Implementation\FechaService;
 use App\Services\Interface\PartidoServiceInterface;
 use App\Services\Implementation\PartidoService;
+use App\Services\Interface\EstadisticaServiceInterface;
+use App\Services\Implementation\EstadisticaService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -62,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ZonaServiceInterface::class, ZonaService::class);
         $this->app->bind(FechaServiceInterface::class, FechaService::class);
         $this->app->bind(PartidoServiceInterface::class, PartidoService::class);
+        $this->app->bind(EstadisticaServiceInterface::class, EstadisticaService::class);
     }
 
     /**

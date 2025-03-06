@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\JugadorController;
 use App\Http\Controllers\Api\ZonaController;
 use App\Http\Controllers\Api\FechaController;
 use App\Http\Controllers\Api\PartidoController;
+use App\Http\Controllers\Api\EstadisticaController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -123,6 +124,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/partidos/{id}', [PartidoController::class, 'destroy']);
     Route::get('/fechas/{fechaId}/partidos', [PartidoController::class, 'getByFecha']);
     Route::get('/equipos/{equipoId}/partidos', [PartidoController::class, 'getByEquipo']);
+
+    Route::get('/estadisticas', [EstadisticaController::class, 'index']);
+    Route::get('/estadisticas/{id}', [EstadisticaController::class, 'show']);
+    Route::post('/estadisticas', [EstadisticaController::class, 'store']);
+    Route::put('/estadisticas/{id}', [EstadisticaController::class, 'update']);
+    Route::delete('/estadisticas/{id}', [EstadisticaController::class, 'destroy']);
+    Route::get('/partidos/{partidoId}/estadisticas', [EstadisticaController::class, 'getByPartido']);
+    Route::get('/equipos/{equipoId}/estadisticas', [EstadisticaController::class, 'getByEquipo']);
+    Route::get('/jugadores/{jugadorId}/estadisticas', [EstadisticaController::class, 'getByJugador']);
+    Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);
 
 }); 
 
