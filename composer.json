@@ -13,7 +13,7 @@
         "laravel/socialite": "^5.16",
         "laravel/tinker": "^2.9",
         "nesbot/carbon": "*",
-        "predis/predis": "*"
+        "predis/predis": "^2.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
