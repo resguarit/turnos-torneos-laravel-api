@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;   
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,7 +22,6 @@ class DatabaseSeeder extends Seeder
             'dni' => '45396791',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
-            'dni' => '123',
             'rol' => 'admin',
         ]);
 
@@ -31,7 +31,6 @@ class DatabaseSeeder extends Seeder
             'dni' => '11223344',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
-            'dni' => '456',
             'rol' => 'moderador',
         ]);
 
@@ -41,7 +40,6 @@ class DatabaseSeeder extends Seeder
             'dni' => '87654321',
             'password' => bcrypt('password'),
             'telefono' => '1234567890',
-            'dni' => '789',
             'rol' => 'cliente',
         ]);
 
@@ -51,7 +49,6 @@ class DatabaseSeeder extends Seeder
             'dni' => '12345678',
             'password' => bcrypt('12345678'),
             'telefono' => '1234567890',
-            'dni' => '12345678',
             'rol' => 'cliente',
         ]);
     }
