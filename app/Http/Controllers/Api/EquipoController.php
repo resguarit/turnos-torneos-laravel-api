@@ -49,4 +49,9 @@ class EquipoController extends Controller
     {
         return $this->equipoService->delete($id);
     }
+
+    public function getByZona($zonaId)
+    {
+        return response()->json($this->equipoService->getByZona($zonaId), 200);
+    }
 }

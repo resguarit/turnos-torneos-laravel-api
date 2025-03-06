@@ -95,4 +95,9 @@ class EquipoService implements EquipoServiceInterface
             'status' => 200
         ], 200);
     }
+
+    public function getByZona($zonaId)
+    {
+        return Equipo::where('zona_id', $zonaId)->with('jugadores')->get();
+    }
 }
