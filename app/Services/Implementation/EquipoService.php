@@ -25,6 +25,7 @@ class EquipoService implements EquipoServiceInterface
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|string|max:255',
             'escudo' => 'nullable|string',
+            'zona_id' => 'required|exists:zonas,id',
         ]);
 
         if ($validator->fails()) {
@@ -58,6 +59,7 @@ class EquipoService implements EquipoServiceInterface
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|string|max:255',
             'escudo' => 'nullable|string',
+            'zona_id' => 'required|exists:zonas,id',
         ]);
 
         if ($validator->fails()) {
