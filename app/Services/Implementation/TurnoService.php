@@ -60,12 +60,12 @@ class TurnoService implements TurnoServiceInterface
             $searchType = $request->searchType;
             $searchTerm = $request->searchTerm;
 
-            $query->whereHas('usuario', function ($q) use ($searchType, $searchTerm) {
+            $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
                 $q->where($searchType, 'like', "%{$searchTerm}%");
             });
         }
 
-        $turnos = $query->with(['usuario', 'cancha', 'horario'])
+        $turnos = $query->with(['persona', 'cancha', 'horario'])
         ->join('horarios', 'turnos.horario_id', '=', 'horarios.id')
         ->orderBy('horarios.hora_inicio', 'asc')
         ->select('turnos.*')
@@ -73,8 +73,7 @@ class TurnoService implements TurnoServiceInterface
 
         $data = [
             'turnos' => TurnoResource::collection($turnos),
-            'status' => 200,
-            'prueba' => 'asd'   
+            'status' => 200 
         ];
 
         return response()->json($data, 200);
@@ -83,7 +82,7 @@ class TurnoService implements TurnoServiceInterface
     public function getAllTurnos()
     {
         $turnos = Turno::with([
-            'usuario',
+            'persona',
             'cancha',
             'horario',
         ])->get();
@@ -168,7 +167,7 @@ class TurnoService implements TurnoServiceInterface
             'fecha_reserva' => now(),
             'horario_id' => $request->horario_id,
             'cancha_id' => $request->cancha_id,
-            'usuario_id' => $user->id,
+            'persona_id' => $user->persona->id,
             'monto_total' => $monto_total,
             'monto_seña' => $monto_seña,
             'estado' => $request->estado,
@@ -249,7 +248,7 @@ class TurnoService implements TurnoServiceInterface
                     'fecha_reserva' => now(),
                     'horario_id' => $request->horario_id,
                     'cancha_id' => $request->cancha_id,
-                    'usuario_id' => $request->user_id,
+                    'persona_id' => $request->user_id,
                     'monto_total' => $monto_total,
                     'monto_seña' => $monto_seña,
                     'estado' => $request->estado,

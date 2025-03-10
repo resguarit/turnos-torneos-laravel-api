@@ -15,7 +15,7 @@ class Turno extends Model
 
     protected $table = 'turnos';
 
-    protected $fillable = ['fecha_turno', 'fecha_reserva', 'horario_id', 'cancha_id', 'usuario_id', 'monto_total', 'monto_seña', 'estado', 'tipo'];
+    protected $fillable = ['fecha_turno', 'fecha_reserva', 'horario_id', 'cancha_id', 'persona_id', 'monto_total', 'monto_seña', 'estado', 'tipo'];
 
     protected $hidden = ['created_at', 'updated_at'];
 
@@ -32,16 +32,17 @@ class Turno extends Model
         return Carbon::parse($value);
     }
 
+    public function persona()
+    {
+        return $this->belongsTo(Persona::class);
+    }
+
     public function horario(){
         return $this->belongsTo(Horario::class, 'horario_id');
     }
 
     public function cancha(){
         return $this->belongsTo(Cancha::class, 'cancha_id');
-    }
-
-    public function usuario(){
-        return $this->belongsTo(User::class, 'usuario_id');
     }
 
     public function cancelaciones(){
