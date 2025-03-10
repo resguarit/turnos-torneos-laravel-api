@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Redis;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
 use function Symfony\Component\Clock\now;
-use App\Services\Implementation\AuditoriaService;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -184,15 +183,6 @@ class TurnoService implements TurnoServiceInterface
 
         // Eliminar el bloqueo en Redis después de crear el turno
         Redis::del($clave);
-
-        // Registrar auditoría
-        AuditoriaService::registrar(
-            'crear', 
-            'turnos', 
-            $turno->id, 
-            null, 
-            $turno->toArray()
-        );
 
         return response()->json([
             'message' => 'Turno creado correctamente',
@@ -426,14 +416,6 @@ class TurnoService implements TurnoServiceInterface
 
             $turno->save();
 
-            // Registrar auditoría
-            AuditoriaService::registrar(
-                'modificar', 
-                'turnos', 
-                $id, 
-                $datosAnteriores, 
-                $turno->fresh()->toArray()
-            );
 
             $datosNuevos = [
                 'fecha_turno' => $turno->fecha_turno->format('Y-m-d'),
@@ -479,15 +461,6 @@ class TurnoService implements TurnoServiceInterface
             $datosAnteriores = $turno->toArray();
             
             $turno->delete();
-            
-            // Registrar auditoría
-            AuditoriaService::registrar(
-                'eliminar', 
-                'turnos', 
-                $id, 
-                $datosAnteriores, 
-                null
-            );
 
             $data = [
                 'message' => 'Turno eliminado correctamente',
@@ -724,7 +697,6 @@ class TurnoService implements TurnoServiceInterface
             $turno->estado = TurnoEstado::CANCELADO;
             $turno->save();
 
-            // Registro de auditoria para la cancelacion
             TurnoCancelacion::create([
                 'turno_id' => $turno->id,
                 'cancelado_por' => $user->id,
@@ -732,14 +704,6 @@ class TurnoService implements TurnoServiceInterface
                 'fecha_cancelacion' => now()
             ]);
 
-            // Registrar auditoría
-            AuditoriaService::registrar(
-                'cancelar', 
-                'turnos', 
-                $id, 
-                ['estado' => 'antes: ' . $estadoAnterior], 
-                ['estado' => 'después: ' . TurnoEstado::CANCELADO->value]
-            );
 
             DB::commit();
 

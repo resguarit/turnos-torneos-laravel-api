@@ -10,7 +10,6 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\TurnoController;
-use App\Http\Controllers\Api\AuditoriaController;
 use App\Http\Controllers\Api\DeporteController;
 use App\Http\Controllers\Api\TorneoController;
 use App\Http\Controllers\Api\EquipoController;
@@ -75,7 +74,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/create-user', [UserController::class, 'createUser']);
     Route::post('/logout', [UserController::class, 'logout']);
     
-    Route::get('/auditorias', [AuditoriaController::class, 'index']);
 
     Route::get('/deportes', [DeporteController::class, 'index']);
     Route::get('/deportes/{id}', [DeporteController::class, 'show']);
