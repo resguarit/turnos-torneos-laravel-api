@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Persona;
 
 
 class User extends Authenticatable
@@ -23,12 +24,12 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name',
         'email',
         'dni',
         'password',
         'rol',
         'google_id',
+        'persona_id',
         'telefono'
     ];
 
@@ -109,6 +110,11 @@ class User extends Authenticatable
 
     public function turnos(){
         return $this->hasMany(Turno::class, 'usuario_id');
+    }
+
+    public function persona()
+    {
+        return $this->belongsTo(Persona::class);
     }
 
 }
