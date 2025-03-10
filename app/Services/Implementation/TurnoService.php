@@ -523,7 +523,7 @@ class TurnoService implements TurnoServiceInterface
         $canchas = Cancha::where('activa', true)->get();
 
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                            ->with(['usuario', 'horario', 'cancha'])
+                            ->with(['persona', 'horario', 'cancha'])
                             ->get();
 
         $grid = [];
@@ -544,10 +544,10 @@ class TurnoService implements TurnoServiceInterface
                     'turno' => $turno ? [
                         'id' => $turno->id,
                         'usuario' => [
-                            'usuario_id' => $turno->usuario->id,
-                            'nombre' => $turno->usuario->name,
-                            'dni' => $turno->usuario->dni,
-                            'telefono' => $turno->usuario->telefono,
+                            'usuario_id' => $turno->persona->usuario->id,
+                            'nombre' => $turno->persona->name,
+                            'dni' => $turno->persona->dni,
+                            'telefono' => $turno->persona->telefono,
                         ],
                         'monto_total' => $turno->monto_total,
                         'monto_seña' => $turno->monto_seña,

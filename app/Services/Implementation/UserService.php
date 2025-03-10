@@ -13,17 +13,25 @@ class UserService implements UserServiceInterface
 {
     public function register(array $data)
     {
-        $persona = Persona::create([
-            'name' => $data['name'],
-            'dni' => $data['dni'],
-            'telefono' => $data['telefono'],
-        ]);
+        // Buscar si ya existe una persona con el mismo DNI
+        $persona = Persona::where('dni', $data['dni'])->first();
+
+        if (!$persona) {
+            // Si no existe, crear una nueva persona
+            $persona = Persona::create([
+                'nombre' => $data['name'],
+                'dni' => $data['dni'],
+                'telefono' => $data['telefono'],
+                'direccion' => $data['direccion'] ?? null,
+            ]);
+        }
 
         $user = User::create([
             'email' => $data['email'],
             'dni' => $data['dni'],
             'password' => Hash::make($data['password']),
-            'rol' => 'cliente'
+            'rol' => 'cliente',
+            'persona_id' => $persona->id
         ]);
 
         return [
@@ -34,17 +42,22 @@ class UserService implements UserServiceInterface
 
     public function createUser(array $data)
     {
-        $persona = Persona::create([
-            'name' => $data['name'],
-            'dni' => $data['dni'],
-            'telefono' => $data['telefono'],
-        ]);
+        $persona = Persona::where('dni', $data['dni'])->first();
+
+        if(!$persona) {
+            $persona = Persona::create([
+                'name' => $data['name'],
+                'dni' => $data['dni'],
+                'telefono' => $data['telefono'],
+            ]);
+        }
 
         $user = User::create([
             'email' => $data['email'],
             'dni' => $data['dni'],
             'password' => Hash::make($data['password']),
-            'rol' => $data['rol']
+            'rol' => $data['rol'],
+            'persona_id' => $persona->id
         ]);
 
         return [
