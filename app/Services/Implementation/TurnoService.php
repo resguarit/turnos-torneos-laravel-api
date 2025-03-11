@@ -18,10 +18,18 @@ use App\Services\Interface\TurnoServiceInterface;
 use Illuminate\Support\Facades\Redis;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
+use App\Services\Interface\AuditoriaServiceInterface; // Importar la interfaz del servicio de auditoría
 use function Symfony\Component\Clock\now;
 
 class TurnoService implements TurnoServiceInterface
 {
+    protected $auditoriaService;
+
+    public function __construct(AuditoriaServiceInterface $auditoriaService)
+    {
+        $this->auditoriaService = $auditoriaService;
+    }
+
     public function getTurnos(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -125,7 +133,7 @@ class TurnoService implements TurnoServiceInterface
         }
 
         $monto_total = $cancha->precio_por_hora;        
-        $monto_seña = $cancha->seña; // Ensure this is not null
+        $monto_seña = $cancha->seña;
 
         if (is_null($monto_seña)) {
             return response()->json([
@@ -183,6 +191,15 @@ class TurnoService implements TurnoServiceInterface
 
         // Eliminar el bloqueo en Redis después de crear el turno
         Redis::del($clave);
+
+        // Registrar auditoría
+        $this->auditoriaService->registrar(
+            'crear',
+            'turnos',
+            $turno->id,
+            null,
+            $turno->toArray(),
+        );
 
         return response()->json([
             'message' => 'Turno creado correctamente',
@@ -435,6 +452,15 @@ class TurnoService implements TurnoServiceInterface
                     'motivo' => json_encode($request->motivo ?? "No especificado"),
                     'fecha_modificacion' => now()
                 ]);
+
+                // Registrar auditoría
+                $this->auditoriaService->registrar(
+                    'modificar',
+                    'turnos',
+                    $turno->id,
+                    $datosAnteriores,
+                    $datosNuevos
+                );
             }
 
             DB::commit();
@@ -461,6 +487,15 @@ class TurnoService implements TurnoServiceInterface
             $datosAnteriores = $turno->toArray();
             
             $turno->delete();
+
+            // Registrar auditoría
+            $this->auditoriaService->registrar(
+                'eliminar',
+                'turnos',
+                $turno->id,
+                $datosAnteriores,
+                null
+            );
 
             $data = [
                 'message' => 'Turno eliminado correctamente',

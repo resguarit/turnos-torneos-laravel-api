@@ -5,9 +5,17 @@ namespace App\Services\Implementation;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
+use App\Services\Interface\AuditoriaServiceInterface;
 
 class AuthService implements AuthServiceInterface
 {
+    protected $auditoriaService;
+    
+    public function __construct(AuditoriaServiceInterface $auditoriaService)
+    {
+        $this->auditoriaService = $auditoriaService;
+    }
+    
     public function login(array $credentials)
     {
         if (isset($credentials['dni'])) {
@@ -25,6 +33,15 @@ class AuthService implements AuthServiceInterface
 
         $abilities = $user->getAbilities();
         $token = $user->createToken('login', $abilities);
+        
+        $this->auditoriaService->registrar(
+            'login', 
+            'users', 
+            $user->id, 
+            null,
+            ['ip' => request()->ip(), 'user_agent' => request()->userAgent()],
+            $user->id
+        );
 
         return [
             'token' => $token->plainTextToken,
@@ -46,6 +63,15 @@ class AuthService implements AuthServiceInterface
             'rol' => 'cliente'
         ]);
 
+        $this->auditoriaService->registrar(
+            'register',
+            'users',
+            $user->id,
+            null,
+            ['ip' => request()->ip(), 'user_agent' => request()->userAgent()],
+            $user->id
+        );
+
         return [
             'message' => 'Usuario registrado exitosamente',
             'user' => $user,
@@ -55,6 +81,15 @@ class AuthService implements AuthServiceInterface
 
     public function logout($user)
     {
+        $this->auditoriaService->registrar(
+            'logout',
+            'users',
+            $user->id,
+            null,
+            ['ip' => request()->ip(), 'user_agent' => request()->userAgent()],
+            $user->id
+        );
+        
         $user->currentAccessToken()->delete();
         
         return [

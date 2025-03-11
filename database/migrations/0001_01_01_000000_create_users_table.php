@@ -6,19 +6,15 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('name'); // Agregar la columna 'name'
             $table->string('dni')->unique();
             $table->string('email')->unique();
-            $table->string('dni')->unique();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('telefono')->nullable();
+            $table->string('telefono')->nullable(); // Asegurarse de que la columna 'telefono' esté presente
             $table->string('password');
             $table->string('rol');
             $table->rememberToken();
@@ -41,9 +37,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');
