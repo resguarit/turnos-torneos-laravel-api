@@ -322,7 +322,7 @@ class TurnoService implements TurnoServiceInterface
             return response()->json($data, 404);
         }
 
-        if($turno->fecha_turno < now()->startOfDay()){
+        if($turno->fecha_turno < Carbon::today()){
             return response()->json([
                 'message' => 'No puedes modificar un turno que ya ha pasado',
                 'status' => 400
@@ -427,15 +427,6 @@ class TurnoService implements TurnoServiceInterface
 
             $turno->save();
 
-            // Registrar auditoría
-            AuditoriaService::registrar(
-                'modificar', 
-                'turnos', 
-                $id, 
-                $datosAnteriores, 
-                $turno->fresh()->toArray()
-            );
-
             $datosNuevos = [
                 'fecha_turno' => $turno->fecha_turno->format('Y-m-d'),
                 'horario_id' => $turno->horario_id,
@@ -455,6 +446,20 @@ class TurnoService implements TurnoServiceInterface
                     'fecha_modificacion' => now()
                 ]);
             }
+
+            $accion = 'modificar';
+            // Comprueba si el estado anterior no era cancelado y el nuevo estado es cancelado
+            if ($datosAnteriores['estado'] !== TurnoEstado::CANCELADO && $turno->estado === TurnoEstado::CANCELADO) {
+                $accion = 'cancelar';
+            }
+
+            AuditoriaService::registrar(
+                $accion, 
+                'turnos', 
+                $id, 
+                $datosAnteriores, 
+                $turno->fresh()->toArray()
+            );
 
             DB::commit();
 
@@ -692,13 +697,13 @@ class TurnoService implements TurnoServiceInterface
             ], 404);
         }
 
-         if ($turno->estado === TurnoEstado::CANCELADO) {
+        if ($turno->estado === TurnoEstado::CANCELADO) {
             return response()->json([
                 'message' => 'El turno ya ha sido cancelado',
                 'status' => 400
             ], 400);
         }
-        if($turno->fecha_turno < now()->startOfDay()){
+        if($turno->fecha_turno < Carbon::today()){
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
                 'status' => 400
@@ -729,6 +734,15 @@ class TurnoService implements TurnoServiceInterface
                 'motivo' => $request->motivo ?? 'No especificado',
                 'fecha_cancelacion' => now()
             ]);
+
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'cancelar', 
+                'turnos', 
+                $turno->id, 
+                $turno->toArray(), 
+                null
+            );
 
             DB::commit();
 

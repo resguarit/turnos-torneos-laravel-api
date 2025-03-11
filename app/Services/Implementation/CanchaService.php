@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Services\Interface\CanchaServiceInterface;
+use App\Services\Implementation\AuditoriaService;
 
 class CanchaService implements CanchaServiceInterface
 {
@@ -77,6 +78,15 @@ class CanchaService implements CanchaServiceInterface
             'descripcion' => $request->descripcion
         ]);
 
+        // Registrar auditoría con datos como JSON
+        AuditoriaService::registrar(
+            'crear', 
+            'canchas', 
+            $cancha->id, 
+            null, 
+            json_encode($cancha->toArray(), JSON_PRETTY_PRINT)
+        );
+
         return response()->json([
             'message' => 'Cancha creada correctamente',
             'cancha' => $cancha,
@@ -112,6 +122,8 @@ class CanchaService implements CanchaServiceInterface
             ], 400);
         }
 
+        $datosAnteriores = json_encode($cancha->toArray(), JSON_PRETTY_PRINT);
+        
         if($request->has('nro')){
             $cancha->nro = $request->nro;
         }
@@ -138,6 +150,15 @@ class CanchaService implements CanchaServiceInterface
 
         $cancha->save();
 
+        // Registrar auditoría con datos como JSON
+        AuditoriaService::registrar(
+            'modificar', 
+            'canchas', 
+            $cancha->id, 
+            $datosAnteriores, 
+            json_encode($cancha->fresh()->toArray(), JSON_PRETTY_PRINT)
+        );
+
         return response()->json([
             'message' => 'Cancha actualizada correctamente',
             'cancha' => $cancha,
@@ -149,7 +170,18 @@ class CanchaService implements CanchaServiceInterface
     {
         try {
             $cancha = Cancha::findOrFail($id);
+            $datosAnteriores = json_encode($cancha->toArray(), JSON_PRETTY_PRINT);
+            
             $cancha->delete();
+
+            // Registrar auditoría con datos como JSON
+            AuditoriaService::registrar(
+                'eliminar', 
+                'canchas', 
+                $id, 
+                $datosAnteriores, 
+                null
+            );
 
             return response()->json([
                 'message' => 'Cancha eliminada correctamente',
