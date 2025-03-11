@@ -7,18 +7,31 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Models\Persona;
 
 class UserService implements UserServiceInterface
 {
     public function register(array $data)
     {
+        // Buscar si ya existe una persona con el mismo DNI
+        $persona = Persona::where('dni', $data['dni'])->first();
+
+        if (!$persona) {
+            // Si no existe, crear una nueva persona
+            $persona = Persona::create([
+                'nombre' => $data['name'],
+                'dni' => $data['dni'],
+                'telefono' => $data['telefono'],
+                'direccion' => $data['direccion'] ?? null,
+            ]);
+        }
+
         $user = User::create([
-            'name' => $data['name'],
             'email' => $data['email'],
             'dni' => $data['dni'],
-            'telefono' => $data['telefono'],
             'password' => Hash::make($data['password']),
-            'rol' => 'cliente'
+            'rol' => 'cliente',
+            'persona_id' => $persona->id
         ]);
 
         return [
@@ -29,17 +42,27 @@ class UserService implements UserServiceInterface
 
     public function createUser(array $data)
     {
+        $persona = Persona::where('dni', $data['dni'])->first();
+
+        if(!$persona) {
+            $persona = Persona::create([
+                'name' => $data['name'],
+                'dni' => $data['dni'],
+                'telefono' => $data['telefono'],
+            ]);
+        }
+
         $user = User::create([
-            'name' => $data['name'],
             'email' => $data['email'],
             'dni' => $data['dni'],
-            'telefono' => $data['telefono'],
             'password' => Hash::make($data['password']),
-            'rol' => $data['rol']
+            'rol' => $data['rol'],
+            'persona_id' => $persona->id
         ]);
 
         return [
             'user' => $user,
+            'persona' => $persona,
             'message' => 'Usuario creado con éxito',
             'status' => 201
         ];
@@ -67,7 +90,7 @@ class UserService implements UserServiceInterface
             'token' => $token->plainTextToken,
             'user_id' => $user->id,
             'rol' => $user->rol,
-            'username' => $user->name,
+            'username' => $user->persona->name,
         ];
     }
 
@@ -80,10 +103,16 @@ class UserService implements UserServiceInterface
         $searchType = $request->query('searchType');
         $searchTerm = $request->query('searchTerm');
 
-        $query = User::orderBy($sortBy, $order);
+        $query = User::with('persona')->orderBy($sortBy, $order);
 
         if ($searchType && $searchTerm) {
-            $query->where($searchType, 'like', "%{$searchTerm}%");
+            if ($searchType === 'name' || $searchType === 'dni' || $searchType === 'telefono') {
+                $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
+                    $q->where($searchType, 'like', "%{$searchTerm}%");
+                });
+            } else {
+                $query->where($searchType, 'like', "%{$searchTerm}%");
+            }
         }
 
         $users = $query->paginate($perPage, ['*'], 'page', $page);
@@ -100,7 +129,7 @@ class UserService implements UserServiceInterface
 
     public function show($id)
     {
-        $user = User::find($id);
+        $user = User::with('persona')->find($id);
 
         if (!$user) {
             return [
@@ -117,7 +146,7 @@ class UserService implements UserServiceInterface
 
     public function update($id, array $data)
     {
-        $user = User::find($id);
+        $user = User::with('persona')->find($id);
 
         if (!$user) {
             return [
@@ -139,6 +168,17 @@ class UserService implements UserServiceInterface
         $user->fill($data);
         $user->save();
 
+        if (isset($data['name'])) {
+            $user->persona->nombre = $data['name'];
+        }
+        if (isset($data['dni'])) {
+            $user->persona->dni = $data['dni'];
+        }
+        if (isset($data['telefono'])) {
+            $user->persona->telefono = $data['telefono'];
+        }
+        $user->persona->save();
+
         return [
             'message' => 'Usuario actualizado correctamente',
             'status' => 200
@@ -155,6 +195,8 @@ class UserService implements UserServiceInterface
                 'status' => 404
             ];
         }
+
+        $user->persona->delete();
 
         $user->delete();
 
@@ -190,10 +232,16 @@ class UserService implements UserServiceInterface
         $searchType = $request->query('searchType');
         $searchTerm = $request->query('searchTerm');
 
-        $query = User::orderBy($sortBy, $order);
+        $query = User::with('persona')->orderBy($sortBy, $order);
 
         if ($searchType && $searchTerm) {
-            $query->where($searchType, 'like', "%{$searchTerm}%");
+            if ($searchType === 'name' || $searchType === 'dni' || $searchType === 'telefono') {
+                $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
+                    $q->where($searchType, 'like', "%{$searchTerm}%");
+                });
+            } else {
+                $query->where($searchType, 'like', "%{$searchTerm}%");
+            }
         }
 
         $users = $query->paginate($perPage, ['*'], 'page', $page);

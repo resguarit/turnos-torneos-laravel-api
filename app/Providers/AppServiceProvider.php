@@ -21,6 +21,8 @@ use App\Services\Interface\UserServiceInterface;
 use App\Services\Implementation\UserService;
 use App\Services\Interface\AuthServiceInterface;
 use App\Services\Implementation\AuthService;
+use App\Services\Interface\PersonaServiceInterface;
+use App\Services\Implementation\PersonaService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(BloqueoTemporalServiceInterface::class, BloqueoTemporalService::class);
         $this->app->bind(ConfigServiceInterface::class, ConfigService::class);
         $this->app->bind(DashboardServiceInterface::class, DashboardService::class);
+        $this->app->bind(PersonaServiceInterface::class, PersonaService::class);
     }
 
     /**
