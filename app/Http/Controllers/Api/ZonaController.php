@@ -59,4 +59,16 @@ class ZonaController extends Controller
     {
         return $this->zonaService->createFechas($request, $zonaId);
     }
+
+    public function crearGruposAleatoriamente(Request $request, $zonaId)
+    {
+        $numGrupos = $request->input('num_grupos');
+        $grupos = $this->zonaService->crearGruposAleatoriamente($zonaId, $numGrupos);
+
+        return response()->json([
+            'message' => 'Grupos creados correctamente',
+            'grupos' => $grupos,
+            'status' => 201
+        ], 201);
+    }
 }

@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\ZonaController;
 use App\Http\Controllers\Api\FechaController;
 use App\Http\Controllers\Api\PartidoController;
 use App\Http\Controllers\Api\EstadisticaController;
+use App\Http\Controllers\Api\GrupoController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -136,6 +137,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/equipos/{equipoId}/estadisticas', [EstadisticaController::class, 'getByEquipo']);
     Route::get('/jugadores/{jugadorId}/estadisticas', [EstadisticaController::class, 'getByJugador']);
     Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);
+
+    Route::get('/grupos', [GrupoController::class, 'index']);
+    Route::get('/grupos/{id}', [GrupoController::class, 'show']);
+    Route::post('/grupos', [GrupoController::class, 'store']);
+    Route::put('/grupos/{id}', [GrupoController::class, 'update']);
+    Route::delete('/grupos/{id}', [GrupoController::class, 'destroy']);
+    Route::get('/zonas/{zonaId}/grupos', [GrupoController::class, 'getByZona']);
+
+    // Ruta temporal para probar la creación de grupos aleatoriamente
+    Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
 
 }); 
 

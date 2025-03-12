@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\Enums\ZonaFormato;
 use Illuminate\Support\Facades\Log;
+use App\Models\Grupo;
 
 class ZonaService implements ZonaServiceInterface
 {
@@ -141,11 +142,13 @@ class ZonaService implements ZonaServiceInterface
             $numGrupos = $request->input('num_grupos');
             if ($numGrupos < 1 || $numEquipos % $numGrupos != 0) {
                 return response()->json([
+                    'numero_grupos' => $numGrupos,
+                    'numero_equipos' => $numEquipos,
                     'message' => 'El número de grupos debe ser mayor o igual a 1 y los equipos deben dividirse equitativamente entre los grupos',
                     'status' => 400
                 ], 400);
             }
-            $fechas = $this->createFechasGrupos($zona, $numGrupos);
+            $fechas = $this->createFechasGrupos($zonaId, $numGrupos);
         }
 
         Log::info('Fechas creadas:', ['fechas' => $fechas]);
@@ -245,12 +248,28 @@ class ZonaService implements ZonaServiceInterface
         return [$fecha];
     }
 
-    private function createFechasGrupos($zona, $numGrupos)
+    private function createFechasGrupos($zonaId, $numGrupos)
     {
-        $grupos = $this->crearGruposAleatoriamente($zona, $numGrupos);
+        $zona = Zona::with('grupos.equipos')->find($zonaId);
+
+        if (!$zona) {
+            return response()->json([
+                'message' => 'Zona no encontrada',
+                'status' => 404
+            ], 404);
+        }
+
+        if ($numGrupos < 2) {
+            return response()->json([
+                'numero_grupos' => $numGrupos,
+                'message' => 'El número de grupos debe ser mayor o igual a 2',
+                'status' => 400
+            ], 400);
+        }
+
         $fechas = [];
 
-        foreach ($grupos as $grupo) {
+        foreach ($zona->grupos as $grupo) {
             $equipos = $grupo->equipos;
             $numEquipos = $equipos->count();
             $numFechas = $numEquipos - 1;
@@ -299,8 +318,17 @@ class ZonaService implements ZonaServiceInterface
         return $fechas;
     }
 
-    private function crearGruposAleatoriamente($zona, $numGrupos)
+    public function crearGruposAleatoriamente($zonaId, $numGrupos)
     {
+        $zona = Zona::with('equipos')->find($zonaId);
+
+        if (!$zona) {
+            return response()->json([
+                'message' => 'Zona no encontrada',
+                'status' => 404
+            ], 404);
+        }
+
         $equipos = $zona->equipos->toArray();
         shuffle($equipos);
 

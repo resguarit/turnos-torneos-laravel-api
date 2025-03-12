@@ -39,6 +39,8 @@ use App\Services\Interface\PartidoServiceInterface;
 use App\Services\Implementation\PartidoService;
 use App\Services\Interface\EstadisticaServiceInterface;
 use App\Services\Implementation\EstadisticaService;
+use App\Services\Interface\GrupoServiceInterface;
+use App\Services\Implementation\GrupoService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -65,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(FechaServiceInterface::class, FechaService::class);
         $this->app->bind(PartidoServiceInterface::class, PartidoService::class);
         $this->app->bind(EstadisticaServiceInterface::class, EstadisticaService::class);
+        $this->app->singleton(GrupoServiceInterface::class, GrupoService::class);
     }
 
     /**
