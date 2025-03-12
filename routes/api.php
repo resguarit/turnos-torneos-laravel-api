@@ -110,6 +110,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/zonas/{id}', [ZonaController::class, 'update']);
     Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
     Route::get('/torneos/{torneoId}/zonas', [ZonaController::class, 'getByTorneo']);
+    Route::post('/zonas/{zonaId}/fechas', [ZonaController::class, 'createFechas']);
 
     Route::get('/fechas', [FechaController::class, 'index']);
     Route::get('/fechas/{id}', [FechaController::class, 'show']);

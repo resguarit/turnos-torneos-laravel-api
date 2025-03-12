@@ -54,4 +54,9 @@ class ZonaController extends Controller
     {
         return response()->json($this->zonaService->getByTorneo($torneoId), 200);
     }
+
+    public function createFechas(Request $request, $zonaId)
+    {
+        return $this->zonaService->createFechas($request, $zonaId);
+    }
 }
