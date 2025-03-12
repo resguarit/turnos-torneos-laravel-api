@@ -124,9 +124,9 @@ class ZonaService implements ZonaServiceInterface
         $equipos = $zona->equipos;
         $numEquipos = $equipos->count();
 
-        if ($numEquipos < 2) {
+        if ($numEquipos < 2 || $numEquipos % 2 != 0) {
             return response()->json([
-                'message' => 'No hay suficientes equipos para crear fechas',
+                'message' => 'El número de equipos debe ser par y mayor o igual a 2',
                 'status' => 400
             ], 400);
         }
@@ -138,7 +138,14 @@ class ZonaService implements ZonaServiceInterface
         } elseif ($zona->formato === ZonaFormato::ELIMINATORIA) {
             $fechas = $this->createFechasEliminatoria($zona, $equipos);
         } elseif ($zona->formato === ZonaFormato::GRUPOS) {
-            $fechas = $this->createFechasGrupos($zona, $equipos);
+            $numGrupos = $request->input('num_grupos');
+            if ($numGrupos < 1 || $numEquipos % $numGrupos != 0) {
+                return response()->json([
+                    'message' => 'El número de grupos debe ser mayor o igual a 1 y los equipos deben dividirse equitativamente entre los grupos',
+                    'status' => 400
+                ], 400);
+            }
+            $fechas = $this->createFechasGrupos($zona, $numGrupos);
         }
 
         Log::info('Fechas creadas:', ['fechas' => $fechas]);
@@ -156,6 +163,7 @@ class ZonaService implements ZonaServiceInterface
         $numFechas = $numEquipos - 1;
 
         $equiposArray = $equipos->toArray();
+        shuffle($equiposArray);
         $fechas = [];
 
         for ($i = 0; $i < $numFechas; $i++) {
@@ -212,6 +220,7 @@ class ZonaService implements ZonaServiceInterface
 
         // Crear partidos para la fecha
         $equiposArray = $equipos->toArray();
+        shuffle($equiposArray);
         $numEquipos = count($equiposArray);
 
         for ($i = 0; $i < $numEquipos / 2; $i++) {
@@ -236,51 +245,80 @@ class ZonaService implements ZonaServiceInterface
         return [$fecha];
     }
 
-    private function createFechasGrupos($zona, $equipos)
+    private function createFechasGrupos($zona, $numGrupos)
     {
-        $numEquipos = $equipos->count();
-        $numFechas = $numEquipos - 1;
-
-        $equiposArray = $equipos->toArray();
+        $grupos = $this->crearGruposAleatoriamente($zona, $numGrupos);
         $fechas = [];
 
-        for ($i = 0; $i < $numFechas; $i++) {
-            $fecha = Fecha::create([
-                'nombre' => 'Fecha ' . ($i + 1),
-                'fecha_inicio' => now()->addWeeks($i),
-                'fecha_fin' => now()->addWeeks($i)->addDays(1),
-                'estado' => 'Pendiente',
-                'zona_id' => $zona->id,
-            ]);
+        foreach ($grupos as $grupo) {
+            $equipos = $grupo->equipos;
+            $numEquipos = $equipos->count();
+            $numFechas = $numEquipos - 1;
 
-            $partidos = [];
+            $equiposArray = $equipos->toArray();
+            shuffle($equiposArray);
 
-            // Crear partidos para la fecha
-            for ($j = 0; $j < $numEquipos / 2; $j++) {
-                $local = $equiposArray[$j];
-                $visitante = $equiposArray[$numEquipos - 1 - $j];
-
-                $partido = Partido::create([
-                    'fecha_id' => $fecha->id,
-                    'equipo_local_id' => $local['id'],
-                    'equipo_visitante_id' => $visitante['id'],
+            for ($i = 0; $i < $numFechas; $i++) {
+                $fecha = Fecha::create([
+                    'nombre' => 'Fecha ' . ($i + 1) . ' - ' . $grupo->nombre,
+                    'fecha_inicio' => now()->addWeeks($i),
+                    'fecha_fin' => now()->addWeeks($i)->addDays(1),
                     'estado' => 'Pendiente',
-                    'fecha' => $fecha->fecha_inicio, // Proporcionar un valor para el campo fecha
-                    'horario_id' => null, // Permitir valores nulos
-                    'cancha_id' => null, // Permitir valores nulos
+                    'zona_id' => $zona->id,
                 ]);
 
-                $partidos[] = $partido;
+                $partidos = [];
+
+                // Crear partidos para la fecha
+                for ($j = 0; $j < $numEquipos / 2; $j++) {
+                    $local = $equiposArray[$j];
+                    $visitante = $equiposArray[$numEquipos - 1 - $j];
+
+                    $partido = Partido::create([
+                        'fecha_id' => $fecha->id,
+                        'equipo_local_id' => $local['id'],
+                        'equipo_visitante_id' => $visitante['id'],
+                        'estado' => 'Pendiente',
+                        'fecha' => $fecha->fecha_inicio,
+                        'horario_id' => null,
+                        'cancha_id' => null,
+                    ]);
+
+                    $partidos[] = $partido;
+                }
+
+                $fecha->partidos = $partidos;
+                $fechas[] = $fecha;
+
+                // Rotar equipos para la siguiente fecha
+                $last = array_pop($equiposArray);
+                array_splice($equiposArray, 1, 0, [$last]);
             }
-
-            $fecha->partidos = $partidos;
-            $fechas[] = $fecha;
-
-            // Rotar equipos para la siguiente fecha
-            $last = array_pop($equiposArray);
-            array_splice($equiposArray, 1, 0, [$last]);
         }
 
         return $fechas;
+    }
+
+    private function crearGruposAleatoriamente($zona, $numGrupos)
+    {
+        $equipos = $zona->equipos->toArray();
+        shuffle($equipos);
+
+        $grupos = [];
+        for ($i = 0; $i < $numGrupos; $i++) {
+            $grupo = Grupo::create([
+                'nombre' => 'Grupo ' . ($i + 1),
+                'zona_id' => $zona->id,
+            ]);
+            $grupos[] = $grupo;
+        }
+
+        $grupoIndex = 0;
+        foreach ($equipos as $equipo) {
+            $grupos[$grupoIndex]->equipos()->attach($equipo['id']);
+            $grupoIndex = ($grupoIndex + 1) % $numGrupos;
+        }
+
+        return $grupos;
     }
 }

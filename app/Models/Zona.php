@@ -27,6 +27,11 @@ class Zona extends Model
         return $this->hasMany(Equipo::class);
     }
 
+    public function grupos()
+    {
+        return $this->hasMany(Grupo::class);
+    }
+
     public function torneo()
     {
         return $this->belongsTo(Torneo::class);
