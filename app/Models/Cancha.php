@@ -25,4 +25,13 @@ class Cancha extends Model
         return $this->belongsTo(Cancha::class, 'cancha_id');
     }
 
+    public function turnos()
+    {
+        return $this->hasMany(Turno::class, 'cancha_id');
+    }
+
+    public function bloqueosTemporales()
+    {
+        return $this->hasMany(BloqueoTemporal::class, 'cancha_id');
+    }
 }

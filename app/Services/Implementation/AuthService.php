@@ -3,6 +3,7 @@
 namespace App\Services\Implementation;
 
 use App\Models\User;
+use App\Models\Auditoria;
 use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
 
@@ -25,6 +26,17 @@ class AuthService implements AuthServiceInterface
 
         $abilities = $user->getAbilities();
         $token = $user->createToken('login', $abilities);
+
+        // Registrar en auditorías
+        Auditoria::create([
+            'usuario_id' => $user->id,
+            'accion' => 'login',
+            'entidad' => 'User',
+            'entidad_id' => $user->id,
+            'ip' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'fecha_accion' => now()
+        ]);
 
         return [
             'token' => $token->plainTextToken,

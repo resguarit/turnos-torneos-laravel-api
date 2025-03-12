@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Persona;
+use App\Services\Implementation\AuditoriaService;
 
 class UserService implements UserServiceInterface
 {
@@ -40,30 +41,28 @@ class UserService implements UserServiceInterface
         ];
     }
 
-    public function createUser(array $data)
+    public function createUser(Request $request)
     {
-        $persona = Persona::where('dni', $data['dni'])->first();
-
-        if(!$persona) {
-            $persona = Persona::create([
-                'name' => $data['name'],
-                'dni' => $data['dni'],
-                'telefono' => $data['telefono'],
-            ]);
-        }
-
         $user = User::create([
-            'email' => $data['email'],
-            'dni' => $data['dni'],
-            'password' => Hash::make($data['password']),
-            'rol' => $data['rol'],
-            'persona_id' => $persona->id
+            'name' => $request->name,
+            'email' => $request->email,
+            'dni' => $request->dni,
+            'telefono' => $request->telefono,
+            'password' => Hash::make($request->password),
+            'rol' => $request->rol ?? 'cliente'
         ]);
 
+        AuditoriaService::registrar(
+            'crear', 
+            'usuarios', 
+            $user->id, 
+            null, 
+            json_encode($user->toArray(), JSON_PRETTY_PRINT)
+        );
+
         return [
+            'message' => 'Usuario creado correctamente',
             'user' => $user,
-            'persona' => $persona,
-            'message' => 'Usuario creado con éxito',
             'status' => 201
         ];
     }
@@ -144,6 +143,49 @@ class UserService implements UserServiceInterface
         ];
     }
 
+    public function updateUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $datosAnteriores = $user->toArray();
+        
+        $user->update($request->all());
+
+        AuditoriaService::registrar(
+            'modificar', 
+            'usuarios', 
+            $user->id, 
+            $datosAnteriores, 
+            $user->fresh()->toArray()
+        );
+
+        return response()->json([
+            'message' => 'Usuario actualizado correctamente',
+            'user' => $user,
+            'status' => 200
+        ], 200);
+    }
+
+    public function deleteUser($id)
+    {
+        $user = User::findOrFail($id);
+        $datosAnteriores = $user->toArray();
+        
+        $user->delete();
+
+        AuditoriaService::registrar(
+            'eliminar', 
+            'usuarios', 
+            $id, 
+            $datosAnteriores, 
+            null
+        );
+
+        return response()->json([
+            'message' => 'Usuario eliminado correctamente',
+            'status' => 200
+        ], 200);
+    }
+
     public function update($id, array $data)
     {
         $user = User::with('persona')->find($id);
@@ -155,29 +197,18 @@ class UserService implements UserServiceInterface
             ];
         }
 
-        if (isset($data['password'])) {
-            if (!Hash::check($data['current_password'], $user->password)) {
-                return [
-                    'message' => 'La contraseña actual no es correcta',
-                    'status' => 401
-                ];
-            }
-            $data['password'] = Hash::make($data['password']);
-        }
-
+        $datosAnteriores = json_encode($user->toArray(), JSON_PRETTY_PRINT);
+        
         $user->fill($data);
         $user->save();
 
-        if (isset($data['name'])) {
-            $user->persona->nombre = $data['name'];
-        }
-        if (isset($data['dni'])) {
-            $user->persona->dni = $data['dni'];
-        }
-        if (isset($data['telefono'])) {
-            $user->persona->telefono = $data['telefono'];
-        }
-        $user->persona->save();
+        AuditoriaService::registrar(
+            'modificar', 
+            'usuarios', 
+            $user->id, 
+            $datosAnteriores, 
+            json_encode($user->fresh()->toArray(), JSON_PRETTY_PRINT)
+        );
 
         return [
             'message' => 'Usuario actualizado correctamente',
@@ -195,10 +226,18 @@ class UserService implements UserServiceInterface
                 'status' => 404
             ];
         }
-
-        $user->persona->delete();
-
+        
+        $datosAnteriores = json_encode($user->toArray(), JSON_PRETTY_PRINT);
+        
         $user->delete();
+
+        AuditoriaService::registrar(
+            'eliminar', 
+            'usuarios', 
+            $id, 
+            $datosAnteriores, 
+            null
+        );
 
         return [
             'message' => 'Usuario eliminado con éxito',
