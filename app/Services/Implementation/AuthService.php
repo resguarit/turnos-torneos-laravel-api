@@ -3,17 +3,19 @@
 namespace App\Services\Implementation;
 
 use App\Models\User;
+use App\Models\Persona;
 use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
+use Illuminate\Support\Facades\DB;
 
 class AuthService implements AuthServiceInterface
 {
     public function login(array $credentials)
     {
         if (isset($credentials['dni'])) {
-            $user = User::where('dni', $credentials['dni'])->first();
+            $user = User::with('persona')->where('dni', $credentials['dni'])->first();
         } else {
-            $user = User::where('email', $credentials['email'])->first();
+            $user = User::with('persona')->where('email', $credentials['email'])->first();
         }
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
@@ -30,27 +32,60 @@ class AuthService implements AuthServiceInterface
             'token' => $token->plainTextToken,
             'user_id' => $user->id,
             'rol' => $user->rol,
-            'username' => $user->name,
+            'username' => $user->persona->name ?? 'Usuario', // Asegurándonos de tener un valor predeterminado si es null
             'status' => 200
         ];
     }
 
     public function register(array $data)
     {
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'dni' => $data['dni'],
-            'telefono' => $data['telefono'],
-            'password' => Hash::make($data['password']),
-            'rol' => 'cliente'
-        ]);
+        DB::beginTransaction();
+        
+        try {
+            // Buscar si ya existe una persona con el mismo DNI
+            $persona = Persona::where('dni', $data['dni'])->first();
 
-        return [
-            'message' => 'Usuario registrado exitosamente',
-            'user' => $user,
-            'status' => 201
-        ];
+            if (!$persona) {
+                // Si no existe, crear una nueva persona
+                $persona = Persona::create([
+                    'name' => $data['name'],
+                    'dni' => $data['dni'],
+                    'telefono' => $data['telefono'],
+                    'direccion' => $data['direccion'] ?? null,
+                ]);
+            }
+
+            if ($persona->user) {
+                return [
+                    'message' => 'Ya existe un usuario registrado con este DNI',
+                    'status' => 400
+                ];
+            }
+
+            // Crear usuario asociado a la persona
+            $user = User::create([
+                'email' => $data['email'],
+                'dni' => $data['dni'],
+                'password' => Hash::make($data['password']),
+                'rol' => 'cliente',
+                'persona_id' => $persona->id
+            ]);
+            
+            DB::commit();
+            
+            return [
+                'message' => 'Usuario registrado exitosamente',
+                'user' => $user,
+                'status' => 201
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return [
+                'message' => 'Error al registrar usuario: ' . $e->getMessage(),
+                'status' => 500
+            ];
+        }
     }
 
     public function logout($user)

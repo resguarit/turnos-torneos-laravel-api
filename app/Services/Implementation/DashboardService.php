@@ -43,14 +43,16 @@ class DashboardService implements DashboardServiceInterface
 
     public function usuariosActivos()
     {
-        $usuariosActivosActual = User::whereHas('turnos', function ($query) {
-            $query->where('estado', '!=', 'Cancelada')
+        // Obtener usuarios activos a través de la relación persona->turnos
+        $usuariosActivosActual = User::whereHas('persona.turnos', function ($query) {
+            $query->where('estado', '!=', 'Cancelado')
                   ->whereYear('fecha_turno', Carbon::now()->year)
                   ->whereMonth('fecha_turno', Carbon::now()->month);
         })->count();
 
-        $usuariosActivosAnterior = User::whereHas('turnos', function ($query) {
-            $query->where('estado', '!=', 'Cancelada')
+        // Obtener usuarios activos del mes anterior
+        $usuariosActivosAnterior = User::whereHas('persona.turnos', function ($query) {
+            $query->where('estado', '!=', 'Cancelado')
                   ->whereYear('fecha_turno', Carbon::now()->subMonth()->year)
                   ->whereMonth('fecha_turno', Carbon::now()->subMonth()->month);
         })->count();

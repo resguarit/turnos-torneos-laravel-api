@@ -54,6 +54,15 @@ class TurnoController extends Controller
         return $this->turnoService->storeTurnoUnico($request);
     }
 
+    public function storeTurnoPersona(Request $request)
+    {
+        $user = Auth::user();
+
+        abort_unless($user->tokenCan('turnos:create') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        return $this->turnoService->storeTurnoPersona($request);
+    }
+
     public function storeTurnoFijo(Request $request)
     {
         $user = Auth::user();
@@ -139,4 +148,6 @@ class TurnoController extends Controller
 
         return $this->turnoService->cancelTurno($id, $request);
     }
+
+    
 }

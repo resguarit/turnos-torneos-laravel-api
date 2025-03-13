@@ -16,10 +16,12 @@ class UserService implements UserServiceInterface
         // Buscar si ya existe una persona con el mismo DNI
         $persona = Persona::where('dni', $data['dni'])->first();
 
+        
+
         if (!$persona) {
             // Si no existe, crear una nueva persona
             $persona = Persona::create([
-                'nombre' => $data['name'],
+                'name' => $data['name'],
                 'dni' => $data['dni'],
                 'telefono' => $data['telefono'],
                 'direccion' => $data['direccion'] ?? null,
@@ -70,10 +72,11 @@ class UserService implements UserServiceInterface
 
     public function login(array $credentials)
     {
+        
         if (isset($credentials['dni'])) {
-            $user = User::where('dni', $credentials['dni'])->first();
+            $user = User::with('persona')->where('dni', $credentials['dni'])->first();
         } else {
-            $user = User::where('email', $credentials['email'])->first();
+            $user = User::with('persona')->where('email', $credentials['email'])->first();
         }
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
@@ -155,6 +158,7 @@ class UserService implements UserServiceInterface
             ];
         }
 
+        // Manejar contraseña
         if (isset($data['password'])) {
             if (!Hash::check($data['current_password'], $user->password)) {
                 return [
@@ -162,22 +166,39 @@ class UserService implements UserServiceInterface
                     'status' => 401
                 ];
             }
-            $data['password'] = Hash::make($data['password']);
+            $user->password = Hash::make($data['password']);
         }
 
-        $user->fill($data);
-        $user->save();
-
-        if (isset($data['name'])) {
-            $user->persona->nombre = $data['name'];
+        // Actualizar campos específicos de User
+        if (isset($data['email'])) {
+            $user->email = $data['email'];
+        }
+        if (isset($data['rol'])) {
+            $user->rol = $data['rol'];
         }
         if (isset($data['dni'])) {
-            $user->persona->dni = $data['dni'];
+            $user->dni = $data['dni'];
         }
-        if (isset($data['telefono'])) {
-            $user->persona->telefono = $data['telefono'];
+        
+        $user->save();
+
+        // Actualizar campos de Persona si existe
+        if ($user->persona) {
+            if (isset($data['name'])) {
+                $user->persona->name = $data['name'];
+            }
+            if (isset($data['dni'])) {
+                $user->persona->dni = $data['dni'];
+            }
+            if (isset($data['telefono'])) {
+                $user->persona->telefono = $data['telefono'];
+            }
+            if (isset($data['direccion'])) {
+                $user->persona->direccion = $data['direccion'];
+            }
+            
+            $user->persona->save();
         }
-        $user->persona->save();
 
         return [
             'message' => 'Usuario actualizado correctamente',

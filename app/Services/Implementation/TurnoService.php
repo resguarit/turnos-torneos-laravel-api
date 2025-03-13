@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
+use App\Models\Persona;
+use App\Models\User;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -60,9 +62,15 @@ class TurnoService implements TurnoServiceInterface
             $searchType = $request->searchType;
             $searchTerm = $request->searchTerm;
 
-            $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
-                $q->where($searchType, 'like', "%{$searchTerm}%");
-            });
+            if ($searchType === 'email') {
+                $query->whereHas('persona.usuario', function ($q) use ($searchTerm) {
+                    $q->where('email', 'like', "%{$searchTerm}%");
+                });
+            } else {
+                $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
+                    $q->where($searchType, 'like', "%{$searchTerm}%");
+                });
+            }
         }
 
         $turnos = $query->with(['persona', 'cancha', 'horario'])
@@ -103,6 +111,7 @@ class TurnoService implements TurnoServiceInterface
             'fecha_turno' => 'required|date',
             'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
+            'persona_id' => 'sometimes|exists:personas,id',
             'estado' => ['required', Rule::enum(TurnoEstado::class)],
         ]);
 
@@ -161,13 +170,26 @@ class TurnoService implements TurnoServiceInterface
             }
         }
 
+        if ($request->has('persona_id')) {
+            $persona = Persona::find($request->persona_id);
+
+            if (!$persona) {
+                return response()->json([
+                    'message' => 'Persona no encontrada',
+                    'status' => 404
+                ], 404);
+            }
+        } else {
+            $persona = $user->persona;
+        }
+
         // Crear una nueva reserva
         $turno = Turno::create([
             'fecha_turno' => $request->fecha_turno,
             'fecha_reserva' => now(),
             'horario_id' => $request->horario_id,
             'cancha_id' => $request->cancha_id,
-            'persona_id' => $user->persona->id,
+            'persona_id' => $persona->id,
             'monto_total' => $monto_total,
             'monto_seña' => $monto_seña,
             'estado' => $request->estado,
@@ -581,7 +603,9 @@ class TurnoService implements TurnoServiceInterface
 
     public function getTurnosByUser($userId)
     {
-        $turnos = Turno::where('usuario_id', $userId)
+        $user = User::where('id', $userId)->first();
+        $personaId = $user->persona->id;
+        $turnos = Turno::where('persona_id', $personaId)
         ->with(['cancha', 'horario'])
         ->get();
 
@@ -682,5 +706,103 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 500
             ], 500);
         }
+    }
+
+    public function storeTurnoPersona(Request $request)
+    {
+        $user = Auth::user();
+
+        $validator = Validator::make($request->all(), [
+            'fecha_turno' => 'required|date',
+            'cancha_id' => 'required|exists:canchas,id',
+            'horario_id' => 'required|exists:horarios,id',
+            'estado' => ['required', Rule::enum(TurnoEstado::class)],
+            'persona_id' => 'required|exists:personas,id',
+            'tipo' => 'required|in:unico,fijo'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $horario = Horario::find($request->horario_id);
+        $cancha = Cancha::find($request->cancha_id);
+
+        if (!$horario || !$cancha) {
+            return response()->json([
+                'message' => 'Horario o Cancha no encontrados',
+                'status' => 404
+            ], 404);
+        }
+
+        $monto_total = $cancha->precio_por_hora;
+        $monto_seña = $cancha->seña; // Ensure this is not null
+
+        if (is_null($monto_seña)) {
+            return response()->json([
+                'message' => 'El monto de la seña no puede ser nulo',
+                'status' => 400
+            ], 400);
+        }
+
+        $turnoExistente = Turno::where('fecha_turno', $request->fecha_turno)
+            ->where('horario_id', $horario->id)
+            ->where('cancha_id', $cancha->id)
+            ->where('estado', '!=', 'Cancelado')
+            ->first();
+
+        if ($turnoExistente) {
+            return response()->json([
+                'message' => 'El Turno no está disponible.',
+                'status' => 400
+            ], 400);
+        }
+
+        $clave = "bloqueo:{$request->fecha_turno}:{$request->horario_id}:{$request->cancha_id}";
+        $bloqueo = Redis::get($clave);
+
+        if($bloqueo) {
+            $bloqueo = json_decode($bloqueo, true);
+
+            if($bloqueo['usuario_id'] !== $user->id){
+                return response()->json([
+                    'message' => 'El Turno ya no está disponible.',
+                    'status' => 400
+                ], 400);
+            }
+        }
+
+        // Crear una nueva reserva
+        $turno = Turno::create([
+            'fecha_turno' => $request->fecha_turno,
+            'fecha_reserva' => now(),
+            'horario_id' => $request->horario_id,
+            'cancha_id' => $request->cancha_id,
+            'persona_id' => $request->persona_id,
+            'monto_total' => $monto_total,
+            'monto_seña' => $monto_seña,
+            'estado' => $request->estado,
+            'tipo' => $request->tipo
+        ]);
+
+        if (!$turno) {
+            return response()->json([
+                'message' => 'Error al crear el turno',
+                'status' => 500
+            ], 500);
+        }
+
+        // Eliminar el bloqueo en Redis después de crear el turno
+        Redis::del($clave);
+
+        return response()->json([
+            'message' => 'Turno creado correctamente',
+            'turno' => $turno,
+            'status' => 201
+        ], 201);
     }
 }

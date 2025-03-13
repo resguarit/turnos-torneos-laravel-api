@@ -10,6 +10,7 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\TurnoController;
+use App\Http\Controllers\Api\PersonaController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -73,6 +74,8 @@ Route::get('/disponibilidad/dias', [DisponibilidadController::class, 'getDiasNoD
 Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
+Route::get('/personas', [PersonaController::class, 'index']);
+Route::post('/personas', [PersonaController::class, 'store']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);

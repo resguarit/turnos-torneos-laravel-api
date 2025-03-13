@@ -39,6 +39,7 @@ class PersonaService implements PersonaServiceInterface
 
         return [
             'message' => 'Persona creada con éxito',
+            'persona' => $persona,
             'status' => 201
         ];
     }
