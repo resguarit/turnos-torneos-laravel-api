@@ -23,7 +23,19 @@ class EquipoService implements EquipoServiceInterface
     public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    $exists = Equipo::where('nombre', $value)
+                        ->where('zona_id', $request->input('zona_id'))
+                        ->exists();
+                    if ($exists) {
+                        $fail('El nombre del equipo ya existe en esta zona.');
+                    }
+                },
+            ],
             'escudo' => 'nullable|string',
             'zona_id' => 'required|exists:zonas,id',
         ]);
@@ -57,7 +69,20 @@ class EquipoService implements EquipoServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request, $id) {
+                    $exists = Equipo::where('nombre', $value)
+                        ->where('zona_id', $request->input('zona_id'))
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($exists) {
+                        $fail('El nombre del equipo ya existe en esta zona.');
+                    }
+                },
+            ],
             'escudo' => 'nullable|string',
             'zona_id' => 'required|exists:zonas,id',
         ]);

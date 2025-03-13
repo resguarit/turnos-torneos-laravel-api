@@ -125,7 +125,7 @@ class ZonaService implements ZonaServiceInterface
         $equipos = $zona->equipos;
         $numEquipos = $equipos->count();
 
-        if ($numEquipos < 2 || $numEquipos % 2 != 0) {
+        if ($numEquipos < 2 ) {
             return response()->json([
                 'message' => 'El número de equipos debe ser par y mayor o igual a 2',
                 'status' => 400
@@ -163,11 +163,17 @@ class ZonaService implements ZonaServiceInterface
     private function createFechasLiga($zona, $equipos)
     {
         $numEquipos = $equipos->count();
-        $numFechas = $numEquipos - 1;
+        $numFechas = ($numEquipos % 2 == 0) ? $numEquipos - 1 : $numEquipos;
 
         $equiposArray = $equipos->toArray();
         shuffle($equiposArray);
         $fechas = [];
+
+        // Si el número de equipos es impar, agregamos un "equipo libre"
+        if ($numEquipos % 2 != 0) {
+            $equiposArray[] = ['id' => null, 'nombre' => 'Libre'];
+            $numEquipos++;
+        }
 
         for ($i = 0; $i < $numFechas; $i++) {
             $fecha = Fecha::create([
@@ -185,14 +191,19 @@ class ZonaService implements ZonaServiceInterface
                 $local = $equiposArray[$j];
                 $visitante = $equiposArray[$numEquipos - 1 - $j];
 
+                // Si alguno de los equipos es "Libre", no creamos un partido
+                if ($local['id'] === null || $visitante['id'] === null) {
+                    continue;
+                }
+
                 $partido = Partido::create([
                     'fecha_id' => $fecha->id,
                     'equipo_local_id' => $local['id'],
                     'equipo_visitante_id' => $visitante['id'],
                     'estado' => 'Pendiente',
-                    'fecha' => $fecha->fecha_inicio, // Proporcionar un valor para el campo fecha
-                    'horario_id' => null, // Permitir valores nulos
-                    'cancha_id' => null, // Permitir valores nulos
+                    'fecha' => $fecha->fecha_inicio,
+                    'horario_id' => null,
+                    'cancha_id' => null,
                 ]);
 
                 $partidos[] = $partido;
@@ -323,14 +334,22 @@ class ZonaService implements ZonaServiceInterface
         $zona = Zona::with('equipos')->find($zonaId);
 
         if (!$zona) {
-            return response()->json([
-                'message' => 'Zona no encontrada',
-                'status' => 404
-            ], 404);
+            throw new \Exception('Zona no encontrada', 404);
         }
 
-        $equipos = $zona->equipos->toArray();
-        shuffle($equipos);
+        $equipos = $zona->equipos;
+        $numEquipos = $equipos->count();
+
+        if ($numEquipos < 2 || $numEquipos % 2 != 0) {
+            throw new \Exception('El número de equipos debe ser par y mayor o igual a 2', 400);
+        }
+
+        if ($numGrupos < 1) {
+            throw new \Exception('El número de grupos debe ser mayor o igual a 1', 400);
+        }
+
+        $equiposArray = $equipos->toArray();
+        shuffle($equiposArray);
 
         $grupos = [];
         for ($i = 0; $i < $numGrupos; $i++) {
@@ -342,7 +361,7 @@ class ZonaService implements ZonaServiceInterface
         }
 
         $grupoIndex = 0;
-        foreach ($equipos as $equipo) {
+        foreach ($equiposArray as $equipo) {
             $grupos[$grupoIndex]->equipos()->attach($equipo['id']);
             $grupoIndex = ($grupoIndex + 1) % $numGrupos;
         }
