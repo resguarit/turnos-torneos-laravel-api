@@ -108,7 +108,7 @@ class ZonaService implements ZonaServiceInterface
 
     public function getByTorneo($torneoId)
     {
-        return Zona::where('torneo_id', $torneoId)->with('equipos', 'fechas')->get();
+        return Zona::where('torneo_id', $torneoId)->with('equipos', 'fechas', 'grupos')->get();
     }
 
     public function createFechas(Request $request, $zonaId)
