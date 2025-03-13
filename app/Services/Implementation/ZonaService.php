@@ -279,51 +279,58 @@ class ZonaService implements ZonaServiceInterface
         }
 
         $fechas = [];
+        $numFechas = 0;
 
         foreach ($zona->grupos as $grupo) {
             $equipos = $grupo->equipos;
             $numEquipos = $equipos->count();
-            $numFechas = $numEquipos - 1;
-
-            $equiposArray = $equipos->toArray();
-            shuffle($equiposArray);
+            $numFechas = max($numFechas, $numEquipos - 1);
+        }
 
             for ($i = 0; $i < $numFechas; $i++) {
                 $fecha = Fecha::create([
-                    'nombre' => 'Fecha ' . ($i + 1) . ' - ' . $grupo->nombre,
+                    'nombre' => 'Fecha ' . ($i + 1),
                     'fecha_inicio' => now()->addWeeks($i),
                     'fecha_fin' => now()->addWeeks($i)->addDays(1),
                     'estado' => 'Pendiente',
                     'zona_id' => $zona->id,
                 ]);
 
-                $partidos = [];
-
-                // Crear partidos para la fecha
-                for ($j = 0; $j < $numEquipos / 2; $j++) {
-                    $local = $equiposArray[$j];
-                    $visitante = $equiposArray[$numEquipos - 1 - $j];
-
-                    $partido = Partido::create([
-                        'fecha_id' => $fecha->id,
-                        'equipo_local_id' => $local['id'],
-                        'equipo_visitante_id' => $visitante['id'],
-                        'estado' => 'Pendiente',
-                        'fecha' => $fecha->fecha_inicio,
-                        'horario_id' => null,
-                        'cancha_id' => null,
-                    ]);
-
-                    $partidos[] = $partido;
+                foreach ($zona->grupos as $grupo) {
+                    $equipos = $grupo->equipos;
+                    $numEquipos = $equipos->count();
+        
+                    $equiposArray = $equipos->toArray();
+                    shuffle($equiposArray);
+        
+                    $partidos = [];
+        
+                    // Crear partidos para la fecha
+                    for ($j = 0; $j < $numEquipos / 2; $j++) {
+                        $local = $equiposArray[$j];
+                        $visitante = $equiposArray[$numEquipos - 1 - $j];
+        
+                        $partido = Partido::create([
+                            'fecha_id' => $fecha->id,
+                            'equipo_local_id' => $local['id'],
+                            'equipo_visitante_id' => $visitante['id'],
+                            'estado' => 'Pendiente',
+                            'fecha' => $fecha->fecha_inicio,
+                            'horario_id' => null,
+                            'cancha_id' => null,
+                        ]);
+        
+                        $partidos[] = $partido;
+                    }
+        
+                    $fecha->partidos()->saveMany($partidos);
+        
+                    // Rotar equipos para la siguiente fecha
+                    $last = array_pop($equiposArray);
+                    array_splice($equiposArray, 1, 0, [$last]);
                 }
-
-                $fecha->partidos = $partidos;
+        
                 $fechas[] = $fecha;
-
-                // Rotar equipos para la siguiente fecha
-                $last = array_pop($equiposArray);
-                array_splice($equiposArray, 1, 0, [$last]);
-            }
         }
 
         return $fechas;
