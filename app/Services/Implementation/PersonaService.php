@@ -37,6 +37,11 @@ class PersonaService implements PersonaServiceInterface
             'direccion' => $request->direccion ?? null,
         ]);
 
+        $cuentaCorriente = CuentaCorriente::create([
+            'persona_id' => $persona->id,
+            'saldo' => 0,
+        ]);
+
         return [
             'message' => 'Persona creada con éxito',
             'persona' => $persona,
@@ -46,8 +51,6 @@ class PersonaService implements PersonaServiceInterface
 
     public function updatePersona(Request $request, $id)
     {
-
-        
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string',
             'dni' => 'sometimes|string|unique:personas,dni,' . $id,
@@ -70,6 +73,14 @@ class PersonaService implements PersonaServiceInterface
                 'message' => 'Persona no encontrada',
                 'status' => 404
             ];
+        }
+        // Actualizar el usuario asociado si existe
+        $usuario = $persona->usuario;
+        if ($usuario) {
+            if ($request->has('dni')) {
+                $usuario->dni = $request->dni;
+            }
+            $usuario->save();
         }
 
         $persona->fill($request->all());

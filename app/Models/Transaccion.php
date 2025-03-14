@@ -9,6 +9,8 @@ class Transaccion extends Model
 {
     use SoftDeletes;
 
+    protected $table = 'transacciones';
+
     protected $fillable = [
         'cuenta_corriente_id', 'monto', 'tipo', 'descripcion'
     ];

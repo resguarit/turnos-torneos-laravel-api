@@ -21,6 +21,8 @@ use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
 use App\Models\Persona;
 use App\Models\User;
+use App\Models\CuentaCorriente;
+use App\Models\Transaccion;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -156,10 +158,10 @@ class TurnoService implements TurnoServiceInterface
             ], 400);
         }
 
-        $clave = "bloqueo:{$request->fecha_turno}:{$request->horario_id}:{$request->cancha_id}";
-        $bloqueo = Redis::get($clave);
+        //$clave = "bloqueo:{$request->fecha_turno}:{$request->horario_id}:{$request->cancha_id}";
+        //$bloqueo = Redis::get($clave);
 
-        if ($bloqueo) {
+        /*if ($bloqueo) {
             $bloqueo = json_decode($bloqueo, true);
 
             if($bloqueo['usuario_id'] !== $user->id){
@@ -168,7 +170,7 @@ class TurnoService implements TurnoServiceInterface
                     'status' => 400
                 ], 400);
             }
-        }
+        }*/
 
         if ($request->has('persona_id')) {
             $persona = Persona::find($request->persona_id);
@@ -183,34 +185,76 @@ class TurnoService implements TurnoServiceInterface
             $persona = $user->persona;
         }
 
-        // Crear una nueva reserva
-        $turno = Turno::create([
-            'fecha_turno' => $request->fecha_turno,
-            'fecha_reserva' => now(),
-            'horario_id' => $request->horario_id,
-            'cancha_id' => $request->cancha_id,
-            'persona_id' => $persona->id,
-            'monto_total' => $monto_total,
-            'monto_seña' => $monto_seña,
-            'estado' => $request->estado,
-            'tipo' => 'unico'
-        ]);
+        // Iniciar la transacción de base de datos
+        DB::beginTransaction();
+        
+        try {
+            // Crear una nueva reserva
+            $turno = Turno::create([
+                'fecha_turno' => $request->fecha_turno,
+                'fecha_reserva' => now(),
+                'horario_id' => $request->horario_id,
+                'cancha_id' => $request->cancha_id,
+                'persona_id' => $persona->id,
+                'monto_total' => $monto_total,
+                'monto_seña' => $monto_seña,
+                'estado' => $request->estado,
+                'tipo' => 'unico'
+            ]);
 
-        if (!$turno) {
+            if (!$turno) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Error al crear el turno',
+                    'status' => 500
+                ], 500);
+            }
+            
+            // Registrar transacción en cuenta corriente según el estado
+            if ($request->estado != 'Pagado') {
+                // Buscar o crear la cuenta corriente de la persona
+                $cuentaCorriente = CuentaCorriente::firstOrCreate(
+                    ['persona_id' => $persona->id],
+                    ['saldo' => 0]
+                );
+                
+                // Determinar el monto de la transacción según el estado
+                if ($request->estado == 'Pendiente') {
+                    $montoTransaccion = -$monto_total; // Monto negativo por el total
+                    $descripcion = "Reserva de turno #{$turno->id} (pendiente de pago)";
+                } else if ($request->estado == 'Señado') {
+                    $montoTransaccion = -($monto_total - $monto_seña); // Monto negativo por el total menos la seña
+                    $descripcion = "Reserva de turno #{$turno->id} (señado)";
+                }
+                
+                // Crear la transacción
+                $transaccion = Transaccion::create([
+                    'cuenta_corriente_id' => $cuentaCorriente->id,
+                    'monto' => $montoTransaccion,
+                    'tipo' => 'turno',
+                    'descripcion' => $descripcion
+                ]);
+                
+                // Actualizar el saldo de la cuenta corriente
+                $cuentaCorriente->saldo += $montoTransaccion;
+                $cuentaCorriente->save();
+            }
+            
+            DB::commit();
+            
             return response()->json([
-                'message' => 'Error al crear el turno',
+                'message' => 'Turno creado correctamente',
+                'turno' => $turno,
+                'status' => 201
+            ], 201);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear el turno: ' . $e->getMessage(),
                 'status' => 500
             ], 500);
         }
-
-        // Eliminar el bloqueo en Redis después de crear el turno
-        Redis::del($clave);
-
-        return response()->json([
-            'message' => 'Turno creado correctamente',
-            'turno' => $turno,
-            'status' => 201
-        ], 201);
     }
 
     public function storeTurnoFijo(Request $request)
@@ -367,16 +411,16 @@ class TurnoService implements TurnoServiceInterface
                     ->where('estado', '!=', 'Cancelado')
                     ->first();
 
-                $clave = "bloqueo:{$fecha_comparar}:{$horario_comparar}:{$cancha_comparar}";
-                $bloqueo = Redis::get($clave);
+                //$clave = "bloqueo:{$fecha_comparar}:{$horario_comparar}:{$cancha_comparar}";
+                //$bloqueo = Redis::get($clave);
 
-                if ($bloqueo) {
+                /*if ($bloqueo) {
                     DB::rollBack();
                     return response()->json([
                         'message' => 'El Turno esta bloqueado temporalmente.',
                         'status' => 409
                     ], 409);
-                }
+                }*/
     
                 if($turnoExistente) {
                     DB::rollBack();
@@ -762,47 +806,77 @@ class TurnoService implements TurnoServiceInterface
             ], 400);
         }
 
-        $clave = "bloqueo:{$request->fecha_turno}:{$request->horario_id}:{$request->cancha_id}";
-        $bloqueo = Redis::get($clave);
+        // Iniciar la transacción de base de datos
+        DB::beginTransaction();
+        
+        try {
+            // Crear una nueva reserva
+            $turno = Turno::create([
+                'fecha_turno' => $request->fecha_turno,
+                'fecha_reserva' => now(),
+                'horario_id' => $request->horario_id,
+                'cancha_id' => $request->cancha_id,
+                'persona_id' => $request->persona_id,
+                'monto_total' => $monto_total,
+                'monto_seña' => $monto_seña,
+                'estado' => $request->estado,
+                'tipo' => $request->tipo
+            ]);
 
-        if($bloqueo) {
-            $bloqueo = json_decode($bloqueo, true);
-
-            if($bloqueo['usuario_id'] !== $user->id){
+            if (!$turno) {
+                DB::rollBack();
                 return response()->json([
-                    'message' => 'El Turno ya no está disponible.',
-                    'status' => 400
-                ], 400);
+                    'message' => 'Error al crear el turno',
+                    'status' => 500
+                ], 500);
             }
-        }
-
-        // Crear una nueva reserva
-        $turno = Turno::create([
-            'fecha_turno' => $request->fecha_turno,
-            'fecha_reserva' => now(),
-            'horario_id' => $request->horario_id,
-            'cancha_id' => $request->cancha_id,
-            'persona_id' => $request->persona_id,
-            'monto_total' => $monto_total,
-            'monto_seña' => $monto_seña,
-            'estado' => $request->estado,
-            'tipo' => $request->tipo
-        ]);
-
-        if (!$turno) {
+            
+            // Registrar transacción en cuenta corriente según el estado
+            if ($request->estado != 'Pagado') {
+                $persona = Persona::find($request->persona_id);
+                
+                // Buscar o crear la cuenta corriente de la persona
+                $cuentaCorriente = CuentaCorriente::firstOrCreate(
+                    ['persona_id' => $persona->id],
+                    ['saldo' => 0]
+                );
+                
+                // Determinar el monto de la transacción según el estado
+                if ($request->estado == 'Pendiente') {
+                    $montoTransaccion = -$monto_total; // Monto negativo por el total
+                    $descripcion = "Reserva de turno #{$turno->id} (pendiente de pago)";
+                } else if ($request->estado == 'Señado') {
+                    $montoTransaccion = -($monto_total - $monto_seña); // Monto negativo por el total menos la seña
+                    $descripcion = "Reserva de turno #{$turno->id} (señado)";
+                }
+                
+                // Crear la transacción
+                $transaccion = Transaccion::create([
+                    'cuenta_corriente_id' => $cuentaCorriente->id,
+                    'monto' => $montoTransaccion,
+                    'tipo' => 'turno',
+                    'descripcion' => $descripcion
+                ]);
+                
+                // Actualizar el saldo de la cuenta corriente
+                $cuentaCorriente->saldo += $montoTransaccion;
+                $cuentaCorriente->save();
+            }
+            
+            DB::commit();
+            
             return response()->json([
-                'message' => 'Error al crear el turno',
+                'message' => 'Turno creado correctamente',
+                'turno' => $turno,
+                'status' => 201
+            ], 201);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear el turno: ' . $e->getMessage(),
                 'status' => 500
             ], 500);
         }
-
-        // Eliminar el bloqueo en Redis después de crear el turno
-        Redis::del($clave);
-
-        return response()->json([
-            'message' => 'Turno creado correctamente',
-            'turno' => $turno,
-            'status' => 201
-        ], 201);
     }
 }

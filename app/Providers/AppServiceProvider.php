@@ -23,6 +23,10 @@ use App\Services\Interface\AuthServiceInterface;
 use App\Services\Implementation\AuthService;
 use App\Services\Interface\PersonaServiceInterface;
 use App\Services\Implementation\PersonaService;
+use App\Services\Interface\CuentaCorrienteServiceInterface;
+use App\Services\Implementation\CuentaCorrienteService;
+use App\Services\Interface\TransaccionServiceInterface;
+use App\Services\Implementation\TransaccionService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -41,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ConfigServiceInterface::class, ConfigService::class);
         $this->app->bind(DashboardServiceInterface::class, DashboardService::class);
         $this->app->bind(PersonaServiceInterface::class, PersonaService::class);
+        $this->app->bind(CuentaCorrienteServiceInterface::class, CuentaCorrienteService::class);
+        $this->app->bind(TransaccionServiceInterface::class, TransaccionService::class);
     }
 
     /**

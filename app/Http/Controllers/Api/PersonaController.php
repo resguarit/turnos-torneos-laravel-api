@@ -25,4 +25,9 @@ class PersonaController extends Controller
     {
         return $this->personaService->createPersona($request);
     }
+
+    public function update(Request $request, $id)
+    {
+        return $this->personaService->updatePersona($request, $id);
+    }
 }

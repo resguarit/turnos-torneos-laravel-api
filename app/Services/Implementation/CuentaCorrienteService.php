@@ -13,15 +13,15 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
-class CuentaCorrientesService implements CuentaCorrienteServiceInterface
+class CuentaCorrienteService implements CuentaCorrienteServiceInterface
 {
     public function getCuentaCorrienteByPersona($personaId)
     {
         try {
-            $persona = Persona::with('cuentaCorriente.transacciones')->findOrFail($personaId);
+            $persona = Persona::with('cuentasCorrientes.transacciones')->findOrFail($personaId);
             
             // Verificar si la persona tiene cuenta corriente
-            if (!$persona->cuentaCorriente) {
+            if (!$persona->cuentasCorrientes) {
                 return [
                     'message' => 'La persona no tiene una cuenta corriente',
                     'status' => 404
@@ -37,9 +37,9 @@ class CuentaCorrientesService implements CuentaCorrienteServiceInterface
                     'direccion' => $persona->direccion,
                 ],
                 'cuenta_corriente' => [
-                    'id' => $persona->cuentaCorriente->id,
-                    'saldo' => $persona->cuentaCorriente->saldo,
-                    'transacciones' => $persona->cuentaCorriente->transacciones
+                    'id' => $persona->cuentasCorrientes->id,
+                    'saldo' => $persona->cuentasCorrientes->saldo,
+                    'transacciones' => $persona->cuentasCorrientes->transacciones
                 ],
                 'status' => 200
             ];
@@ -56,8 +56,8 @@ class CuentaCorrientesService implements CuentaCorrienteServiceInterface
         }
     }
 
-    public function getAllCuentasCorrientes(Request $request)
-    {
+    public function getCuentasCorrientes(Request $request)
+    {   
 
         try {
             $perPage = $request->query('limit', 10);

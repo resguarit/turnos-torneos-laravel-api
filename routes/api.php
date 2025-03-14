@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\TurnoController;
 use App\Http\Controllers\Api\PersonaController;
+use App\Http\Controllers\Api\CuentaCorrienteController;
+use App\Http\Controllers\Api\TransaccionesController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -76,6 +78,12 @@ Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanch
 
 Route::get('/personas', [PersonaController::class, 'index']);
 Route::post('/personas', [PersonaController::class, 'store']);
+Route::patch('/personas/{id}', [PersonaController::class, 'update']);
+
+Route::get('/cuentas-corrientes', [CuentaCorrienteController::class, 'index']);
+
+Route::get('/transacciones', [TransaccionesController::class, 'index']);
+Route::post('/transacciones', [TransaccionesController::class, 'store']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);
