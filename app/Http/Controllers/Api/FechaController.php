@@ -54,4 +54,9 @@ class FechaController extends Controller
     {
         return response()->json($this->fechaService->getByZona($zonaId), 200);
     }
+
+    public function postergarFechas($fechaId)
+    {
+        return $this->fechaService->postergarFechas($fechaId);
+    }
 }

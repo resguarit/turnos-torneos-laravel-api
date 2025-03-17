@@ -7,6 +7,8 @@ use App\Models\Fecha;
 use App\Services\Interface\FechaServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
+use App\Enums\FechaEstado;
 
 class FechaService implements FechaServiceInterface
 {
@@ -26,7 +28,7 @@ class FechaService implements FechaServiceInterface
             'nombre' => 'required|string|max:255',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date',
-            'estado' => 'required|string|max:255',
+            'estado' => ['required', 'string', 'max:255', 'in:' . implode(',', FechaEstado::values())],
             'zona_id' => 'required|exists:zonas,id',
         ]);
 
@@ -62,7 +64,7 @@ class FechaService implements FechaServiceInterface
             'nombre' => 'required|string|max:255',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date',
-            'estado' => 'required|string|max:255',
+            'estado' => ['required', 'string', 'max:255', 'in:' . implode(',', FechaEstado::values())],
             'zona_id' => 'required|exists:zonas,id',
         ]);
 
@@ -105,5 +107,40 @@ class FechaService implements FechaServiceInterface
     public function getByZona($zonaId)
     {
         return Fecha::where('zona_id', $zonaId)->with('partidos')->get();
+    }
+
+    public function postergarFechas($fechaId)
+    {
+        $fecha = Fecha::find($fechaId);
+
+        if (!$fecha) {
+            return response()->json([
+                'message' => 'Fecha no encontrada',
+                'status' => 404
+            ], 404);
+        }
+
+        $zonaId = $fecha->zona_id;
+        $fechasPosteriores = Fecha::where('zona_id', $zonaId)
+            ->where('fecha_inicio', '>=', $fecha->fecha_inicio) // Incluir la fecha especificada
+            ->orderBy('fecha_inicio')
+            ->get();
+
+        foreach ($fechasPosteriores as $fechaPosterior) {
+            $fechaPosterior->fecha_inicio = Carbon::parse($fechaPosterior->fecha_inicio)->addWeek();
+            $fechaPosterior->fecha_fin = Carbon::parse($fechaPosterior->fecha_fin)->addWeek();
+            $fechaPosterior->save();
+
+            // Actualizar las fechas de los partidos asociados
+            foreach ($fechaPosterior->partidos as $partido) {
+                $partido->fecha = Carbon::parse($partido->fecha)->addWeek();
+                $partido->save();
+            }
+        }
+
+        return response()->json([
+            'message' => 'Fechas postergadas correctamente',
+            'status' => 200
+        ], 200);
     }
 }
