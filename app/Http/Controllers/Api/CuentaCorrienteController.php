@@ -20,5 +20,10 @@ class CuentaCorrienteController extends Controller
     {
         return $this->cuentaCorrienteService->getCuentasCorrientes($request);
     }
+
+    public function show($id)
+    {
+        return $this->cuentaCorrienteService->getCuentaCorrienteByPersona($id);
+    }
 }
 

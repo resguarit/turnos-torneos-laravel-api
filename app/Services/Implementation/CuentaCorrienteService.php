@@ -18,10 +18,10 @@ class CuentaCorrienteService implements CuentaCorrienteServiceInterface
     public function getCuentaCorrienteByPersona($personaId)
     {
         try {
-            $persona = Persona::with('cuentasCorrientes.transacciones')->findOrFail($personaId);
+            $persona = Persona::with('cuentaCorriente.transacciones')->findOrFail($personaId);
             
             // Verificar si la persona tiene cuenta corriente
-            if (!$persona->cuentasCorrientes) {
+            if (!$persona->cuentaCorriente) {
                 return [
                     'message' => 'La persona no tiene una cuenta corriente',
                     'status' => 404
@@ -37,9 +37,9 @@ class CuentaCorrienteService implements CuentaCorrienteServiceInterface
                     'direccion' => $persona->direccion,
                 ],
                 'cuenta_corriente' => [
-                    'id' => $persona->cuentasCorrientes->id,
-                    'saldo' => $persona->cuentasCorrientes->saldo,
-                    'transacciones' => $persona->cuentasCorrientes->transacciones
+                    'id' => $persona->cuentaCorriente->id,
+                    'saldo' => $persona->cuentaCorriente->saldo,
+                    'transacciones' => $persona->cuentaCorriente->transacciones
                 ],
                 'status' => 200
             ];

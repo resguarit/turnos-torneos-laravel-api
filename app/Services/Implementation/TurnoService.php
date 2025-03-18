@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\TurnoCancelacion;
 use App\Services\Interface\TurnoServiceInterface;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
 use App\Models\Persona;
@@ -158,19 +157,17 @@ class TurnoService implements TurnoServiceInterface
             ], 400);
         }
 
-        //$clave = "bloqueo:{$request->fecha_turno}:{$request->horario_id}:{$request->cancha_id}";
-        //$bloqueo = Redis::get($clave);
+        $clave = "bloqueo:{$request->fecha_turno}:{$request->horario_id}:{$request->cancha_id}";
+        $bloqueo = Cache::get($clave);
 
-        /*if ($bloqueo) {
-            $bloqueo = json_decode($bloqueo, true);
-
+        if ($bloqueo) {
             if($bloqueo['usuario_id'] !== $user->id){
                 return response()->json([
                     'message' => 'El Turno ya no está disponible.',
                     'status' => 400
                 ], 400);
             }
-        }*/
+        }
 
         if ($request->has('persona_id')) {
             $persona = Persona::find($request->persona_id);
@@ -242,6 +239,8 @@ class TurnoService implements TurnoServiceInterface
             
             DB::commit();
             
+            Cache::forget($clave);
+
             return response()->json([
                 'message' => 'Turno creado correctamente',
                 'turno' => $turno,
@@ -411,16 +410,16 @@ class TurnoService implements TurnoServiceInterface
                     ->where('estado', '!=', 'Cancelado')
                     ->first();
 
-                //$clave = "bloqueo:{$fecha_comparar}:{$horario_comparar}:{$cancha_comparar}";
-                //$bloqueo = Redis::get($clave);
+                $clave = "bloqueo:{$fecha_comparar}:{$horario_comparar}:{$cancha_comparar}";
+                $bloqueo = Cache::has($clave);
 
-                /*if ($bloqueo) {
+                if ($bloqueo) {
                     DB::rollBack();
                     return response()->json([
                         'message' => 'El Turno esta bloqueado temporalmente.',
                         'status' => 409
                     ], 409);
-                }*/
+                }
     
                 if($turnoExistente) {
                     DB::rollBack();
@@ -590,6 +589,7 @@ class TurnoService implements TurnoServiceInterface
 
         $turnos = Turno::whereDate('fecha_turno', $fecha)
                             ->with(['persona', 'horario', 'cancha'])
+                            ->where('estado', '!=', 'Cancelado')
                             ->get();
 
         $grid = [];
@@ -689,22 +689,23 @@ class TurnoService implements TurnoServiceInterface
     {
         $user = Auth::user();
 
-        $turno = Turno::with(['horario','usuario'])->find($id);
+        $turno = Turno::with(['horario', 'persona', 'persona.cuentaCorriente'])->find($id);
 
-        if(!$turno){
+        if (!$turno) {
             return response()->json([
                 'message' => 'Turno no encontrado',
                 'status' => 404
             ], 404);
         }
 
-         if ($turno->estado === TurnoEstado::CANCELADO) {
+        if ($turno->estado === TurnoEstado::CANCELADO) {
             return response()->json([
                 'message' => 'El turno ya ha sido cancelado',
                 'status' => 400
             ], 400);
         }
-        if($turno->fecha_turno < now()->startOfDay()){
+        
+        if ($turno->fecha_turno < now()->startOfDay()) {
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
                 'status' => 400
@@ -725,21 +726,71 @@ class TurnoService implements TurnoServiceInterface
 
         DB::beginTransaction();
         try {
+            // Calcular el tiempo transcurrido desde la creación del turno
+            $fechaCreacion = Carbon::parse($turno->created_at);
+            $tiempoTranscurrido = $fechaCreacion->diffInMinutes(now());
+            
+            // Determinar si aplica cargo por cancelación (pasados 30 minutos)
+            $aplicaCargo = $tiempoTranscurrido > 30;
+            
+            // Calcular el monto a devolver
+            $montoTotal = $turno->monto_total;
+            $montoDevolver = $aplicaCargo ? $montoTotal * 0.9 : $montoTotal; // 90% o 100%
+            
+            // Si el turno no estaba en estado Pagado, determinar el monto que se había cobrado
+            $montoCobrado = 0;
+            if ($turno->estado === TurnoEstado::PENDIENTE) {
+                $montoCobrado = $montoTotal;
+            } elseif ($turno->estado === TurnoEstado::SEÑADO) {
+                $montoCobrado = $montoTotal - $turno->monto_seña;
+            }
+            
+            // Solo crear transacción si había un monto cobrado (pendiente o señado)
+            if ($montoCobrado > 0) {
+                // Buscar o crear la cuenta corriente de la persona
+                $cuentaCorriente = CuentaCorriente::firstOrCreate(
+                    ['persona_id' => $turno->persona_id],
+                    ['saldo' => 0]
+                );
+                
+                // Calcular la devolución proporcional
+                $montoRealDevolver = $montoCobrado > $montoDevolver ? $montoDevolver : $montoCobrado;
+                
+                // Crear la transacción de devolución
+                $descripcion = $aplicaCargo 
+                    ? "Devolución por cancelación de turno #{$turno->id} (con cargo del 10%)" 
+                    : "Devolución por cancelación de turno #{$turno->id}";
+                    
+                Transaccion::create([
+                    'cuenta_corriente_id' => $cuentaCorriente->id,
+                    'persona_id' => $turno->persona_id,
+                    'monto' => $montoRealDevolver, // Monto positivo por ser devolución
+                    'tipo' => 'devolucion',
+                    'descripcion' => $descripcion
+                ]);
+                
+                // Actualizar el saldo de la cuenta corriente
+                $cuentaCorriente->saldo += $montoRealDevolver;
+                $cuentaCorriente->save();
+            }
+
+            // Cambiar el estado del turno a cancelado
             $turno->estado = TurnoEstado::CANCELADO;
             $turno->save();
 
-            // Registro de auditoria para la cancelacion
+            // Registro de auditoría para la cancelación
             TurnoCancelacion::create([
                 'turno_id' => $turno->id,
                 'cancelado_por' => $user->id,
                 'motivo' => $request->motivo ?? 'No especificado',
-                'fecha_cancelacion' => now()
+                'fecha_cancelacion' => now(),
             ]);
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Turno cancelado correctamente',
+                'message' => 'Turno cancelado correctamente' . 
+                             ($aplicaCargo ? ' (con cargo del 10%)' : ' (sin cargo)'),
                 'status' => 200
             ], 200);
         } catch (\Exception $e) {
