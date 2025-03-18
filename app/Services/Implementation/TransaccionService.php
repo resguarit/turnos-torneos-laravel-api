@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Validator;
 use App\Models\CuentaCorriente;
 use App\Models\Persona;
+use App\Models\Turno;
+use App\Enums\TurnoEstado;
 
 class TransaccionService implements TransaccionServiceInterface
 {
@@ -21,7 +23,7 @@ class TransaccionService implements TransaccionServiceInterface
         $searchTerm = $request->searchTerm ?? '';
         $searchType = $request->searchType ?? '';
 
-        $query = Transaccion::with('cuentaCorriente.persona');
+        $query = Transaccion::with(['cuentaCorriente.persona', 'turno']);
 
         // Aplicar filtros si hay término de búsqueda
         if (!empty($searchTerm)) {
@@ -34,6 +36,10 @@ class TransaccionService implements TransaccionServiceInterface
                     $q->where('nombre', 'like', '%' . $searchTerm . '%')
                       ->orWhere('apellido', 'like', '%' . $searchTerm . '%')
                       ->orWhere('dni', 'like', '%' . $searchTerm . '%');
+                });
+            } elseif ($searchType == 'turno') {
+                $query->whereHas('turno', function ($q) use ($searchTerm) {
+                    $q->where('id', $searchTerm);
                 });
             }
         }
@@ -52,8 +58,9 @@ class TransaccionService implements TransaccionServiceInterface
         $validator = Validator::make($request->all(), [
             'persona_id' => 'required_without:cuenta_corriente_id|exists:personas,id',
             'cuenta_corriente_id' => 'required_without:persona_id|exists:cuentas_corrientes,id',
+            'turno_id' => 'nullable|exists:turnos,id',
             'monto' => 'required|numeric',
-            'tipo' => 'required|in:ingreso,egreso,seña,turno,pago,deuda',
+            'tipo' => 'required|in:ingreso,egreso,seña,turno,pago,deuda,devolucion',
             'descripcion' => 'nullable|string',
         ]);
 
@@ -88,14 +95,36 @@ class TransaccionService implements TransaccionServiceInterface
 
             $monto = $request->monto;
 
-            $transaccion = Transaccion::create([
+            // Preparar los datos de la transacción
+            $transaccionData = [
                 'cuenta_corriente_id' => $cuentaCorriente->id,
                 'monto' => $monto,
                 'tipo' => $request->tipo,
                 'descripcion' => $request->descripcion ?? null,
-            ]);
+            ];
+
+            // Agregar el turno_id si está presente
+            if ($request->has('turno_id')) {
+                $turno = Turno::findOrFail($request->turno_id);
+                $transaccionData['turno_id'] = $turno->id;
+                
+                
+                // Si no hay descripción y hay turno, generar una descripción automática
+                if (empty($transaccionData['descripcion'])) {
+                    $accion = match($request->tipo) {
+                        'seña' => 'Pago de seña',
+                        'pago' => 'Pago',
+                        'devolucion' => 'Devolución',
+                        default => 'Transacción'
+                    };
+                    $transaccionData['descripcion'] = "{$accion} por turno #{$turno->id}";
+                }
+            }
+
+            $transaccion = Transaccion::create($transaccionData);
             $transaccion->save();
 
+            // Actualizar el saldo de la cuenta corriente
             $cuentaCorriente->saldo += $monto;
             $cuentaCorriente->save();
 
@@ -108,12 +137,15 @@ class TransaccionService implements TransaccionServiceInterface
                 'persona' => $persona,
                 'success' => true,
                 'cuenta_corriente' => $cuentaCorriente,
+                'turno' => $request->has('turno_id') ? $turno : null,
                 'status' => 201
             ], 201);
         } catch (ModelNotFoundException $e) {
             DB::rollBack();
             return response()->json([
-                'message' => $request->has('cuenta_corriente_id') ? 'Cuenta corriente no encontrada' : 'Persona no encontrada',
+                'message' => $request->has('cuenta_corriente_id') 
+                    ? 'Cuenta corriente no encontrada' 
+                    : ($request->has('turno_id') ? 'Turno no encontrado' : 'Persona no encontrada'),
                 'error' => $e->getMessage(),
                 'success' => false,
                 'status' => 404

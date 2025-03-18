@@ -227,6 +227,7 @@ class TurnoService implements TurnoServiceInterface
                 // Crear la transacción
                 $transaccion = Transaccion::create([
                     'cuenta_corriente_id' => $cuentaCorriente->id,
+                    'turno_id' => $turno->id,
                     'monto' => $montoTransaccion,
                     'tipo' => 'turno',
                     'descripcion' => $descripcion
