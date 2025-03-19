@@ -128,6 +128,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/partidos/{id}', [PartidoController::class, 'destroy']);
     Route::get('/fechas/{fechaId}/partidos', [PartidoController::class, 'getByFecha']);
     Route::get('/equipos/{equipoId}/partidos', [PartidoController::class, 'getByEquipo']);
+    /* Route::post('/partidos/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCancha']); */
 
     Route::get('/estadisticas', [EstadisticaController::class, 'index']);
     Route::get('/estadisticas/{id}', [EstadisticaController::class, 'show']);
