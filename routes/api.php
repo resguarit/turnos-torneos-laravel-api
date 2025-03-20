@@ -166,6 +166,7 @@ Route::get('/cuentas-corrientes/persona/{id}', [CuentaCorrienteController::class
 
 Route::get('/transacciones', [TransaccionesController::class, 'index']);
 Route::post('/transacciones', [TransaccionesController::class, 'store']);
+Route::get('/transacciones/turno/{id}', [TransaccionesController::class, 'saldoPorTurno']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);

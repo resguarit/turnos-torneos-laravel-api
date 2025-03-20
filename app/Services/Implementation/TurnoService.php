@@ -244,6 +244,15 @@ class TurnoService implements TurnoServiceInterface
             
             Cache::forget($clave);
 
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'crear', 
+                'turnos', 
+                $turno->id, 
+                null, 
+                $turno->toArray()
+            );
+
             return response()->json([
                 'message' => 'Turno creado correctamente',
                 'turno' => $turno,
@@ -257,12 +266,14 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 500
             ], 500);
         }
+
+        
     }
 
     public function storeTurnoFijo(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'usuario_id' => 'required|exists:users,id',
+            'persona_id' => 'required|exists:personas,id',
             'fecha_turno' => 'required|date',
             'horario_id' => 'required|exists:horarios,id',
             'estado' => ['required', Rule::enum(TurnoEstado::class)],
@@ -289,7 +300,7 @@ class TurnoService implements TurnoServiceInterface
 
         try {
             $fecha_turno = Carbon::parse($request->fecha_turno);
-            $usuario_id = $request->usuario_id;
+            $persona_id = $request->persona_id;
             $estado = $request->estado;
 
             for ($i = 0; $i < 4; $i++) {
@@ -332,7 +343,7 @@ class TurnoService implements TurnoServiceInterface
                     'fecha_reserva' => now(),
                     'horario_id' => $horario->id,
                     'cancha_id' => $canchasDisponibles->id,
-                    'persona_id' => $usuario_id,
+                    'persona_id' => $persona_id,
                     'monto_total' => $monto_total,
                     'monto_seña' => $monto_seña,
                     'estado' => $estado,
@@ -379,9 +390,9 @@ class TurnoService implements TurnoServiceInterface
             return response()->json($data, 404);
         }
 
-        if($turno->fecha_turno < Carbon::today()){
+        if($turno->fecha_turno < now()->subDays(3)->startOfDay()) {
             return response()->json([
-                'message' => 'No puedes modificar un turno que ya ha pasado',
+                'message' => 'No puedes modificar un turno de más de 3 días atrás',
                 'status' => 400
             ], 400);
         }
@@ -657,7 +668,7 @@ class TurnoService implements TurnoServiceInterface
                     'turno' => $turno ? [
                         'id' => $turno->id,
                         'usuario' => [
-                            'usuario_id' => $turno->persona->usuario->id,
+                            'usuario_id' => $turno->persona->usuario?->id ?? null,
                             'nombre' => $turno->persona->name,
                             'dni' => $turno->persona->dni,
                             'telefono' => $turno->persona->telefono,
@@ -694,40 +705,30 @@ class TurnoService implements TurnoServiceInterface
 
     public function getTurnosByUser($userId)
     {
-        $fechaHoy = Carbon::today();
-
         $user = User::where('id', $userId)->first();
         $personaId = $user->persona->id;
-
-        $turnos = Turno::where('persona_id', $userId)
+        $turnos = Turno::where('persona_id', $personaId)
         ->with(['cancha', 'horario'])
         ->get();
-
-        // Calcular la diferencia de días respecto a la fecha de hoy
-        $turnos = $turnos->map(function ($turno) use ($fechaHoy) {
-            $turno->diferencia_dias = $fechaHoy->diffInDays($turno->fecha_turno, true);
-            return $turno;
-        });
-
-        // Ordenar los turnos por la diferencia de días
-        $turnos = $turnos->sortBy('diferencia_dias')->values();
-
-        // Calcular la diferencia de días respecto a la fecha de hoy
-        $turnos = $turnos->map(function ($turno) use ($fechaHoy) {
-            $turno->diferencia_dias = $fechaHoy->diffInDays($turno->fecha_turno, true);
-            return $turno;
-        });
-
-        // Ordenar los turnos por la diferencia de días
-        $turnos = $turnos->sortBy('diferencia_dias')->values();
 
         if ($turnos->isEmpty()) {
             return response()->json([
                 'message' => 'No se encontraron turnos para este usuario',
                 'status' => 404
-            ], 200);
+            ], 404);
         }
 
+        $fechaHoy = Carbon::today();
+
+        // Calcular la diferencia de días respecto a la fecha de hoy
+        $turnos = $turnos->map(function ($turno) use ($fechaHoy) {
+            $turno->diferencia_dias = $fechaHoy->diffInDays($turno->fecha_turno, true);
+            return $turno;
+        });
+
+        // Ordenar los turnos por la diferencia de días
+        $turnos = $turnos->sortBy('diferencia_dias')->values();
+        
         return response()->json([
             'turnos' => TurnoResource::collection($turnos),
             'status' => 200
@@ -775,6 +776,14 @@ class TurnoService implements TurnoServiceInterface
         if($turno->fecha_turno < Carbon::today()){
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
+                'status' => 400
+            ], 400);
+        }
+        
+        // Nueva validación: impedir cancelación de turnos señados
+        if ($turno->estado === TurnoEstado::SEÑADO || $turno->estado === TurnoEstado::PAGADO || $turno->estado === TurnoEstado::CANCELADO) {
+            return response()->json([
+                'message' => 'No se puede cancelar un turno que ya ha sido ' . $turno->estado->value, 
                 'status' => 400
             ], 400);
         }
