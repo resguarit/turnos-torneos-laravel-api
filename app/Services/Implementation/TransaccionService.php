@@ -160,4 +160,22 @@ class TransaccionService implements TransaccionServiceInterface
             ], 500);
         }
     }
+
+    public function saldoPorTurno($id)
+    {
+        $turno = Turno::findOrFail($id);
+        $transacciones = Transaccion::where('turno_id', $id)->get();
+
+        $saldo = 0;
+        foreach ($transacciones as $transaccion) {
+            $saldo += $transaccion->monto;
+        }
+        
+        return response()->json([
+            'transacciones' => $transacciones,
+            'saldo' => $saldo,
+            'success' => true,
+            'status' => 200
+        ], 200);
+    }
 }

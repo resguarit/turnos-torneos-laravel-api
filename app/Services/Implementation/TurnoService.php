@@ -361,9 +361,9 @@ class TurnoService implements TurnoServiceInterface
             return response()->json($data, 404);
         }
 
-        if($turno->fecha_turno < now()->startOfDay()){
+        if($turno->fecha_turno < now()->subDays(3)->startOfDay()) {
             return response()->json([
-                'message' => 'No puedes modificar un turno que ya ha pasado',
+                'message' => 'No puedes modificar un turno de más de 3 días atrás',
                 'status' => 400
             ], 400);
         }
@@ -611,7 +611,7 @@ class TurnoService implements TurnoServiceInterface
                     'turno' => $turno ? [
                         'id' => $turno->id,
                         'usuario' => [
-                            'usuario_id' => $turno->persona->usuario->id,
+                            'usuario_id' => $turno->persona->usuario?->id ?? null,
                             'nombre' => $turno->persona->name,
                             'dni' => $turno->persona->dni,
                             'telefono' => $turno->persona->telefono,
@@ -709,6 +709,14 @@ class TurnoService implements TurnoServiceInterface
         if ($turno->fecha_turno < now()->startOfDay()) {
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
+                'status' => 400
+            ], 400);
+        }
+        
+        // Nueva validación: impedir cancelación de turnos señados
+        if ($turno->estado === TurnoEstado::SEÑADO || $turno->estado === TurnoEstado::PAGADO || $turno->estado === TurnoEstado::CANCELADO) {
+            return response()->json([
+                'message' => 'No se puede cancelar un turno que ya ha sido ' . $turno->estado->value, 
                 'status' => 400
             ], 400);
         }

@@ -8,5 +8,6 @@ interface TransaccionServiceInterface
 {
     public function getTransacciones(Request $request);
     public function storeTransaccion(Request $request);
+    public function saldoPorTurno($id);
 }
 

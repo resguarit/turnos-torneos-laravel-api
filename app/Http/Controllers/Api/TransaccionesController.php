@@ -25,4 +25,9 @@ class TransaccionesController extends Controller
     {
         return $this->transaccionService->storeTransaccion($request);
     }
+
+    public function saldoPorTurno($id)
+    {
+        return $this->transaccionService->saldoPorTurno($id);
+    }
 }
