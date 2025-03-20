@@ -30,7 +30,6 @@ class User extends Authenticatable
         'rol',
         'google_id',
         'persona_id',
-        'telefono'
     ];
 
     /**
