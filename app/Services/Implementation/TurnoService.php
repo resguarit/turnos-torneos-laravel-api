@@ -18,15 +18,12 @@ use App\Services\Interface\TurnoServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
-<<<<<<< HEAD
 use App\Models\Persona;
 use App\Models\User;
 use App\Models\CuentaCorriente;
 use App\Models\Transaccion;
-=======
 use function Symfony\Component\Clock\now;
 use App\Services\Implementation\AuditoriaService;
->>>>>>> mora
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -87,11 +84,7 @@ class TurnoService implements TurnoServiceInterface
 
         $data = [
             'turnos' => TurnoResource::collection($turnos),
-<<<<<<< HEAD
             'status' => 200 
-=======
-            'status' => 200
->>>>>>> mora
         ];
 
         return response()->json($data, 200);
@@ -251,6 +244,15 @@ class TurnoService implements TurnoServiceInterface
             
             Cache::forget($clave);
 
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'crear', 
+                'turnos', 
+                $turno->id, 
+                null, 
+                $turno->toArray()
+            );
+
             return response()->json([
                 'message' => 'Turno creado correctamente',
                 'turno' => $turno,
@@ -264,33 +266,14 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 500
             ], 500);
         }
-<<<<<<< HEAD
-=======
 
-        // Eliminar el bloqueo en Redis después de crear el turno
-        Redis::del($clave);
-
-        // Registrar auditoría
-        AuditoriaService::registrar(
-            'crear', 
-            'turnos', 
-            $turno->id, 
-            null, 
-            $turno->toArray()
-        );
-
-        return response()->json([
-            'message' => 'Turno creado correctamente',
-            'turno' => $turno,
-            'status' => 201
-        ], 201);
->>>>>>> mora
+        
     }
 
     public function storeTurnoFijo(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'usuario_id' => 'required|exists:users,id',
+            'persona_id' => 'required|exists:personas,id',
             'fecha_turno' => 'required|date',
             'horario_id' => 'required|exists:horarios,id',
             'estado' => ['required', Rule::enum(TurnoEstado::class)],
@@ -317,7 +300,7 @@ class TurnoService implements TurnoServiceInterface
 
         try {
             $fecha_turno = Carbon::parse($request->fecha_turno);
-            $usuario_id = $request->usuario_id;
+            $persona_id = $request->persona_id;
             $estado = $request->estado;
 
             for ($i = 0; $i < 4; $i++) {
@@ -358,15 +341,9 @@ class TurnoService implements TurnoServiceInterface
                 $turno = Turno::create([
                     'fecha_turno' => $fecha_turno_actual,
                     'fecha_reserva' => now(),
-<<<<<<< HEAD
-                    'horario_id' => $request->horario_id,
-                    'cancha_id' => $request->cancha_id,
-                    'persona_id' => $request->user_id,
-=======
                     'horario_id' => $horario->id,
                     'cancha_id' => $canchasDisponibles->id,
-                    'usuario_id' => $usuario_id,
->>>>>>> mora
+                    'persona_id' => $persona_id,
                     'monto_total' => $monto_total,
                     'monto_seña' => $monto_seña,
                     'estado' => $estado,
@@ -723,19 +700,20 @@ class TurnoService implements TurnoServiceInterface
 
     public function getTurnosByUser($userId)
     {
-<<<<<<< HEAD
         $user = User::where('id', $userId)->first();
         $personaId = $user->persona->id;
         $turnos = Turno::where('persona_id', $personaId)
         ->with(['cancha', 'horario'])
         ->get();
-=======
-        $fechaHoy = Carbon::today();
 
-        // Obtener todos los turnos del usuario
-        $turnos = Turno::where('usuario_id', $userId)
-            ->with(['cancha', 'horario'])
-            ->get();
+        if ($turnos->isEmpty()) {
+            return response()->json([
+                'message' => 'No se encontraron turnos para este usuario',
+                'status' => 404
+            ], 404);
+        }
+
+        $fechaHoy = Carbon::today();
 
         // Calcular la diferencia de días respecto a la fecha de hoy
         $turnos = $turnos->map(function ($turno) use ($fechaHoy) {
@@ -745,15 +723,7 @@ class TurnoService implements TurnoServiceInterface
 
         // Ordenar los turnos por la diferencia de días
         $turnos = $turnos->sortBy('diferencia_dias')->values();
->>>>>>> mora
-
-        if ($turnos->isEmpty()) {
-            return response()->json([
-                'message' => 'No se encontraron turnos para este usuario',
-                'status' => 404
-            ], 200);
-        }
-
+        
         return response()->json([
             'turnos' => TurnoResource::collection($turnos),
             'status' => 200
