@@ -26,7 +26,7 @@ class PartidoService implements PartidoServiceInterface
 
     public function getAll()
     {
-        return Partido::with('fecha', 'equipos', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
+        return Partido::with('fecha.zona.torneo', 'equipos', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
     }
 
     public function getById($id)
