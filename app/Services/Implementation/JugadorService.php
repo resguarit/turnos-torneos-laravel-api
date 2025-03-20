@@ -108,4 +108,40 @@ class JugadorService implements JugadorServiceInterface
     {
         return Jugador::where('equipo_id', $equipoId)->get();
     }
+
+    public function createMultiple(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'jugadores' => 'required|array',
+            'jugadores.*.nombre' => 'required|string|max:255',
+            'jugadores.*.apellido' => 'required|string|max:255',
+            'jugadores.*.dni' => 'required|string|max:20|unique:jugadores,dni',
+            'jugadores.*.telefono' => 'nullable|string|max:20',
+            'jugadores.*.fecha_nacimiento' => 'required|date',
+            'equipo_id' => 'required|exists:equipos,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $equipoId = $request->input('equipo_id');
+        $jugadoresData = $request->input('jugadores');
+
+        $jugadores = [];
+        foreach ($jugadoresData as $jugadorData) {
+            $jugadorData['equipo_id'] = $equipoId;
+            $jugadores[] = Jugador::create($jugadorData);
+        }
+
+        return response()->json([
+            'message' => 'Jugadores creados correctamente',
+            'jugadores' => $jugadores,
+            'status' => 201
+        ], 201);
+    }
 }

@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\ZonaController;
 use App\Http\Controllers\Api\FechaController;
 use App\Http\Controllers\Api\PartidoController;
 use App\Http\Controllers\Api\EstadisticaController;
+use App\Http\Controllers\Api\GrupoController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -102,6 +103,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/jugadores/{id}', [JugadorController::class, 'update']);
     Route::delete('/jugadores/{id}', [JugadorController::class, 'destroy']);
     Route::get('/equipos/{equipoId}/jugadores', [JugadorController::class, 'getByEquipo']);
+    Route::post('/equipos/{equipoId}/jugadores/multiple', [JugadorController::class, 'createMultiple']);
 
     Route::get('/zonas', [ZonaController::class, 'index']);
     Route::get('/zonas/{id}', [ZonaController::class, 'show']);
@@ -109,6 +111,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/zonas/{id}', [ZonaController::class, 'update']);
     Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
     Route::get('/torneos/{torneoId}/zonas', [ZonaController::class, 'getByTorneo']);
+    Route::post('/zonas/{zonaId}/fechas', [ZonaController::class, 'createFechas']);
 
     Route::get('/fechas', [FechaController::class, 'index']);
     Route::get('/fechas/{id}', [FechaController::class, 'show']);
@@ -134,6 +137,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/equipos/{equipoId}/estadisticas', [EstadisticaController::class, 'getByEquipo']);
     Route::get('/jugadores/{jugadorId}/estadisticas', [EstadisticaController::class, 'getByJugador']);
     Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);
+
+    Route::get('/grupos', [GrupoController::class, 'index']);
+    Route::get('/grupos/{id}', [GrupoController::class, 'show']);
+    Route::post('/grupos', [GrupoController::class, 'store']);
+    Route::put('/grupos/{id}', [GrupoController::class, 'update']);
+    Route::delete('/grupos/{id}', [GrupoController::class, 'destroy']);
+    Route::get('/zonas/{zonaId}/grupos', [GrupoController::class, 'getByZona']);
+
+    // Ruta temporal para probar la creación de grupos aleatoriamente
+    Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
 
 }); 
 
