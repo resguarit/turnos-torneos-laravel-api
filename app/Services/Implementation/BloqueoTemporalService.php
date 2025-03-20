@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\DB;
 use App\Jobs\EliminarBloqueo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
 
 class BloqueoTemporalService implements BloqueoTemporalServiceInterface
 {
@@ -44,20 +43,18 @@ class BloqueoTemporalService implements BloqueoTemporalServiceInterface
             return response()->json(['message' => 'El Turno ya no está disponible.'], 400);
         }
 
-        // Verificar si el turno ya está bloqueado en Redis
-        if (Redis::exists($clave)) {
+        // Verificar si el turno ya está bloqueado en Cache
+        if (Cache::has($clave)) {
             return response()->json(['message' => 'El Turno esta siendo reservado por alguien mas.'], 400);
         }
 
-        // Crear el bloqueo en Redis con un tiempo de expiración de 10 minutos
-        Redis::set($clave, json_encode([
+        // Crear el bloqueo en Cache con un tiempo de expiración de 3 minutos
+        Cache::put($clave, [
             'usuario_id' => Auth::id(),
             'horario_id' => $request->horario_id,
             'cancha_id' => $request->cancha_id,
             'fecha' => $request->fecha,
-        ]));    
-
-        Redis::expire($clave, 180);
+        ], 180);    
 
         return response()->json([
             'message' => 'Bloqueo temporal creado con éxito.',
@@ -85,37 +82,19 @@ class BloqueoTemporalService implements BloqueoTemporalServiceInterface
         $clave = "bloqueo:{$request->fecha}:{$request->horario_id}:{$request->cancha_id}";
 
         // Verificar si el bloqueo existe
-        if (!Redis::exists($clave)) {
+        if (!Cache::has($clave)) {
             return response()->json([
                 'message' => 'No hay un bloqueo activo para este turno.',
                 'status' => '404'
             ], 404);
         }
 
-        // Eliminar el bloqueo de Redis
-        Redis::del($clave);
+        // Eliminar el bloqueo de Cache
+        Cache::forget($clave);
 
         return response()->json([
             'message' => 'Bloqueo cancelado con éxito.',
             'status' => 200
         ], 200);
-    }
-
-    public function listarBloqueos()
-    {
-        $claves = Redis::keys('bloqueo:*');
-    
-        // Recuperar los valores de cada clave
-        $bloqueos = [];
-        foreach ($claves as $clave) {
-            $bloqueos[] = [
-                'clave' => $clave,
-                'valor' => json_decode(Redis::get($clave), true),
-            ];
-        }
-    
-        return response()->json([
-            'bloqueos' => $bloqueos,
-        ]);
     }
 }

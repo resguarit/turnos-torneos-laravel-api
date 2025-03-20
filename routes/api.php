@@ -20,6 +20,9 @@ use App\Http\Controllers\Api\FechaController;
 use App\Http\Controllers\Api\PartidoController;
 use App\Http\Controllers\Api\EstadisticaController;
 use App\Http\Controllers\Api\GrupoController;
+use App\Http\Controllers\Api\PersonaController;
+use App\Http\Controllers\Api\CuentaCorrienteController;
+use App\Http\Controllers\Api\TransaccionesController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -56,8 +59,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
     Route::post('/turnos/cancelarbloqueo', [BloqueoTemporalController::class, 'cancelarBloqueo']);
-    Route::get('/turnos/listarbloqueos', [BloqueoTemporalController::class, 'listarBloqueos']);
-
+    
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
@@ -155,6 +157,15 @@ Route::get('/disponibilidad/dias', [DisponibilidadController::class, 'getDiasNoD
 Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
+Route::get('/personas', [PersonaController::class, 'index']);
+Route::post('/personas', [PersonaController::class, 'store']);
+Route::patch('/personas/{id}', [PersonaController::class, 'update']);
+
+Route::get('/cuentas-corrientes', [CuentaCorrienteController::class, 'index']);
+Route::get('/cuentas-corrientes/persona/{id}', [CuentaCorrienteController::class, 'show']);
+
+Route::get('/transacciones', [TransaccionesController::class, 'index']);
+Route::post('/transacciones', [TransaccionesController::class, 'store']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);

@@ -18,11 +18,12 @@ class TurnoResource extends JsonResource
         return [
             'id' => $this->id,
             'usuario' => [
-                'usuario_id' => $this->usuario->id,
-                'nombre' => $this->usuario->name,
-                'dni' => $this->usuario->dni,
-                'telefono' => $this->usuario->telefono,
-                'email' => $this->usuario->email,
+                'usuario_id' => $this->persona?->usuario?->id ?? null,
+                'persona_id' => $this->persona?->id ?? null,
+                'nombre' => $this->persona?->name ?? 'Sin nombre',
+                'dni' => $this->persona?->dni ?? '',
+                'telefono' => $this->persona?->telefono ?? '',
+                'email' => $this->persona?->usuario?->email ?? 'Sin email',
             ],
             'horario' => [
                 'hora_inicio' => $this->horario->hora_inicio,
