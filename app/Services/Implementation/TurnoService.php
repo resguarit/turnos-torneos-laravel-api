@@ -390,8 +390,8 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 404
             ], 404);
         }
-    
-        if ($turno->fecha_turno < now()->subDays(3)->startOfDay()) {
+
+        if($turno->fecha_turno < Carbon::now()->subDays(3)->startOfDay()) {
             return response()->json([
                 'message' => 'No puedes modificar un turno de más de 3 días atrás',
                 'status' => 400
