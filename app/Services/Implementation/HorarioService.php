@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use App\Services\Implementation\AuditoriaService;
 
 class HorarioService implements HorarioServiceInterface
 {
@@ -70,6 +71,14 @@ class HorarioService implements HorarioServiceInterface
             ], 500);
         }
 
+        AuditoriaService::registrar(
+            'crear',
+            'horarios',
+            $horario->id,
+            null,
+            $horario->toArray()
+        );
+
         return response()->json([
             'message' => 'Horario creado correctamente',
             'horario' => $horario,
@@ -81,7 +90,18 @@ class HorarioService implements HorarioServiceInterface
     {
         try {
             $horario = Horario::findOrFail($id);
+            $datosAnteriores = $horario->toArray();
+
             $horario->delete();
+
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'eliminar',
+                'horarios',
+                $id,
+                $datosAnteriores,
+                null
+            );
 
             return response()->json([
                 'message' => 'Horario eliminado correctamente',
@@ -170,8 +190,18 @@ class HorarioService implements HorarioServiceInterface
             }
 
             foreach ($horarios as $horario) {
+                $datosAnteriores = $horario->toArray();
                 $horario->activo = false;
                 $horario->save();
+
+                // Registrar auditoría
+                AuditoriaService::registrar(
+                    'deshabilitar',
+                    'horarios',
+                    $horario->id,
+                    $datosAnteriores,
+                    $horario->fresh()->toArray()
+                );
             }
 
             DB::commit();
@@ -225,8 +255,18 @@ class HorarioService implements HorarioServiceInterface
             }
 
             foreach ($horarios as $horario) {
+                $datosAnteriores = $horario->toArray();
                 $horario->activo = true;
                 $horario->save();
+
+                // Registrar auditoría
+                AuditoriaService::registrar(
+                    'habilitar',
+                    'horarios',
+                    $horario->id,
+                    $datosAnteriores,
+                    $horario->fresh()->toArray()
+                );
             }
 
             DB::commit();
@@ -325,6 +365,51 @@ class HorarioService implements HorarioServiceInterface
     
         return response()->json([
             'horarios_extremos' => $result,
+            'status' => 200
+        ], 200);
+    }
+
+    public function updateHorario(Request $request, $id)
+    {
+        $horario = Horario::find($id);
+
+        if (!$horario) {
+            return response()->json([
+                'message' => 'Horario no encontrado',
+                'status' => 404
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'hora_inicio' => 'sometimes|date_format:H:i|unique:horarios,hora_inicio,' . $id,
+            'hora_fin' => 'sometimes|date_format:H:i|after:hora_inicio|unique:horarios,hora_fin,' . $id,
+            'dia' => 'sometimes|in:l,m,x,j,v,s,d',
+            'activo' => 'sometimes|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 422
+            ], 422);
+        }
+
+        $datosAnteriores = $horario->toArray();
+
+        $horario->update($request->only(['hora_inicio', 'hora_fin', 'dia', 'activo']));
+
+        AuditoriaService::registrar(
+            'modificar',
+            'horarios',
+            $horario->id,
+            $datosAnteriores,
+            $horario->fresh()->toArray()
+        );
+        
+        return response()->json([
+            'message' => 'Horario actualizado correctamente',
+            'horario' => $horario,
             'status' => 200
         ], 200);
     }

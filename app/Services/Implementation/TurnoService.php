@@ -379,24 +379,25 @@ class TurnoService implements TurnoServiceInterface
     public function updateTurno(Request $request, $id)
     {
         $user = Auth::user();
-
-        $turno = Turno::with(['horario','cancha'])->find($id);
-
+    
+        $turno = Turno::with(['horario', 'cancha'])->find($id);
+        $fecha = Carbon::now(); // Usar Carbon en lugar de DatePoint
+        $fecha->subDays(7);
+    
         if (!$turno) {
-            $data = [
+            return response()->json([
                 'message' => 'No hay turno encontrado',
                 'status' => 404
-            ];
-            return response()->json($data, 404);
+            ], 404);
         }
-
-        if($turno->fecha_turno < now()->subDays(3)->startOfDay()) {
+    
+        if ($turno->fecha_turno < now()->subDays(3)->startOfDay()) {
             return response()->json([
                 'message' => 'No puedes modificar un turno de más de 3 días atrás',
                 'status' => 400
             ], 400);
         }
-
+    
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'sometimes|date',
@@ -404,18 +405,17 @@ class TurnoService implements TurnoServiceInterface
             'cancha_id' => 'sometimes|required_with:fecha_turno|exists:canchas,id',
             'estado' => ['sometimes', Rule::enum(TurnoEstado::class)],
             'motivo' => 'nullable|string|max:255'
-        ]); 
-
+        ]);
+    
         // Manejar errores de validación
         if ($validator->fails()) {
-            $data = [
-                'message' => 'Error en la validacion',
+            return response()->json([
+                'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 400
-            ];
-            return response()->json($data, 400);
+            ], 400);
         }
-
+    
         $datosAnteriores = [
             'fecha_turno' => $turno->fecha_turno->format('Y-m-d'),
             'horario_id' => $turno->horario_id,
@@ -424,11 +424,11 @@ class TurnoService implements TurnoServiceInterface
             'monto_sena' => $turno->monto_seña,
             'estado' => $turno->estado
         ];
-
+    
         DB::beginTransaction();
-
+    
         try {
-            if($request->has('fecha_turno') || $request->has('horario_id') || $request->has('cancha_id')) {
+            if ($request->has('fecha_turno') || $request->has('horario_id') || $request->has('cancha_id')) {
                 $fecha_comparar = $request->fecha_turno ?? $turno->fecha_turno;
                 $horario_comparar = $request->horario_id ?? $turno->horario_id;
                 $cancha_comparar = $request->cancha_id ?? $turno->cancha_id;
@@ -439,26 +439,26 @@ class TurnoService implements TurnoServiceInterface
                     ->where('id', '!=', $id)
                     ->where('estado', '!=', 'Cancelado')
                     ->first();
-
+    
                 $clave = "bloqueo:{$fecha_comparar}:{$horario_comparar}:{$cancha_comparar}";
                 $bloqueo = Cache::has($clave);
-
+    
                 if ($bloqueo) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'El Turno esta bloqueado temporalmente.',
+                        'message' => 'El Turno está bloqueado temporalmente.',
                         'status' => 409
                     ], 409);
                 }
     
-                if($turnoExistente) {
+                if ($turnoExistente) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'El turno ya esta reservado',
+                        'message' => 'El turno ya está reservado',
                         'status' => 409
                     ], 409);
                 }
-
+    
                 if ($request->has('cancha_id') && $request->cancha_id != $turno->cancha_id) {
                     $nuevaCancha = Cancha::findOrFail($request->cancha_id);
                     $precioDistinto = $nuevaCancha->precio_por_hora != $turno->monto_total;
@@ -480,21 +480,29 @@ class TurnoService implements TurnoServiceInterface
                         }
                     }
                 }
-
             }
-
+    
             // Obtener datos anteriores para auditoría
             $datosAnteriores = $turno->toArray();
-
+    
             $turno->fill($request->only([
                 'fecha_turno',
                 'horario_id',
                 'cancha_id',
                 'estado'
             ]));
-
+    
             $turno->save();
-
+    
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'modificar',
+                'turnos',
+                $id,
+                $datosAnteriores,
+                $turno->fresh()->toArray()
+            );
+    
             $datosNuevos = [
                 'fecha_turno' => $turno->fecha_turno->format('Y-m-d'),
                 'horario_id' => $turno->horario_id,
@@ -503,7 +511,7 @@ class TurnoService implements TurnoServiceInterface
                 'monto_sena' => $turno->monto_seña,
                 'estado' => $turno->estado
             ];
-
+    
             if ($datosAnteriores != $datosNuevos) {
                 TurnoModificacion::create([
                     'turno_id' => $turno->id,
@@ -514,23 +522,9 @@ class TurnoService implements TurnoServiceInterface
                     'fecha_modificacion' => now()
                 ]);
             }
-
-            $accion = 'modificar';
-            // Comprueba si el estado anterior no era cancelado y el nuevo estado es cancelado
-            if ($datosAnteriores['estado'] !== TurnoEstado::CANCELADO && $turno->estado === TurnoEstado::CANCELADO) {
-                $accion = 'cancelar';
-            }
-
-            AuditoriaService::registrar(
-                $accion, 
-                'turnos', 
-                $id, 
-                $datosAnteriores, 
-                $turno->fresh()->toArray()
-            );
-
+    
             DB::commit();
-
+    
             return response()->json([
                 'message' => 'Turno actualizado correctamente',
                 'turno' => new TurnoResource($turno->fresh(['horario', 'cancha'])),
@@ -545,7 +539,6 @@ class TurnoService implements TurnoServiceInterface
             ], 500);
         }
     }
-
     public function deleteTurno($id)
     {
         try {
@@ -773,7 +766,8 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 400
             ], 400);
         }
-        if($turno->fecha_turno < Carbon::today()){
+        
+        if ($turno->fecha_turno < now()->startOfDay()) {
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
                 'status' => 400
@@ -861,15 +855,6 @@ class TurnoService implements TurnoServiceInterface
                 'motivo' => $request->motivo ?? 'No especificado',
                 'fecha_cancelacion' => now(),
             ]);
-
-            // Registrar auditoría
-            AuditoriaService::registrar(
-                'cancelar', 
-                'turnos', 
-                $turno->id, 
-                $turno->toArray(), 
-                null
-            );
 
             DB::commit();
 

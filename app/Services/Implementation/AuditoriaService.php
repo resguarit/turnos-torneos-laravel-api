@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Request;
 
 class AuditoriaService implements AuditoriaServiceInterface
 {
-    public static function registrar(string $accion, string $entidad, ?int $entidad_id = null, ?array $datos_antiguos = null, ?array $datos_nuevos = null)
+    public static function registrar(string $accion, string $tabla, int $id, ?array $datos_anteriores, ?array $datos_nuevos)
     {
         $usuario_id = Auth::id();
         
@@ -18,12 +18,16 @@ class AuditoriaService implements AuditoriaServiceInterface
             return;
         }
 
+        // Asignar valores a las variables
+        $entidad = $tabla;
+        $entidad_id = $id;
+
         Auditoria::create([
             'usuario_id' => $usuario_id,
             'accion' => $accion,
             'entidad' => $entidad,
             'entidad_id' => $entidad_id,
-            'datos_antiguos' => $datos_antiguos ? json_encode($datos_antiguos, JSON_PRETTY_PRINT) : null,
+            'datos_antiguos' => $datos_anteriores ? json_encode($datos_anteriores, JSON_PRETTY_PRINT) : null,
             'datos_nuevos' => $datos_nuevos ? json_encode($datos_nuevos, JSON_PRETTY_PRINT) : null,
             'ip' => Request::ip(),
             'user_agent' => Request::userAgent(),
