@@ -18,10 +18,15 @@ use App\Services\Interface\TurnoServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use App\Enums\TurnoEstado;
 use Illuminate\Validation\Rule;
+<<<<<<< HEAD
 use App\Models\Persona;
 use App\Models\User;
 use App\Models\CuentaCorriente;
 use App\Models\Transaccion;
+=======
+use function Symfony\Component\Clock\now;
+use App\Services\Implementation\AuditoriaService;
+>>>>>>> mora
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -43,7 +48,7 @@ class TurnoService implements TurnoServiceInterface
             ], 400);
         }
 
-        $fechaHoy = now()->startOfDay();
+        $fechaHoy = Carbon::today();
         $query = Turno::query();
 
         if ($request->has('fecha')) {
@@ -82,7 +87,11 @@ class TurnoService implements TurnoServiceInterface
 
         $data = [
             'turnos' => TurnoResource::collection($turnos),
+<<<<<<< HEAD
             'status' => 200 
+=======
+            'status' => 200
+>>>>>>> mora
         ];
 
         return response()->json($data, 200);
@@ -102,7 +111,7 @@ class TurnoService implements TurnoServiceInterface
         ];
 
         return response()->json($data, 200);
-    }
+    }   
 
     public function storeTurnoUnico(Request $request)
     {
@@ -255,6 +264,27 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 500
             ], 500);
         }
+<<<<<<< HEAD
+=======
+
+        // Eliminar el bloqueo en Redis después de crear el turno
+        Redis::del($clave);
+
+        // Registrar auditoría
+        AuditoriaService::registrar(
+            'crear', 
+            'turnos', 
+            $turno->id, 
+            null, 
+            $turno->toArray()
+        );
+
+        return response()->json([
+            'message' => 'Turno creado correctamente',
+            'turno' => $turno,
+            'status' => 201
+        ], 201);
+>>>>>>> mora
     }
 
     public function storeTurnoFijo(Request $request)
@@ -262,49 +292,65 @@ class TurnoService implements TurnoServiceInterface
         $validator = Validator::make($request->all(), [
             'usuario_id' => 'required|exists:users,id',
             'fecha_turno' => 'required|date',
-            'cancha_id' => 'required|exists:canchas,id',
             'horario_id' => 'required|exists:horarios,id',
             'estado' => ['required', Rule::enum(TurnoEstado::class)],
         ]);
 
-        $horario = Horario::find($request->horario_id);
-        $cancha = Cancha::find($request->cancha_id);
-
-        if (!$horario || !$cancha) {
+        if ($validator->fails()) {
             return response()->json([
-                'message' => 'Horario o Cancha no encontrados',
-                'status' => 404
-            ], 404);
-        }
-
-        $monto_total = $cancha->precio_por_hora;
-        $monto_seña = $cancha->seña; // Ensure this is not null
-
-        if (is_null($monto_seña)) {
-            return response()->json([
-                'message' => 'El monto de la seña no puede ser nulo',
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
                 'status' => 400
             ], 400);
+        }
+
+        $horario = Horario::find($request->horario_id);
+
+        if (!$horario) {
+            return response()->json([
+                'message' => 'Horario no encontrado',
+                'status' => 404
+            ], 404);
         }
 
         DB::beginTransaction();
 
         try {
             $fecha_turno = Carbon::parse($request->fecha_turno);
+            $usuario_id = $request->usuario_id;
+            $estado = $request->estado;
 
             for ($i = 0; $i < 4; $i++) {
                 $fecha_turno_actual = $fecha_turno->copy()->addWeeks($i)->toDateString();
 
-                $turnoExistente = Turno::where('fecha_turno', $fecha_turno_actual)
-                    ->where('horario_id', $horario->id)
-                    ->where('cancha_id', $cancha->id)
-                    ->where('estado', '!=', 'Cancelado')
+                // Obtener canchas disponibles para la fecha y horario
+                $canchasDisponibles = Cancha::where('activa', true)
+                    ->whereDoesntHave('turnos', function ($query) use ($fecha_turno_actual, $horario) {
+                        $query->where('fecha_turno', $fecha_turno_actual)
+                              ->where('horario_id', $horario->id)
+                              ->where('estado', '!=', 'Cancelado');
+                    })
+                    ->whereDoesntHave('bloqueosTemporales', function ($query) use ($fecha_turno_actual, $horario) {
+                        $query->where('fecha', $fecha_turno_actual)
+                              ->where('horario_id', $horario->id);
+                    })
                     ->first();
 
-                if ($turnoExistente) {
+                if (!$canchasDisponibles) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'Ya existe un turno para esa cancha en la fecha ' . $fecha_turno_actual,
+                        'message' => 'No hay canchas disponibles para la fecha ' . $fecha_turno_actual,
+                        'status' => 400
+                    ], 400);
+                }
+
+                $monto_total = $canchasDisponibles->precio_por_hora;
+                $monto_seña = $canchasDisponibles->seña;
+
+                if (is_null($monto_seña)) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'El monto de la seña no puede ser nulo',
                         'status' => 400
                     ], 400);
                 }
@@ -312,12 +358,18 @@ class TurnoService implements TurnoServiceInterface
                 $turno = Turno::create([
                     'fecha_turno' => $fecha_turno_actual,
                     'fecha_reserva' => now(),
+<<<<<<< HEAD
                     'horario_id' => $request->horario_id,
                     'cancha_id' => $request->cancha_id,
                     'persona_id' => $request->user_id,
+=======
+                    'horario_id' => $horario->id,
+                    'cancha_id' => $canchasDisponibles->id,
+                    'usuario_id' => $usuario_id,
+>>>>>>> mora
                     'monto_total' => $monto_total,
                     'monto_seña' => $monto_seña,
-                    'estado' => $request->estado,
+                    'estado' => $estado,
                     'tipo' => 'fijo'
                 ]);
 
@@ -454,6 +506,9 @@ class TurnoService implements TurnoServiceInterface
 
             }
 
+            // Obtener datos anteriores para auditoría
+            $datosAnteriores = $turno->toArray();
+
             $turno->fill($request->only([
                 'fecha_turno',
                 'horario_id',
@@ -462,6 +517,15 @@ class TurnoService implements TurnoServiceInterface
             ]));
 
             $turno->save();
+
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'modificar', 
+                'turnos', 
+                $id, 
+                $datosAnteriores, 
+                $turno->fresh()->toArray()
+            );
 
             $datosNuevos = [
                 'fecha_turno' => $turno->fecha_turno->format('Y-m-d'),
@@ -504,7 +568,18 @@ class TurnoService implements TurnoServiceInterface
     {
         try {
             $turno = Turno::findOrFail($id);
+            $datosAnteriores = $turno->toArray();
+            
             $turno->delete();
+            
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'eliminar', 
+                'turnos', 
+                $id, 
+                $datosAnteriores, 
+                null
+            );
 
             $data = [
                 'message' => 'Turno eliminado correctamente',
@@ -648,11 +723,29 @@ class TurnoService implements TurnoServiceInterface
 
     public function getTurnosByUser($userId)
     {
+<<<<<<< HEAD
         $user = User::where('id', $userId)->first();
         $personaId = $user->persona->id;
         $turnos = Turno::where('persona_id', $personaId)
         ->with(['cancha', 'horario'])
         ->get();
+=======
+        $fechaHoy = Carbon::today();
+
+        // Obtener todos los turnos del usuario
+        $turnos = Turno::where('usuario_id', $userId)
+            ->with(['cancha', 'horario'])
+            ->get();
+
+        // Calcular la diferencia de días respecto a la fecha de hoy
+        $turnos = $turnos->map(function ($turno) use ($fechaHoy) {
+            $turno->diferencia_dias = $fechaHoy->diffInDays($turno->fecha_turno, true);
+            return $turno;
+        });
+
+        // Ordenar los turnos por la diferencia de días
+        $turnos = $turnos->sortBy('diferencia_dias')->values();
+>>>>>>> mora
 
         if ($turnos->isEmpty()) {
             return response()->json([
@@ -671,7 +764,7 @@ class TurnoService implements TurnoServiceInterface
     {
         $user = Auth::user();
 
-        $fechaHoy = now()->startOfDay();
+        $fechaHoy = Carbon::today();
 
         $turnos = Turno::where('usuario_id', $user->id)
             ->whereDate('fecha_turno', '>=', $fechaHoy)
