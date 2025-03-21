@@ -20,7 +20,6 @@ class UserService implements UserServiceInterface
         
 
         if (!$persona) {
-            // Si no existe, crear una nueva persona
             $persona = Persona::create([
                 'name' => $data['name'],
                 'dni' => $data['dni'],
@@ -45,9 +44,10 @@ class UserService implements UserServiceInterface
 
     public function createUser(array $data)
     {
+        // Buscar si ya existe una persona con el mismo DNI
         $persona = Persona::where('dni', $data['dni'])->first();
 
-        if(!$persona) {
+        if (!$persona) {
             $persona = Persona::create([
                 'name' => $data['name'],
                 'dni' => $data['dni'],
@@ -56,29 +56,27 @@ class UserService implements UserServiceInterface
         }
 
         $user = User::create([
-            'name' => $data->name,
-            'email' => $data->email,
-            'dni' => $data->dni,
-            'telefono' => $data->telefono,
-            'password' => Hash::make($data->password),
-            'rol' => $data->rol ?? 'cliente',
-            'persona_id' => $persona->id
+            'email' => $data['email'],
+            'dni' => $data['dni'],
+            'password' => Hash::make($data['password']),
+            'rol' => $data['rol'] ?? 'cliente',
+            'persona_id' => $persona->id,
         ]);
 
+        // Registrar en la auditoría
         AuditoriaService::registrar(
-            'crear', 
-            'usuarios', 
-            $user->id, 
-            null, 
-            json_encode($user->toArray(), JSON_PRETTY_PRINT)
+            'crear',
+            'usuarios',
+            $user->id,
+            null,
+            $user->toArray() 
         );
 
         return [
             'message' => 'Usuario creado correctamente',
             'user' => $user,
             'persona' => $persona,
-            'message' => 'Usuario creado con éxito',
-            'status' => 201
+            'status' => 201,
         ];
     }
 
@@ -159,28 +157,6 @@ class UserService implements UserServiceInterface
         ];
     }
 
-    public function updateUser(Request $request, $id)
-    {
-        $user = User::findOrFail($id);
-        $datosAnteriores = $user->toArray();
-        
-        $user->update($request->all());
-
-        AuditoriaService::registrar(
-            'modificar', 
-            'usuarios', 
-            $user->id, 
-            $datosAnteriores, 
-            $user->fresh()->toArray()
-        );
-
-        return response()->json([
-            'message' => 'Usuario actualizado correctamente',
-            'user' => $user,
-            'status' => 200
-        ], 200);
-    }
-
     public function deleteUser($id)
     {
         $user = User::findOrFail($id);
@@ -206,9 +182,13 @@ class UserService implements UserServiceInterface
     {
         $user = User::with('persona')->find($id);
 
+        $datosAnteriores = [
+            'user' => $user->toArray(),
+        ];
+
         if (!$user) {
             return [
-                'message' => 'Usuario no encontrado',
+                'message' => 'Usuario o Persona no encontrado',
                 'status' => 404
             ];
         }
@@ -255,88 +235,24 @@ class UserService implements UserServiceInterface
             $user->persona->save();
         }
 
-        return [
-            'message' => 'Usuario actualizado correctamente',
-            'status' => 200
+        $datosNuevos = [
+            'user' => $user->toArray(),
+            'persona' => $user->persona ? $user->persona->toArray() : null
         ];
-    }
 
-    public function destroy($id)
-    {
-        $user = User::find($id);
-        
-        if (!$user) {
-            return [
-                'message' => 'Usuario no encontrado',
-                'status' => 404
-            ];
-        }
-
-        $user->persona->delete();
-
-        $user->delete();
-
+        // Registrar auditoría
         AuditoriaService::registrar(
-            'eliminar', 
-            'usuarios', 
-            $id, 
-            $datosAnteriores, 
-            null
+            'modificar',
+            'usuarios',
+            $user->id,
+            $datosAnteriores,
+            $datosNuevos
         );
 
         return [
-            'message' => 'Usuario eliminado con éxito',
+            'message' => 'Usuario actualizado correctamente',
+            'user' => $user,
             'status' => 200
-        ];
-    }
-
-    public function index(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'limit' => 'integer|min:1',
-            'sortBy' => 'string|in:name,email,created_at,dni,telefono',
-            'order' => 'string|in:asc,desc',
-            'page' => 'integer|min:1',
-            'searchType' => 'string|nullable|in:name,email,dni,telefono',
-            'searchTerm' => 'string|nullable',
-        ]);
-
-        if ($validator->fails()) {
-            return [
-                'message' => 'Error en la validación',
-                'errors' => $validator->errors(),
-                'status' => 422
-            ];
-        }
-
-        $perPage = $request->query('limit', 10);
-        $sortBy = $request->query('sortBy', 'created_at');
-        $order = $request->query('order', 'desc');
-        $page = $request->query('page', 1);
-        $searchType = $request->query('searchType');
-        $searchTerm = $request->query('searchTerm');
-
-        $query = User::with('persona')->orderBy($sortBy, $order);
-
-        if ($searchType && $searchTerm) {
-            if ($searchType === 'name' || $searchType === 'dni' || $searchType === 'telefono') {
-                $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
-                    $q->where($searchType, 'like', "%{$searchTerm}%");
-                });
-            } else {
-                $query->where($searchType, 'like', "%{$searchTerm}%");
-            }
-        }
-
-        $users = $query->paginate($perPage, ['*'], 'page', $page);
-
-        return [
-            'usuarios' => $users->items(),
-            'status' => 200,
-            'totalUsuarios' => $users->total(),
-            'totalPages' => $users->lastPage(),
-            'currentPage' => $users->currentPage(),
-            'perPage' => $users->perPage(),
         ];
     }
 }

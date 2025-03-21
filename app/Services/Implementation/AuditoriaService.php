@@ -11,24 +11,21 @@ class AuditoriaService implements AuditoriaServiceInterface
 {
     public static function registrar(string $accion, string $tabla, int $id, ?array $datos_anteriores, ?array $datos_nuevos)
     {
-        $usuario_id = Auth::id();
+        // Usar el guardia correspondiente (ej: sanctum para APIs)
+        $usuario_id = Auth::guard('sanctum')->id();
         
         if (!$usuario_id) {
-            // Si no hay usuario autenticado, se podría manejar de otra forma o simplemente no registrar
+            // Opcional: manejar casos donde no hay usuario autenticado
             return;
         }
-
-        // Asignar valores a las variables
-        $entidad = $tabla;
-        $entidad_id = $id;
-
+    
         Auditoria::create([
             'usuario_id' => $usuario_id,
             'accion' => $accion,
-            'entidad' => $entidad,
-            'entidad_id' => $entidad_id,
-            'datos_antiguos' => $datos_anteriores ? json_encode($datos_anteriores, JSON_PRETTY_PRINT) : null,
-            'datos_nuevos' => $datos_nuevos ? json_encode($datos_nuevos, JSON_PRETTY_PRINT) : null,
+            'entidad' => $tabla,
+            'entidad_id' => $id,
+            'datos_antiguos' => $datos_anteriores ?? null,
+            'datos_nuevos' => $datos_nuevos ?? null,
             'ip' => Request::ip(),
             'user_agent' => Request::userAgent(),
             'fecha_accion' => now()
@@ -37,7 +34,7 @@ class AuditoriaService implements AuditoriaServiceInterface
 
     public function obtenerAuditorias(array $filtros = [], int $perPage = 15)
     {
-        $query = Auditoria::with('usuario')->latest('fecha_accion');
+        $query = Auditoria::with('usuario.persona')->latest('fecha_accion');
         
         // Filtrado por entidad
         if (isset($filtros['entidad'])) {

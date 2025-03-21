@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Services\Interface\CanchaServiceInterface;
 use App\Services\Implementation\AuditoriaService;
+use Illuminate\Validation\Rule;
 
 class CanchaService implements CanchaServiceInterface
 {
@@ -53,7 +54,11 @@ class CanchaService implements CanchaServiceInterface
     public function storeCancha(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nro' => 'required|unique:canchas',
+            'nro' => [
+                'required',
+                'max:255',
+                Rule::unique('canchas')->whereNull('deleted_at') 
+            ],
             'tipo_cancha' => 'required|max:200',
             'precio_por_hora' => 'required|numeric',
             'seña' => 'required|numeric',
@@ -63,7 +68,7 @@ class CanchaService implements CanchaServiceInterface
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Error en la validacion',
+                'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 400
             ], 400);
