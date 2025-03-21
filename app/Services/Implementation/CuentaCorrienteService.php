@@ -77,6 +77,8 @@ class CuentaCorrienteService implements CuentaCorrienteServiceInterface
                 });
             }
 
+            
+
             // Ordenar y paginar
             $cuentasCorrientes = $query->orderBy($sortBy, $order)
                 ->paginate($perPage, ['*'], 'page', $page);

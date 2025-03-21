@@ -12,7 +12,7 @@ class Transaccion extends Model
     protected $table = 'transacciones';
 
     protected $fillable = [
-        'cuenta_corriente_id', 'turno_id', 'monto', 'tipo', 'descripcion'
+        'cuenta_corriente_id', 'turno_id', 'monto', 'tipo', 'descripcion', 'caja_id'
     ];
 
     /**
@@ -26,5 +26,10 @@ class Transaccion extends Model
     public function turno()
     {
         return $this->belongsTo(Turno::class);
+    }
+
+    public function caja()
+    {
+        return $this->belongsTo(Caja::class);
     }
 }
