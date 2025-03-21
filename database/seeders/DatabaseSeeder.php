@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
+        //creamos las personas
         $persona = Persona::create([
             'name' => 'admin',
             'dni' => '123456',
