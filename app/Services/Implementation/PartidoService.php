@@ -31,7 +31,7 @@ class PartidoService implements PartidoServiceInterface
 
     public function getById($id)
     {
-        return Partido::with('fecha', 'equipos', 'estadisticas', 'horario', 'cancha', 'ganador')->find($id);
+        return Partido::with('fecha', 'equipos.jugadores', 'estadisticas', 'horario', 'cancha', 'ganador')->find($id);
     }
 
     public function create(Request $request)
@@ -76,14 +76,14 @@ class PartidoService implements PartidoServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'fecha' => 'required|date',
-            'horario_id' => 'required|exists:horarios,id',
-            'cancha_id' => 'required|exists:canchas,id',
-            'estado' => ['required', 'string', Rule::in(PartidoEstado::values())],
+            'fecha' => 'sometimes|date',
+            'horario_id' => 'sometimes|exists:horarios,id',
+            'cancha_id' => 'sometimes|exists:canchas,id',
+            'estado' => ['sometimes', 'string', Rule::in(PartidoEstado::values())],
             'marcador_local' => 'nullable|integer',
             'marcador_visitante' => 'nullable|integer',
             'ganador_id' => 'nullable|exists:equipos,id',
-            'fecha_id' => 'required|exists:fechas,id',
+            'fecha_id' => 'sometimes|exists:fechas,id',
         ]);
 
         if ($validator->fails()) {

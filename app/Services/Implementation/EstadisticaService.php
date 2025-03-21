@@ -24,6 +24,7 @@ class EstadisticaService implements EstadisticaServiceInterface
     public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'nro_camiseta' => 'nullable|integer',
             'goles' => 'required|integer',
             'asistencias' => 'required|integer',
             'rojas' => 'required|integer',
@@ -61,12 +62,13 @@ class EstadisticaService implements EstadisticaServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'goles' => 'required|integer',
-            'asistencias' => 'required|integer',
-            'rojas' => 'required|integer',
-            'amarillas' => 'required|integer',
-            'partido_id' => 'required|exists:partidos,id',
-            'jugador_id' => 'required|exists:jugadores,id',
+            'nro_camiseta' => 'nullable|integer',
+            'goles' => 'sometimes|integer',
+            'asistencias' => 'sometimes|integer',
+            'rojas' => 'sometimes|integer',
+            'amarillas' => 'sometimes|integer',
+            'partido_id' => 'sometimes|exists:partidos,id',
+            'jugador_id' => 'sometimes|exists:jugadores,id',
         ]);
 
         if ($validator->fails()) {
