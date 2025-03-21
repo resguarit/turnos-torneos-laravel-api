@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Persona;
+use App\Models\CuentaCorriente;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,40 +17,80 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
+        $persona = Persona::create([
             'name' => 'admin',
+            'dni' => '123456',
+            'telefono' => '1234567890',
+        ]);
+
+        CuentaCorriente::create([
+            'persona_id' => $persona->id,
+            'saldo' => 0,
+        ]);
+
+        User::factory()->create([
             'email' => 'admin@gmail.com',
-            'dni' => '45396791',
+            'dni' => '123456',
             'password' => bcrypt('password'),
-            'telefono' => '1234567890',
             'rol' => 'admin',
+            'persona_id' => $persona->id,
         ]);
 
-        User::factory()->create([
+        $persona = Persona::create([
             'name' => 'moderador',
-            'email' => 'moderador@gmail.com',
-            'dni' => '11223344',
-            'password' => bcrypt('password'),
+            'dni' => '654321',
             'telefono' => '1234567890',
-            'rol' => 'moderador',
+        ]);
+
+        CuentaCorriente::create([
+            'persona_id' => $persona->id,
+            'saldo' => 0,
         ]);
 
         User::factory()->create([
+            'email' => 'moderador@gmail.com',
+            'dni' => '654321',
+            'password' => bcrypt('password'),
+            'rol' => 'moderador',
+            'persona_id' => $persona->id,
+        ]);
+
+        $persona = Persona::create([
             'name' => 'cliente',
+            'dni' => '87654321',
+            'telefono' => '1234567890',
+        ]);
+
+        CuentaCorriente::create([
+            'persona_id' => $persona->id,
+            'saldo' => 0,
+        ]);
+
+        User::factory()->create([
             'email' => 'cliente@gmail.com',
             'dni' => '87654321',
             'password' => bcrypt('password'),
-            'telefono' => '1234567890',
             'rol' => 'cliente',
+            'persona_id' => $persona->id,
+        ]);
+
+        $persona = Persona::create([
+            'name' => 'Mora Gentil',
+            'dni' => '45396791',
+            'telefono' => '1234567890',
+        ]);
+
+        CuentaCorriente::create([
+            'persona_id' => $persona->id,
+            'saldo' => 0,
         ]);
 
         User::factory()->create([
-            'name' => 'Mora Gentil',
             'email' => 'moragentil@gmail.com',
-            'dni' => '12345678',
+            'dni' => '45396791',
             'password' => bcrypt('12345678'),
-            'telefono' => '1234567890',
             'rol' => 'cliente',
+            'persona_id' => $persona->id,
         ]);
     }
 }
