@@ -60,7 +60,7 @@ class HorarioService implements HorarioServiceInterface
         $horario = Horario::create([
             'hora_inicio' => $request->hora_inicio,
             'hora_fin' => $request->hora_fin,
-            'dia'=> $request->dia,
+            'dia' => $request->dia,
             'activo' => $request->activo,
         ]);
 
@@ -71,6 +71,7 @@ class HorarioService implements HorarioServiceInterface
             ], 500);
         }
 
+        // Registrar auditoría
         AuditoriaService::registrar(
             'crear',
             'horarios',

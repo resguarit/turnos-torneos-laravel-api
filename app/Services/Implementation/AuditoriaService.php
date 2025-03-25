@@ -9,23 +9,17 @@ use Illuminate\Support\Facades\Request;
 
 class AuditoriaService implements AuditoriaServiceInterface
 {
-    public static function registrar(string $accion, string $tabla, int $id, ?array $datos_anteriores, ?array $datos_nuevos)
+    public static function registrar(string $accion, string $tabla, ?int $id, ?array $datos_anteriores, ?array $datos_nuevos)
     {
-        // Usar el guardia correspondiente (ej: sanctum para APIs)
-        $usuario_id = Auth::guard('sanctum')->id();
-        
-        if (!$usuario_id) {
-            // Opcional: manejar casos donde no hay usuario autenticado
-            return;
-        }
-    
+        $usuario_id = Auth::id();
+
         Auditoria::create([
             'usuario_id' => $usuario_id,
             'accion' => $accion,
             'entidad' => $tabla,
             'entidad_id' => $id,
-            'datos_antiguos' => $datos_anteriores ?? null,
-            'datos_nuevos' => $datos_nuevos ?? null,
+            'datos_antiguos' => $datos_anteriores ? json_encode($datos_anteriores, JSON_PRETTY_PRINT) : null,
+            'datos_nuevos' => $datos_nuevos ? json_encode($datos_nuevos, JSON_PRETTY_PRINT) : null,
             'ip' => Request::ip(),
             'user_agent' => Request::userAgent(),
             'fecha_accion' => now()

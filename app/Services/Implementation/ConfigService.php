@@ -27,14 +27,30 @@ class ConfigService implements ConfigServiceInterface
         }
 
         $dias = $request->input('dias');
+        $resumen = [
+            'dias_afectados' => [],
+            'horarios_creados' => 0,
+            'horarios_modificados' => 0,
+            'horarios_deshabilitados' => 0,
+        ];
 
         foreach ($dias as $dia => $horas) {
-            if (is_null($horas['hora_apertura']) && is_null($horas['hora_cierre'])) {
-                Horario::where('dia', $dia)->update(['activo' => false]);
-                continue;
-            }
+            $resumen['dias_afectados'][] = $dia;
 
-            if (isset($horas['hora_apertura']) && isset($horas['hora_cierre'])) {
+            $diaResumen = [
+                'horarios_creados' => 0,
+                'horarios_modificados' => 0,
+                'horarios_deshabilitados' => 0,
+            ];
+
+            if (is_null($horas['hora_apertura']) && is_null($horas['hora_cierre'])) {
+                $horariosDeshabilitados = Horario::where('dia', $dia)->get();
+                foreach ($horariosDeshabilitados as $horario) {
+                    $horario->update(['activo' => false]);
+                }
+                $diaResumen['horarios_deshabilitados'] = $horariosDeshabilitados->count();
+                $resumen['horarios_deshabilitados'] += $horariosDeshabilitados->count();
+            } else {
                 $horaApertura = Carbon::createFromFormat('H:i', $horas['hora_apertura']);
                 $horaCierre = Carbon::createFromFormat('H:i', $horas['hora_cierre']);
 
@@ -42,14 +58,39 @@ class ConfigService implements ConfigServiceInterface
 
                 if ($horariosExistentes->isEmpty()) {
                     $this->crearHorarios($horaApertura, $horaCierre, $dia);
+
+                    $nuevosHorarios = Horario::where('dia', $dia)
+                        ->whereBetween('hora_inicio', [$horaApertura->format('H:i:s'), $horaCierre->format('H:i:s')])
+                        ->get();
+
+                    $diaResumen['horarios_creados'] = $nuevosHorarios->count();
+                    $resumen['horarios_creados'] += $nuevosHorarios->count();
                 } else {
                     $this->actualizarHorariosExistentes($horariosExistentes, $horaApertura, $horaCierre, $dia);
+
+                    $horariosActualizados = Horario::where('dia', $dia)
+                        ->whereBetween('hora_inicio', [$horaApertura->format('H:i:s'), $horaCierre->format('H:i:s')])
+                        ->get();
+
+                    $diaResumen['horarios_modificados'] = $horariosActualizados->count();
+                    $resumen['horarios_modificados'] += $horariosActualizados->count();
                 }
             }
+
+            // Registrar una sola auditoría por día
+            $id = $id ?? null; // Si no está definido, asignar null
+            AuditoriaService::registrar(
+                'configurar',
+                'horarios',
+                $id, // Aquí está el problema
+                null,
+                ['dia' => $dia, 'resumen' => $diaResumen]
+            );
         }
 
         return response()->json([
             'message' => 'Horarios configurados correctamente',
+            'resumen' => $resumen,
             'status' => 201
         ], 201);
     }
