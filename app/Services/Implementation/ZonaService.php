@@ -206,6 +206,9 @@ class ZonaService implements ZonaServiceInterface
                     'cancha_id' => null,
                 ]);
 
+                // Agregar los equipos al array de equipos del partido
+                $partido->equipos()->attach([$local['id'], $visitante['id']]);
+
                 $partidos[] = $partido;
             }
 

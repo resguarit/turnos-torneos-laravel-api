@@ -121,6 +121,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/fechas/{id}', [FechaController::class, 'update']);
     Route::delete('/fechas/{id}', [FechaController::class, 'destroy']);
     Route::get('/zonas/{zonaId}/fechas', [FechaController::class, 'getByZona']);
+    Route::post('/fechas/{fechaId}/postergar', [FechaController::class, 'postergarFechas']);
 
     Route::get('/partidos', [PartidoController::class, 'index']);
     Route::get('/partidos/{id}', [PartidoController::class, 'show']);
@@ -129,6 +130,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/partidos/{id}', [PartidoController::class, 'destroy']);
     Route::get('/fechas/{fechaId}/partidos', [PartidoController::class, 'getByFecha']);
     Route::get('/equipos/{equipoId}/partidos', [PartidoController::class, 'getByEquipo']);
+    /* Route::post('/partidos/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCancha']); */
 
     Route::get('/estadisticas', [EstadisticaController::class, 'index']);
     Route::get('/estadisticas/{id}', [EstadisticaController::class, 'show']);
