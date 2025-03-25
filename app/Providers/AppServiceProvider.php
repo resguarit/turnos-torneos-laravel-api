@@ -47,6 +47,8 @@ use App\Services\Interface\CuentaCorrienteServiceInterface;
 use App\Services\Implementation\CuentaCorrienteService;
 use App\Services\Interface\TransaccionServiceInterface;
 use App\Services\Implementation\TransaccionService;
+use App\Services\Interface\CajaServiceInterface;
+use App\Services\Implementation\CajaService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -77,7 +79,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PersonaServiceInterface::class, PersonaService::class);
         $this->app->bind(CuentaCorrienteServiceInterface::class, CuentaCorrienteService::class);
         $this->app->bind(TransaccionServiceInterface::class, TransaccionService::class);
-    }
+        $this->app->bind(CajaServiceInterface::class, CajaService::class);
+        }
 
     /**
      * Bootstrap any application services.

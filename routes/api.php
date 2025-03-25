@@ -24,6 +24,8 @@ use App\Http\Controllers\Api\PersonaController;
 use App\Http\Controllers\Api\CuentaCorrienteController;
 use App\Http\Controllers\Api\TransaccionesController;
 use App\Http\Controllers\MetodoPagoController;
+use App\Http\Controllers\Api\CajaController;
+
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
 
@@ -77,7 +79,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/usuarios/{id}', [UserController::class, 'destroy']);
     Route::post('/create-user', [UserController::class, 'createUser']);
     Route::post('/logout', [UserController::class, 'logout']);
-    
+
+    Route::post('/apertura-caja', [CajaController::class, 'abrirCaja']);
+    Route::get('/caja-abierta', [CajaController::class, 'getCaja']);
+    Route::get('/cajas', [CajaController::class, 'index']);
+    Route::post('/cierre-caja', [CajaController::class, 'cerrarCaja']);
+
     Route::get('/auditorias', [AuditoriaController::class, 'index']);
 
     Route::get('/deportes', [DeporteController::class, 'index']);

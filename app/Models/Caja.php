@@ -9,13 +9,19 @@ use App\Models\Transaccion;
 class Caja extends Model
 {
     protected $fillable = [
-        'empleado_id',
         'fecha_apertura',
         'fecha_cierre',
         'saldo_inicial',
         'saldo_final',
+        'empleado_id',
         'activa',
         'observaciones'
+    ];
+
+    protected $casts = [
+        'fecha_apertura' => 'datetime',
+        'fecha_cierre' => 'datetime',
+        'activa' => 'boolean'
     ];
 
     public function empleado()
