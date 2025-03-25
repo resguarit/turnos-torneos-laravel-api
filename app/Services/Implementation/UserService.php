@@ -255,4 +255,66 @@ class UserService implements UserServiceInterface
             'status' => 200
         ];
     }
+
+    public function destroy($id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return [
+                'message' => 'Usuario no encontrado',
+                'status' => 404
+            ];
+        }
+
+        $datosAnteriores = $user->toArray();
+        $user->delete();
+
+        // Registrar auditoría
+        AuditoriaService::registrar(
+            'eliminar',
+            'usuarios',
+            $id,
+            $datosAnteriores,
+            null
+        );
+
+        return [
+            'message' => 'Usuario eliminado correctamente',
+            'status' => 200
+        ];
+    }
+
+    public function index(Request $request)
+    {
+        $perPage = $request->query('limit', 10);
+        $sortBy = $request->query('sortBy', 'created_at');
+        $order = $request->query('order', 'desc');
+        $page = $request->query('page', 1);
+        $searchType = $request->query('searchType');
+        $searchTerm = $request->query('searchTerm');
+
+        $query = User::with('persona')->orderBy($sortBy, $order);
+
+        if ($searchType && $searchTerm) {
+            if ($searchType === 'name' || $searchType === 'dni' || $searchType === 'telefono') {
+                $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
+                    $q->where($searchType, 'like', "%{$searchTerm}%");
+                });
+            } else {
+                $query->where($searchType, 'like', "%{$searchTerm}%");
+            }
+        }
+
+        $users = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'usuarios' => $users->items(),
+            'status' => 200,
+            'totalUsuarios' => $users->total(),
+            'totalPages' => $users->lastPage(),
+            'currentPage' => $users->currentPage(),
+            'perPage' => $users->perPage(),
+        ];
+    }
 }
