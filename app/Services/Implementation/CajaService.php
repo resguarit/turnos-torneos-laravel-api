@@ -108,7 +108,7 @@ class CajaService implements CajaServiceInterface
             ]);
 
             // Registrar el saldo inicial como primera transacción
-            $metodoPagoEfectivo = DB::table('metodos_pago')->where('nombre', 'Efectivo')->first();
+            $metodoPagoEfectivo = DB::table('metodos_pago')->where('nombre', 'efectivo')->first();
             
             Transaccion::create([
                 'caja_id' => $caja->id,

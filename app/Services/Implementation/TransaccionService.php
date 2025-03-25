@@ -56,12 +56,14 @@ class TransaccionService implements TransaccionServiceInterface
     public function storeTransaccion(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'persona_id' => 'required_without:cuenta_corriente_id|exists:personas,id',
-            'cuenta_corriente_id' => 'required_without:persona_id|exists:cuentas_corrientes,id',
+            'persona_id' => 'sometimes|exists:personas,id',
+            'cuenta_corriente_id' => 'sometimes|exists:cuentas_corrientes,id',
             'turno_id' => 'nullable|exists:turnos,id',
             'monto' => 'required|numeric',
             'tipo' => 'required|in:ingreso,egreso,seña,turno,pago,deuda,devolucion',
             'descripcion' => 'nullable|string',
+            'caja_id' => 'nullable|exists:cajas,id',
+            'metodo_pago' => 'required|in:efectivo,transferencia,tarjeta,mercadopago',
         ]);
 
         if ($validator->fails()) {
@@ -75,39 +77,44 @@ class TransaccionService implements TransaccionServiceInterface
         DB::beginTransaction();
 
         try {
-            $cuentaCorriente = null;
-
-            if ($request->has('cuenta_corriente_id')) {
-                $cuentaCorriente = CuentaCorriente::findOrFail($request->cuenta_corriente_id);
-                $persona = $cuentaCorriente->persona;
-            } else {
-                $persona = Persona::with('cuentaCorriente')->findOrFail($request->persona_id);
+            $metodoPago = DB::table('metodos_pago')->where('nombre', $request->metodo_pago)->first();
             
-                if (!$persona->cuentaCorriente) {
-                    $cuentaCorriente = CuentaCorriente::create([
-                        'persona_id' => $persona->id,
-                        'saldo' => 0,
-                    ]);
-                } else {
-                    $cuentaCorriente = $persona->cuentaCorriente;
-                }
-            }
-
-            $monto = $request->monto;
-
             // Preparar los datos de la transacción
             $transaccionData = [
-                'cuenta_corriente_id' => $cuentaCorriente->id,
-                'monto' => $monto,
+                'monto' => $request->monto,
                 'tipo' => $request->tipo,
                 'descripcion' => $request->descripcion ?? null,
+                'caja_id' => $request->caja_id,
+                'metodo_pago_id' => $metodoPago->id,
             ];
+
+            // Si es una transacción de cuenta corriente
+            if ($request->has('cuenta_corriente_id') || $request->has('persona_id')) {
+                $cuentaCorriente = null;
+
+                if ($request->has('cuenta_corriente_id')) {
+                    $cuentaCorriente = CuentaCorriente::findOrFail($request->cuenta_corriente_id);
+                    $persona = $cuentaCorriente->persona;
+                } elseif ($request->has('persona_id')) {
+                    $persona = Persona::with('cuentaCorriente')->findOrFail($request->persona_id);
+                
+                    if (!$persona->cuentaCorriente) {
+                        $cuentaCorriente = CuentaCorriente::create([
+                            'persona_id' => $persona->id,
+                            'saldo' => 0,
+                        ]);
+                    } else {
+                        $cuentaCorriente = $persona->cuentaCorriente;
+                    }
+                }
+
+                $transaccionData['cuenta_corriente_id'] = $cuentaCorriente->id;
+            }
 
             // Agregar el turno_id si está presente
             if ($request->has('turno_id')) {
                 $turno = Turno::findOrFail($request->turno_id);
                 $transaccionData['turno_id'] = $turno->id;
-                
                 
                 // Si no hay descripción y hay turno, generar una descripción automática
                 if (empty($transaccionData['descripcion'])) {
@@ -124,22 +131,21 @@ class TransaccionService implements TransaccionServiceInterface
             $transaccion = Transaccion::create($transaccionData);
             $transaccion->save();
 
-            // Actualizar el saldo de la cuenta corriente
-            $cuentaCorriente->saldo += $monto;
-            $cuentaCorriente->save();
+            // Actualizar el saldo de la cuenta corriente solo si existe
+            if (isset($cuentaCorriente)) {
+                $cuentaCorriente->saldo += $request->monto;
+                $cuentaCorriente->save();
+            }
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Transacción creada con éxito',
                 'transaccion' => $transaccion,
-                'nuevo_saldo' => $cuentaCorriente->saldo,
-                'persona' => $persona,
                 'success' => true,
-                'cuenta_corriente' => $cuentaCorriente,
-                'turno' => $request->has('turno_id') ? $turno : null,
                 'status' => 201
             ], 201);
+
         } catch (ModelNotFoundException $e) {
             DB::rollBack();
             return response()->json([
