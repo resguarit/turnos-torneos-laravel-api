@@ -23,7 +23,7 @@ use App\Http\Controllers\Api\GrupoController;
 use App\Http\Controllers\Api\PersonaController;
 use App\Http\Controllers\Api\CuentaCorrienteController;
 use App\Http\Controllers\Api\TransaccionesController;
-
+use App\Http\Controllers\MetodoPagoController;
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
 
@@ -139,6 +139,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/equipos/{equipoId}/estadisticas', [EstadisticaController::class, 'getByEquipo']);
     Route::get('/jugadores/{jugadorId}/estadisticas', [EstadisticaController::class, 'getByJugador']);
     Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);
+
+    Route::get('/metodos-pago', [MetodoPagoController::class, 'index']);
+    Route::post('/metodos-pago', [MetodoPagoController::class, 'store']);
+    Route::put('/metodos-pago/{id}', [MetodoPagoController::class, 'update']);
+    Route::delete('/metodos-pago/{id}', [MetodoPagoController::class, 'destroy']);
 
     Route::get('/grupos', [GrupoController::class, 'index']);
     Route::get('/grupos/{id}', [GrupoController::class, 'show']);

@@ -77,7 +77,8 @@ class CuentaCorrienteService implements CuentaCorrienteServiceInterface
                 });
             }
 
-            
+            // Agregar el conteo de transacciones
+            $query->withCount('transacciones');
 
             // Ordenar y paginar
             $cuentasCorrientes = $query->orderBy($sortBy, $order)
