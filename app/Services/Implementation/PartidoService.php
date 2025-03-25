@@ -124,7 +124,7 @@ class PartidoService implements PartidoServiceInterface
 
     public function getByFecha($fechaId)
     {
-        return Partido::where('fecha_id', $fechaId)->with('equipos', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
+        return Partido::where('fecha_id', $fechaId)->with( 'equipoLocal', 'equipoVisitante', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
     }
 
     public function getByEquipo($equipoId)
