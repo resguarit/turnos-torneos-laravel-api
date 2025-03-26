@@ -134,6 +134,13 @@ class PartidoService implements PartidoServiceInterface
         })->with('fecha', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
     }
 
+    public function getByZona($zonaId)
+    {
+        return Partido::whereHas('fecha', function ($query) use ($zonaId) {
+            $query->where('zona_id', $zonaId);
+        })->with('fecha', 'equipoLocal', 'equipoVisitante', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
+    }
+
     /* public function asignarHoraYCancha(Request $request)
     {
         $validator = Validator::make($request->all(), [
