@@ -13,6 +13,7 @@ use Illuminate\Validation\Rule;
 use App\Enums\ZonaFormato;
 use Illuminate\Support\Facades\Log;
 use App\Models\Grupo;
+use Carbon\Carbon;
 
 class ZonaService implements ZonaServiceInterface
 {
@@ -113,6 +114,18 @@ class ZonaService implements ZonaServiceInterface
 
     public function createFechas(Request $request, $zonaId)
     {
+        $validator = Validator::make($request->all(), [
+            'fecha_inicial' => 'required|date_format:Y-m-d', // Validar que la fecha_inicial sea obligatoria y tenga el formato correcto
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
         $zona = Zona::with('equipos')->find($zonaId);
 
         if (!$zona) {
@@ -125,19 +138,21 @@ class ZonaService implements ZonaServiceInterface
         $equipos = $zona->equipos;
         $numEquipos = $equipos->count();
 
-        if ($numEquipos < 2 ) {
+        if ($numEquipos < 2) {
             return response()->json([
                 'message' => 'El número de equipos debe ser par y mayor o igual a 2',
                 'status' => 400
             ], 400);
         }
 
+        $fechaInicial = Carbon::createFromFormat('Y-m-d', $request->input('fecha_inicial')); // Convertir la fecha inicial a un objeto Carbon
+
         $fechas = [];
 
         if ($zona->formato === ZonaFormato::LIGA) {
-            $fechas = $this->createFechasLiga($zona, $equipos);
+            $fechas = $this->createFechasLiga($zona, $equipos, $fechaInicial);
         } elseif ($zona->formato === ZonaFormato::ELIMINATORIA) {
-            $fechas = $this->createFechasEliminatoria($zona, $equipos);
+            $fechas = $this->createFechasEliminatoria($zona, $equipos, $fechaInicial);
         } elseif ($zona->formato === ZonaFormato::GRUPOS) {
             $numGrupos = $request->input('num_grupos');
             if ($numGrupos < 1 || $numEquipos % $numGrupos != 0) {
@@ -148,10 +163,8 @@ class ZonaService implements ZonaServiceInterface
                     'status' => 400
                 ], 400);
             }
-            $fechas = $this->createFechasGrupos($zonaId, $numGrupos);
+            $fechas = $this->createFechasGrupos($zonaId, $numGrupos, $fechaInicial);
         }
-
-        Log::info('Fechas creadas:', ['fechas' => $fechas]);
 
         return response()->json([
             'message' => 'Fechas creadas correctamente',
@@ -160,7 +173,7 @@ class ZonaService implements ZonaServiceInterface
         ], 201);
     }
 
-    private function createFechasLiga($zona, $equipos)
+    private function createFechasLiga($zona, $equipos, $fechaInicial)
     {
         $numEquipos = $equipos->count();
         $numFechas = ($numEquipos % 2 == 0) ? $numEquipos - 1 : $numEquipos;
@@ -178,8 +191,8 @@ class ZonaService implements ZonaServiceInterface
         for ($i = 0; $i < $numFechas; $i++) {
             $fecha = Fecha::create([
                 'nombre' => 'Fecha ' . ($i + 1),
-                'fecha_inicio' => now()->addWeeks($i),
-                'fecha_fin' => now()->addWeeks($i)->addDays(1),
+                'fecha_inicio' => $fechaInicial->copy()->addWeeks($i),
+                'fecha_fin' => $fechaInicial->copy()->addWeeks($i)->addDays(1),
                 'estado' => 'Pendiente',
                 'zona_id' => $zona->id,
             ]);
@@ -223,12 +236,12 @@ class ZonaService implements ZonaServiceInterface
         return $fechas;
     }
 
-    private function createFechasEliminatoria($zona, $equipos)
+    private function createFechasEliminatoria($zona, $equipos, $fechaInicial)
     {
         $fecha = Fecha::create([
             'nombre' => 'Eliminatoria',
-            'fecha_inicio' => now(),
-            'fecha_fin' => now()->addDays(1),
+            'fecha_inicio' => $fechaInicial,
+            'fecha_fin' => $fechaInicial->copy()->addDays(1),
             'estado' => 'Pendiente',
             'zona_id' => $zona->id,
         ]);
@@ -262,7 +275,7 @@ class ZonaService implements ZonaServiceInterface
         return [$fecha];
     }
 
-    private function createFechasGrupos($zonaId, $numGrupos)
+    private function createFechasGrupos($zonaId, $numGrupos, $fechaInicial)
     {
         $zona = Zona::with('grupos.equipos')->find($zonaId);
 
@@ -293,8 +306,8 @@ class ZonaService implements ZonaServiceInterface
             for ($i = 0; $i < $numFechas; $i++) {
                 $fecha = Fecha::create([
                     'nombre' => 'Fecha ' . ($i + 1),
-                    'fecha_inicio' => now()->addWeeks($i),
-                    'fecha_fin' => now()->addWeeks($i)->addDays(1),
+                    'fecha_inicio' => $fechaInicial->copy()->addWeeks($i),
+                    'fecha_fin' => $fechaInicial->copy()->addWeeks($i)->addDays(1),
                     'estado' => 'Pendiente',
                     'zona_id' => $zona->id,
                 ]);
