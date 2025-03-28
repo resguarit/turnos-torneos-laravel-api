@@ -104,7 +104,7 @@ class TurnoService implements TurnoServiceInterface
         ];
 
         return response()->json($data, 200);
-    }   
+    }
 
     public function storeTurnoUnico(Request $request)
     {
@@ -188,27 +188,27 @@ class TurnoService implements TurnoServiceInterface
         DB::beginTransaction();
         
         try {
-            // Crear una nueva reserva
-            $turno = Turno::create([
-                'fecha_turno' => $request->fecha_turno,
-                'fecha_reserva' => now(),
-                'horario_id' => $request->horario_id,
-                'cancha_id' => $request->cancha_id,
-                'persona_id' => $persona->id,
-                'monto_total' => $monto_total,
-                'monto_seña' => $monto_seña,
-                'estado' => $request->estado,
-                'tipo' => 'unico'
-            ]);
+        // Crear una nueva reserva
+        $turno = Turno::create([
+            'fecha_turno' => $request->fecha_turno,
+            'fecha_reserva' => now(),
+            'horario_id' => $request->horario_id,
+            'cancha_id' => $request->cancha_id,
+            'persona_id' => $persona->id,
+            'monto_total' => $monto_total,
+            'monto_seña' => $monto_seña,
+            'estado' => $request->estado,
+            'tipo' => 'unico'
+        ]);
 
-            if (!$turno) {
+        if (!$turno) {
                 DB::rollBack();
-                return response()->json([
-                    'message' => 'Error al crear el turno',
-                    'status' => 500
-                ], 500);
-            }
-            
+            return response()->json([
+                'message' => 'Error al crear el turno',
+                'status' => 500
+            ], 500);
+        }
+
             // Registrar transacción en cuenta corriente según el estado
             if ($request->estado != 'Pagado') {
                 // Buscar o crear la cuenta corriente de la persona
@@ -253,11 +253,11 @@ class TurnoService implements TurnoServiceInterface
                 $turno->toArray()
             );
 
-            return response()->json([
-                'message' => 'Turno creado correctamente',
-                'turno' => $turno,
-                'status' => 201
-            ], 201);
+        return response()->json([
+            'message' => 'Turno creado correctamente',
+            'turno' => $turno,
+            'status' => 201
+        ], 201);
             
         } catch (\Exception $e) {
             DB::rollBack();
@@ -310,7 +310,7 @@ class TurnoService implements TurnoServiceInterface
                 $canchasDisponibles = Cancha::where('activa', true)
                     ->whereDoesntHave('turnos', function ($query) use ($fecha_turno_actual, $horario) {
                         $query->where('fecha_turno', $fecha_turno_actual)
-                              ->where('horario_id', $horario->id)
+                    ->where('horario_id', $horario->id)
                               ->where('estado', '!=', 'Cancelado');
                     })
                     ->whereDoesntHave('bloqueosTemporales', function ($query) use ($fecha_turno_actual, $horario) {
@@ -723,7 +723,7 @@ class TurnoService implements TurnoServiceInterface
 
         // Ordenar los turnos por la diferencia de días
         $turnos = $turnos->sortBy('diferencia_dias')->values();
-        
+
         return response()->json([
             'turnos' => TurnoResource::collection($turnos),
             'status' => 200
@@ -762,14 +762,14 @@ class TurnoService implements TurnoServiceInterface
             ], 404);
         }
 
-        if ($turno->estado === TurnoEstado::CANCELADO) {
+         if ($turno->estado === TurnoEstado::CANCELADO) {
             return response()->json([
                 'message' => 'El turno ya ha sido cancelado',
                 'status' => 400
             ], 400);
         }
         
-        if ($turno->fecha_turno < now()->startOfDay()) {
+        if ($turno->fecha_turno < Carbon::now()->startOfDay()) {
             return response()->json([
                 'message' => 'No puedes cancelar un turno que ya ha pasado',
                 'status' => 400
@@ -933,27 +933,27 @@ class TurnoService implements TurnoServiceInterface
         DB::beginTransaction();
         
         try {
-            // Crear una nueva reserva
-            $turno = Turno::create([
-                'fecha_turno' => $request->fecha_turno,
-                'fecha_reserva' => now(),
-                'horario_id' => $request->horario_id,
-                'cancha_id' => $request->cancha_id,
-                'persona_id' => $request->persona_id,
-                'monto_total' => $monto_total,
-                'monto_seña' => $monto_seña,
-                'estado' => $request->estado,
-                'tipo' => $request->tipo
-            ]);
+        // Crear una nueva reserva
+        $turno = Turno::create([
+            'fecha_turno' => $request->fecha_turno,
+            'fecha_reserva' => now(),
+            'horario_id' => $request->horario_id,
+            'cancha_id' => $request->cancha_id,
+            'persona_id' => $request->persona_id,
+            'monto_total' => $monto_total,
+            'monto_seña' => $monto_seña,
+            'estado' => $request->estado,
+            'tipo' => $request->tipo
+        ]);
 
-            if (!$turno) {
+        if (!$turno) {
                 DB::rollBack();
-                return response()->json([
-                    'message' => 'Error al crear el turno',
-                    'status' => 500
-                ], 500);
-            }
-            
+            return response()->json([
+                'message' => 'Error al crear el turno',
+                'status' => 500
+            ], 500);
+        }
+
             // Registrar transacción en cuenta corriente según el estado
             if ($request->estado != 'Pagado') {
                 $persona = Persona::find($request->persona_id);
@@ -987,12 +987,12 @@ class TurnoService implements TurnoServiceInterface
             }
             
             DB::commit();
-            
-            return response()->json([
-                'message' => 'Turno creado correctamente',
-                'turno' => $turno,
-                'status' => 201
-            ], 201);
+
+        return response()->json([
+            'message' => 'Turno creado correctamente',
+            'turno' => $turno,
+            'status' => 201
+        ], 201);
             
         } catch (\Exception $e) {
             DB::rollBack();

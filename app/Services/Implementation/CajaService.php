@@ -184,16 +184,102 @@ class CajaService implements CajaServiceInterface
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $cajas = Caja::with('empleado')
-            ->orderBy('fecha_apertura', 'desc')
-            ->get();
+        $perPage = $request->query('limit', 5);
+        $sortBy = $request->query('sortBy', 'fecha_cierre');
+        $order = $request->query('order', 'desc');
+        $page = $request->query('page', 1);
+        $fechaDesde = $request->query('fecha_desde');
+        $fechaHasta = $request->query('fecha_hasta');
+        $dni = $request->query('dni');
 
-        return response()->json([
-            'message' => 'Cajas encontradas',
-            'cajas' => $cajas,
-            'status' => 200
-        ], 200);
+        try {
+            $query = Caja::with(['empleado', 'transacciones.metodoPago'])
+                ->whereNotNull('fecha_cierre')
+                ->join('personas', 'cajas.empleado_id', '=', 'personas.id');
+
+            // Filtro por DNI
+            if ($dni) {
+                $query->where('personas.dni', 'like', '%' . $dni . '%');
+            }
+
+            // Filtro por fecha
+            if ($fechaDesde) {
+                $query->whereDate('cajas.fecha_cierre', '>=', $fechaDesde);
+            }
+            if ($fechaHasta) {
+                $query->whereDate('cajas.fecha_cierre', '<=', $fechaHasta);
+            }
+
+            $query->orderBy("cajas.$sortBy", $order);
+            $query->select('cajas.*'); // Asegurarnos de solo seleccionar campos de la tabla cajas
+
+            $cierres = $query->paginate($perPage);
+
+            $cierresFormateados = $cierres->map(function ($cierre) {
+                // Calcular totales por método de pago
+                $resumenPagos = [
+                    'efectivo' => 0,
+                    'transferencia' => 0,
+                    'tarjeta' => 0,
+                    'mercadopago' => 0
+                ];
+
+                $balanceTotal = 0;
+                $efectivoEnSistema = 0;
+
+                foreach ($cierre->transacciones as $transaccion) {
+                    $monto = $transaccion->monto;
+                    $balanceTotal += $monto;
+                    
+                    $metodoPago = strtolower($transaccion->metodoPago->nombre);
+                    if (isset($resumenPagos[$metodoPago])) {
+                        $resumenPagos[$metodoPago] += $monto;
+                    }
+
+                    if ($metodoPago === 'efectivo') {
+                        $efectivoEnSistema += $monto;
+                    }
+                }
+
+                // Calcular la diferencia entre el efectivo en sistema y el efectivo contado
+                $diferencia = $cierre->saldo_final - $efectivoEnSistema;
+
+                return [
+                    'id' => $cierre->id,
+                    'fecha_apertura' => $cierre->fecha_apertura,
+                    'fecha_cierre' => $cierre->fecha_cierre,
+                    'saldo_inicial' => $cierre->saldo_inicial,
+                    'efectivo_contado' => $cierre->saldo_final, // Efectivo contado físicamente
+                    'efectivo_en_sistema' => $efectivoEnSistema, // Suma de todas las transacciones en efectivo
+                    'diferencia' => $diferencia,
+                    'balance_total' => $balanceTotal,
+                    'balance_electronico' => $balanceTotal - $efectivoEnSistema,
+                    'observaciones' => $cierre->observaciones,
+                    'operador' => [
+                        'id' => $cierre->empleado->id,
+                        'name' => $cierre->empleado->name,
+                        'dni' => $cierre->empleado->dni
+                    ],
+                    'resumen_pagos' => $resumenPagos
+                ];
+            });
+
+            return response()->json([
+                'status' => 200,
+                'cierres' => $cierresFormateados,
+                'total' => $cierres->total(),
+                'currentPage' => $cierres->currentPage(),
+                'totalPages' => $cierres->lastPage(),
+                'perPage' => $cierres->perPage()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al obtener los cierres de caja: ' . $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 }

@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\CuentaCorrienteController;
 use App\Http\Controllers\Api\TransaccionesController;
 use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\Api\CajaController;
+use App\Http\Controllers\Api\TransaccionController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -179,6 +180,7 @@ Route::get('/cuentas-corrientes/persona/{id}', [CuentaCorrienteController::class
 Route::get('/transacciones', [TransaccionesController::class, 'index']);
 Route::post('/transacciones', [TransaccionesController::class, 'store']);
 Route::get('/transacciones/turno/{id}', [TransaccionesController::class, 'saldoPorTurno']);
+Route::get('/transacciones/caja/{cajaId}', [TransaccionesController::class, 'getTransaccionesPorCaja']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);

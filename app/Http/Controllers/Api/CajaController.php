@@ -31,8 +31,8 @@ class CajaController extends Controller
         return $this->cajaService->getCaja();
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return $this->cajaService->index();
+        return $this->cajaService->index($request);
     }
 }

@@ -21,27 +21,41 @@ class TransaccionService implements TransaccionServiceInterface
         $sortBy = $request->sortBy ?? 'created_at';
         $order = $request->order ?? 'desc';
         $searchTerm = $request->searchTerm ?? '';
-        $searchType = $request->searchType ?? '';
+        $startDate = $request->startDate ?? '';
+        $endDate = $request->endDate ?? '';
+        $metodoPago = $request->metodoPago ?? '';
+        $tipo = $request->tipo ?? '';
 
-        $query = Transaccion::with(['cuentaCorriente.persona', 'turno']);
+        $query = Transaccion::with([
+            'cuentaCorriente.persona', 
+            'turno.cancha', 
+            'turno.horario',
+            'metodoPago',
+            'caja.empleado'
+        ]);
 
         // Aplicar filtros si hay término de búsqueda
         if (!empty($searchTerm)) {
-            if ($searchType == 'description') {
-                $query->where('descripcion', 'like', '%' . $searchTerm . '%');
-            } elseif ($searchType == 'type') {
-                $query->where('tipo', 'like', '%' . $searchTerm . '%');
-            } elseif ($searchType == 'person') {
-                $query->whereHas('cuentaCorriente.persona', function ($q) use ($searchTerm) {
-                    $q->where('nombre', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('apellido', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('dni', 'like', '%' . $searchTerm . '%');
-                });
-            } elseif ($searchType == 'turno') {
-                $query->whereHas('turno', function ($q) use ($searchTerm) {
-                    $q->where('id', $searchTerm);
-                });
-            }
+            $query->whereHas('cuentaCorriente.persona', function ($q) use ($searchTerm) {
+                $q->where('dni', 'like', '%' . $searchTerm . '%');
+            });
+        }
+
+        // Filtrar por rango de fechas
+        if (!empty($startDate) && !empty($endDate)) {
+            $query->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        }
+
+        // Filtrar por método de pago
+        if (!empty($metodoPago)) {
+            $query->whereHas('metodoPago', function($q) use ($metodoPago) {
+                $q->where('nombre', $metodoPago);
+            });
+        }
+
+        // Filtrar por tipo de transacción
+        if (!empty($tipo)) {
+            $query->where('tipo', $tipo);
         }
 
         // Ordenar y paginar
@@ -49,7 +63,10 @@ class TransaccionService implements TransaccionServiceInterface
 
         return response()->json([
             'transacciones' => $transacciones,
-            'success' => true
+            'success' => true,
+            'totalPages' => $transacciones->lastPage(),
+            'currentPage' => $transacciones->currentPage(),
+            'total' => $transacciones->total()
         ]);
     }
 
@@ -183,5 +200,47 @@ class TransaccionService implements TransaccionServiceInterface
             'success' => true,
             'status' => 200
         ], 200);
+    }
+
+    public function getTransaccionesPorCaja($cajaId)
+    {
+        try {
+            $transacciones = Transaccion::with([
+                'cuentaCorriente.persona',
+                'metodoPago',
+                'caja.empleado'
+            ])
+            ->where('caja_id', $cajaId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($transaccion) {
+                return [
+                    'id' => $transaccion->id,
+                    'monto' => $transaccion->monto,
+                    'tipo' => $transaccion->tipo,
+                    'descripcion' => $transaccion->descripcion,
+                    'fecha' => $transaccion->created_at,
+                    'metodo_pago' => $transaccion->metodoPago,
+                    'caja' => $transaccion->caja,
+                    'cliente' => $transaccion->cuentaCorriente ? [
+                        'nombre' => $transaccion->cuentaCorriente->persona->name
+                    ] : null,
+                    'es_movimiento_caja' => !$transaccion->cuentaCorriente
+                ];
+            });
+
+            return response()->json([
+                'transacciones' => $transacciones,
+                'success' => true,
+                'status' => 200
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al obtener las transacciones de la caja',
+                'error' => $e->getMessage(),
+                'success' => false,
+                'status' => 500
+            ], 500);
+        }
     }
 }
