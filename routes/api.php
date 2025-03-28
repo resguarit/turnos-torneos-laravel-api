@@ -58,7 +58,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/turnos/cancelarbloqueo', [BloqueoTemporalController::class, 'cancelarBloqueo']);
     Route::get('/turnos/listarbloqueos', [BloqueoTemporalController::class, 'listarBloqueos']);
 
-    Route::get('/horarios', [HorarioController::class, 'index']);
+
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
     Route::get('/horarios-extremos-activos', [HorarioController::class, 'getHorariosExtremosActivos']);
@@ -147,7 +147,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Ruta temporal para probar la creación de grupos aleatoriamente
     Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
-
+    Route::post('/zonas/{zonaId}/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCanchaPorZona']);
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
@@ -157,7 +157,8 @@ Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanch
 
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
-Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);
+Route::get('/horarios', [HorarioController::class, 'index']);
+Route::get('/horarios-dia', [HorarioController::class, 'getHorariosPorDiaSemana']);
 Route::get('/canchas/{id}', [CanchaController::class, 'show']);
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);

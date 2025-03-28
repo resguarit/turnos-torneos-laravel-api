@@ -16,4 +16,8 @@ class Deporte extends Model
     {
         return $this->hasMany(Torneo::class);
     }
+    public function canchas()
+    {
+        return $this->hasMany(Cancha::class);
+    }
 }

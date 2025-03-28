@@ -141,12 +141,11 @@ class PartidoService implements PartidoServiceInterface
         })->with('fecha', 'equipoLocal', 'equipoVisitante', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
     }
 
-    /* public function asignarHoraYCancha(Request $request)
+    public function asignarHoraYCanchaPorZona(Request $request, $zonaId)
     {
         $validator = Validator::make($request->all(), [
             'partidos_a_la_vez' => 'required|integer|min:1',
-            'horario_id' => 'required|exists:horarios,id',
-            'fecha_id' => 'required|exists:fechas,id',
+            'horario_inicio' => 'required|date_format:H:i',
         ]);
 
         if ($validator->fails()) {
@@ -158,62 +157,94 @@ class PartidoService implements PartidoServiceInterface
         }
 
         $partidosALaVez = $request->partidos_a_la_vez;
-        $horarioId = $request->horario_id;
-        $fecha = Fecha::with('partidos')->find($request->fecha_id);
+        $horarioInicio = Carbon::createFromFormat('H:i', $request->horario_inicio);
 
-        if (!$fecha) {
+        // Obtener las fechas de la zona
+        $fechas = Fecha::where('zona_id', $zonaId)->with('partidos')->get();
+
+        if ($fechas->isEmpty()) {
             return response()->json([
-                'message' => 'Fecha no encontrada',
+                'message' => 'No se encontraron fechas para la zona especificada',
                 'status' => 404
             ], 404);
         }
 
-        $partidos = $fecha->partidos;
+        foreach ($fechas as $fecha) {
+            $fecha->fecha_inicio = Carbon::parse($fecha->fecha_inicio); // Convertir a Carbon
+            $partidos = $fecha->partidos;
 
-        if ($partidos->isEmpty()) {
-            return response()->json([
-                'message' => 'No hay partidos asociados a esta fecha',
-                'status' => 404
-            ], 404);
-        }
-
-        // Verificar disponibilidad de canchas
-        $canchasDisponiblesResponse = $this->disponibilidadService->getCanchasPorHorarioFecha(new Request(['fecha' => Carbon::parse($fecha->fecha_inicio)->format('Y-m-d'), 'horario_id' => $horarioId]));
-        $canchasDisponibles = json_decode(json_encode($canchasDisponiblesResponse->getData()), true);
-
-        if (empty($canchasDisponibles) || count($canchasDisponibles) < $partidosALaVez) {
-            return response()->json([
-                'message' => 'No hay suficientes canchas disponibles para los partidos a la vez',
-                'status' => 400
-            ], 400);
-        }
-
-        // Asignar horarios y canchas a los partidos
-        foreach ($partidos as $partido) {
-            if (empty($canchasDisponibles)) {
-                return response()->json([
-                    'message' => 'No hay suficientes canchas disponibles para asignar a todos los partidos',
-                    'status' => 400
-                ], 400);
+            if ($partidos->isEmpty()) {
+                continue; // Si no hay partidos en la fecha, pasar a la siguiente
             }
 
-            $partido->horario_id = $horarioId;
-            $partido->cancha_id = $canchasDisponibles[0]['id'];
-            $partido->save();
+            $horarioActual = $horarioInicio->copy();
 
-            // Eliminar la cancha asignada de la lista disponible
-            array_shift($canchasDisponibles);
+            foreach ($partidos->chunk($partidosALaVez) as $partidosGrupo) {
+                // Verificar disponibilidad de canchas para el horario y la fecha
+                $diaSemana = $this->getNombreDiaSemana($fecha->fecha_inicio->dayOfWeek);
 
-            // Si se han asignado todos los partidos a la vez, reiniciar la lista de canchas disponibles
-            if (count($canchasDisponibles) < $partidosALaVez) {
-                $canchasDisponiblesResponse = $this->disponibilidadService->getCanchasPorHorarioFecha(new Request(['fecha' => Carbon::parse($fecha->fecha_inicio)->format('Y-m-d'), 'horario_id' => $horarioId]));
+                $horario = Horario::where('hora_inicio', $horarioActual->format('H:i'))
+                    ->where('dia', $diaSemana)
+                    ->first();
+
+                if (!$horario) {
+                    // Si no se encuentra el horario, continuar con el siguiente grupo
+                    continue;
+                }
+
+                $canchasDisponiblesResponse = $this->disponibilidadService->getCanchasPorHorarioFecha(new Request([
+                    'fecha' => $fecha->fecha_inicio->format('Y-m-d'),
+                    'horario_id' => $horario->id
+                ]));
+
                 $canchasDisponibles = json_decode(json_encode($canchasDisponiblesResponse->getData()), true);
+
+                if (empty($canchasDisponibles['canchas'])) {
+                    // Si no hay canchas disponibles, continuar con el siguiente grupo
+                    continue;
+                }
+
+                // Iterar sobre los partidos y asignar canchas secuencialmente
+                $canchas = $canchasDisponibles['canchas'];
+                foreach ($partidosGrupo as $index => $partido) {
+                    if (isset($canchas[$index])) {
+                        $partido->horario_id = $horario->id;
+                        $partido->cancha_id = $canchas[$index]['id']; // Asignar una cancha diferente
+                        $partido->save();
+                    } else {
+                        // Si no hay más canchas disponibles, dejar el partido sin asignar
+                        $partido->horario_id = $horario->id;
+                        $partido->cancha_id = null;
+                        $partido->save();
+                    }
+                }
+
+                // Incrementar el horario para el siguiente grupo de partidos
+                $horarioActual->addHour();
             }
         }
 
         return response()->json([
-            'message' => 'Horarios y canchas asignados correctamente',
+            'message' => 'Horarios y canchas asignados correctamente a los partidos de la zona',
             'status' => 200
         ], 200);
-    } */
+    }
+
+    /**
+     * Obtener el nombre del día de la semana en español.
+     */
+    private function getNombreDiaSemana($diaSemana)
+    {
+        $dias = [
+            0 => 'domingo',
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábado'
+        ];
+
+        return $dias[$diaSemana];
+    }
 }

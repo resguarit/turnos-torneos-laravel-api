@@ -65,10 +65,8 @@ class PartidoController extends Controller
         return response()->json($this->partidoService->getByZona($zonaId), 200);
     }
 
-    /* public function asignarHoraYCancha(Request $request)
+    public function asignarHoraYCanchaPorZona(Request $request, $zonaId)
     {
-        return $this->partidoService->asignarHoraYCancha($request);
-    } */
-
-
+        return $this->partidoService->asignarHoraYCanchaPorZona($request, $zonaId);
+    }
 }

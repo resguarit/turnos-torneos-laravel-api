@@ -13,7 +13,7 @@ class Cancha extends Model
 
     protected $table = 'canchas';
 
-    protected $fillable = ['nro', 'tipo_cancha', 'precio_por_hora', 'seña', 'activa', 'descripcion'];
+    protected $fillable = ['nro', 'tipo_cancha', 'precio_por_hora', 'seña', 'activa', 'descripcion'. 'deporte_id'];
 
     protected $hidden = ['created_at', 'updated_at'];
 
@@ -33,5 +33,10 @@ class Cancha extends Model
     public function bloqueosTemporales()
     {
         return $this->hasMany(BloqueoTemporal::class, 'cancha_id');
+    }
+
+    public function deporte()
+    {
+        return $this->belongsTo(Deporte::class);
     }
 }
