@@ -106,7 +106,7 @@ class FechaService implements FechaServiceInterface
 
     public function getByZona($zonaId)
     {
-        return Fecha::where('zona_id', $zonaId)->with( 'partidos.equipos')->get();
+        return Fecha::where('zona_id', $zonaId)->with('partidos.equipos')->get();
     }
 
     public function postergarFechas($fechaId)
