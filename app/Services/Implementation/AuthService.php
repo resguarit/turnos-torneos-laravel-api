@@ -3,8 +3,11 @@
 namespace App\Services\Implementation;
 
 use App\Models\User;
+use App\Models\Auditoria;
+use App\Models\Persona;
 use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
+use Illuminate\Support\Facades\DB;
 use App\Services\Interface\AuditoriaServiceInterface;
 
 class AuthService implements AuthServiceInterface
@@ -19,9 +22,9 @@ class AuthService implements AuthServiceInterface
     public function login(array $credentials)
     {
         if (isset($credentials['dni'])) {
-            $user = User::where('dni', $credentials['dni'])->first();
+            $user = User::with('persona')->where('dni', $credentials['dni'])->first();
         } else {
-            $user = User::where('email', $credentials['email'])->first();
+            $user = User::with('persona')->where('email', $credentials['email'])->first();
         }
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
@@ -33,21 +36,12 @@ class AuthService implements AuthServiceInterface
 
         $abilities = $user->getAbilities();
         $token = $user->createToken('login', $abilities);
-        
-        $this->auditoriaService->registrar(
-            'login', 
-            'users', 
-            $user->id, 
-            null,
-            ['ip' => request()->ip(), 'user_agent' => request()->userAgent()],
-            $user->id
-        );
 
         return [
             'token' => $token->plainTextToken,
             'user_id' => $user->id,
             'rol' => $user->rol,
-            'username' => $user->name,
+            'username' => $user->persona->name ?? 'Usuario', // Asegurándonos de tener un valor predeterminado si es null
             'status' => 200
         ];
     }
@@ -62,15 +56,6 @@ class AuthService implements AuthServiceInterface
             'password' => Hash::make($data['password']),
             'rol' => 'cliente'
         ]);
-
-        $this->auditoriaService->registrar(
-            'register',
-            'users',
-            $user->id,
-            null,
-            ['ip' => request()->ip(), 'user_agent' => request()->userAgent()],
-            $user->id
-        );
 
         return [
             'message' => 'Usuario registrado exitosamente',

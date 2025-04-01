@@ -13,4 +13,5 @@ interface JugadorServiceInterface
     public function update(Request $request, $id);
     public function delete($id);
     public function getByEquipo($equipoId);
+    public function createMultiple(Request $request);
 }

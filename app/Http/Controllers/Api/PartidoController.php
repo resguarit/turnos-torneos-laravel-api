@@ -59,4 +59,9 @@ class PartidoController extends Controller
     {
         return response()->json($this->partidoService->getByEquipo($equipoId), 200);
     }
+
+    /* public function asignarHoraYCancha(Request $request)
+    {
+        return $this->partidoService->asignarHoraYCancha($request);
+    } */
 }

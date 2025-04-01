@@ -23,8 +23,21 @@ class EquipoService implements EquipoServiceInterface
     public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    $exists = Equipo::where('nombre', $value)
+                        ->where('zona_id', $request->input('zona_id'))
+                        ->exists();
+                    if ($exists) {
+                        $fail('El nombre del equipo ya existe en esta zona.');
+                    }
+                },
+            ],
             'escudo' => 'nullable|string',
+            'zona_id' => 'required|exists:zonas,id',
         ]);
 
         if ($validator->fails()) {
@@ -56,8 +69,24 @@ class EquipoService implements EquipoServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request, $id) {
+                    if ($request->input('zona_id')) {
+                        $exists = Equipo::where('nombre', $value)
+                            ->where('zona_id', $request->input('zona_id'))
+                            ->where('id', '!=', $id)
+                            ->exists();
+                        if ($exists) {
+                            $fail('El nombre del equipo ya existe en esta zona.');
+                        }
+                    }
+                },
+            ],
             'escudo' => 'nullable|string',
+            'zona_id' => 'nullable|exists:zonas,id,deleted_at,NULL',
         ]);
 
         if ($validator->fails()) {
@@ -99,5 +128,13 @@ class EquipoService implements EquipoServiceInterface
     public function getByZona($zonaId)
     {
         return Equipo::where('zona_id', $zonaId)->with('jugadores')->get();
+    }
+
+    public function getExcludeZona($zonaId)
+    {
+        return Equipo::where('zona_id', '!=', $zonaId)
+                     ->orWhereNull('zona_id')
+                     ->with('jugadores')
+                     ->get();
     }
 }

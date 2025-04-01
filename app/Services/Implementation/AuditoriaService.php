@@ -34,7 +34,7 @@ class AuditoriaService implements AuditoriaServiceInterface
 
     public function obtenerAuditorias(array $filtros = [], int $perPage = 15)
     {
-        $query = Auditoria::with('usuario')->latest('fecha_accion');
+        $query = Auditoria::with('usuario.persona')->latest('fecha_accion');
         
         if (isset($filtros['tipo']) && !empty($filtros['tipo'])) {
             $query->where('accion', $filtros['tipo']);

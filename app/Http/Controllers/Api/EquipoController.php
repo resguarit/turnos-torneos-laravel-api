@@ -54,4 +54,9 @@ class EquipoController extends Controller
     {
         return response()->json($this->equipoService->getByZona($zonaId), 200);
     }
+
+    public function getExcludeZona($zonaId)
+    {
+        return response()->json($this->equipoService->getExcludeZona($zonaId), 200);
+    }
 }

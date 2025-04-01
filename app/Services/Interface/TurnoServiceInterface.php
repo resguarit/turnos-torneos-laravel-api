@@ -10,6 +10,7 @@ interface TurnoServiceInterface
     public function getAllTurnos();
     public function storeTurnoUnico(Request $request);
     public function storeTurnoFijo(Request $request);
+    public function storeTurnoPersona(Request $request);
     public function updateTurno(Request $request, $id);
     public function deleteTurno($id);
     public function restoreTurno($id);

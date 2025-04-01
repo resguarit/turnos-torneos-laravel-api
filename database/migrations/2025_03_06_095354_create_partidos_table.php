@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('partidos', function (Blueprint $table) {
             $table->id();
-            $table->date('fecha');
-            $table->unsignedBigInteger('horario_id');
-            $table->unsignedBigInteger('cancha_id');
+            $table->date('fecha')->nullable();
+            $table->unsignedBigInteger('horario_id')->nullable();
+            $table->unsignedBigInteger('cancha_id')->nullable();
             $table->string('estado');
             $table->integer('marcador_local')->nullable();
             $table->integer('marcador_visitante')->nullable();

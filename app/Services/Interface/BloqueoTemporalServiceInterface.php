@@ -8,5 +8,4 @@ interface BloqueoTemporalServiceInterface
 {
     public function bloquearHorario(Request $request);
     public function cancelarBloqueo(Request $request);
-    public function listarBloqueos();
 }

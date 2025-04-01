@@ -7,23 +7,33 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Services\Implementation\AuditoriaService;
 use App\Models\Persona;
 
 class UserService implements UserServiceInterface
 {
     public function register(array $data)
     {
-        $persona = Persona::create([
-            'name' => $data['name'],
-            'dni' => $data['dni'],
-            'telefono' => $data['telefono'],
-        ]);
+        // Buscar si ya existe una persona con el mismo DNI
+        $persona = Persona::where('dni', $data['dni'])->first();
+
+        
+
+        if (!$persona) {
+            $persona = Persona::create([
+                'name' => $data['name'],
+                'dni' => $data['dni'],
+                'telefono' => $data['telefono'],
+                'direccion' => $data['direccion'] ?? null,
+            ]);
+        }
 
         $user = User::create([
             'email' => $data['email'],
             'dni' => $data['dni'],
             'password' => Hash::make($data['password']),
-            'rol' => 'cliente'
+            'rol' => 'cliente',
+            'persona_id' => $persona->id
         ]);
 
         return [
@@ -34,33 +44,49 @@ class UserService implements UserServiceInterface
 
     public function createUser(array $data)
     {
-        $persona = Persona::create([
-            'name' => $data['name'],
-            'dni' => $data['dni'],
-            'telefono' => $data['telefono'],
-        ]);
+        // Buscar si ya existe una persona con el mismo DNI
+        $persona = Persona::where('dni', $data['dni'])->first();
+
+        if (!$persona) {
+            $persona = Persona::create([
+                'name' => $data['name'],
+                'dni' => $data['dni'],
+                'telefono' => $data['telefono'],
+            ]);
+        }
 
         $user = User::create([
             'email' => $data['email'],
             'dni' => $data['dni'],
             'password' => Hash::make($data['password']),
-            'rol' => $data['rol']
+            'rol' => $data['rol'] ?? 'cliente',
+            'persona_id' => $persona->id,
         ]);
 
+        // Registrar en la auditoría
+        AuditoriaService::registrar(
+            'crear',
+            'usuarios',
+            $user->id,
+            null,
+            $user->toArray() 
+        );
+
         return [
+            'message' => 'Usuario creado correctamente',
             'user' => $user,
             'persona' => $persona,
-            'message' => 'Usuario creado con éxito',
-            'status' => 201
+            'status' => 201,
         ];
     }
 
     public function login(array $credentials)
     {
+        
         if (isset($credentials['dni'])) {
-            $user = User::where('dni', $credentials['dni'])->first();
+            $user = User::with('persona')->where('dni', $credentials['dni'])->first();
         } else {
-            $user = User::where('email', $credentials['email'])->first();
+            $user = User::with('persona')->where('email', $credentials['email'])->first();
         }
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
@@ -131,17 +157,43 @@ class UserService implements UserServiceInterface
         ];
     }
 
+    public function deleteUser($id)
+    {
+        $user = User::findOrFail($id);
+        $datosAnteriores = $user->toArray();
+        
+        $user->delete();
+
+        AuditoriaService::registrar(
+            'eliminar', 
+            'usuarios', 
+            $id, 
+            $datosAnteriores, 
+            null
+        );
+
+        return response()->json([
+            'message' => 'Usuario eliminado correctamente',
+            'status' => 200
+        ], 200);
+    }
+
     public function update($id, array $data)
     {
         $user = User::with('persona')->find($id);
 
+        $datosAnteriores = [
+            'user' => $user->toArray(),
+        ];
+
         if (!$user) {
             return [
-                'message' => 'Usuario no encontrado',
+                'message' => 'Usuario o Persona no encontrado',
                 'status' => 404
             ];
         }
 
+        // Manejar contraseña
         if (isset($data['password'])) {
             if (!Hash::check($data['current_password'], $user->password)) {
                 return [
@@ -149,25 +201,57 @@ class UserService implements UserServiceInterface
                     'status' => 401
                 ];
             }
-            $data['password'] = Hash::make($data['password']);
+            $user->password = Hash::make($data['password']);
         }
 
-        $user->fill($data);
-        $user->save();
-
-        if (isset($data['name'])) {
-            $user->persona->nombre = $data['name'];
+        // Actualizar campos específicos de User
+        if (isset($data['email'])) {
+            $user->email = $data['email'];
+        }
+        if (isset($data['rol'])) {
+            $user->rol = $data['rol'];
         }
         if (isset($data['dni'])) {
-            $user->persona->dni = $data['dni'];
+            $user->dni = $data['dni'];
         }
-        if (isset($data['telefono'])) {
-            $user->persona->telefono = $data['telefono'];
+        
+        $user->save();
+
+        // Actualizar campos de Persona si existe
+        if ($user->persona) {
+            if (isset($data['name'])) {
+                $user->persona->name = $data['name'];
+            }
+            if (isset($data['dni'])) {
+                $user->persona->dni = $data['dni'];
+            }
+            if (isset($data['telefono'])) {
+                $user->persona->telefono = $data['telefono'];
+            }
+            if (isset($data['direccion'])) {
+                $user->persona->direccion = $data['direccion'];
+            }
+            
+            $user->persona->save();
         }
-        $user->persona->save();
+
+        $datosNuevos = [
+            'user' => $user->toArray(),
+            'persona' => $user->persona ? $user->persona->toArray() : null
+        ];
+
+        // Registrar auditoría
+        AuditoriaService::registrar(
+            'modificar',
+            'usuarios',
+            $user->id,
+            $datosAnteriores,
+            $datosNuevos
+        );
 
         return [
             'message' => 'Usuario actualizado correctamente',
+            'user' => $user,
             'status' => 200
         ];
     }
@@ -175,7 +259,7 @@ class UserService implements UserServiceInterface
     public function destroy($id)
     {
         $user = User::find($id);
-        
+
         if (!$user) {
             return [
                 'message' => 'Usuario no encontrado',
@@ -183,35 +267,26 @@ class UserService implements UserServiceInterface
             ];
         }
 
-        $user->persona->delete();
-
+        $datosAnteriores = $user->toArray();
         $user->delete();
 
+        // Registrar auditoría
+        AuditoriaService::registrar(
+            'eliminar',
+            'usuarios',
+            $id,
+            $datosAnteriores,
+            null
+        );
+
         return [
-            'message' => 'Usuario eliminado con éxito',
+            'message' => 'Usuario eliminado correctamente',
             'status' => 200
         ];
     }
 
     public function index(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'limit' => 'integer|min:1',
-            'sortBy' => 'string|in:name,email,created_at,dni,telefono',
-            'order' => 'string|in:asc,desc',
-            'page' => 'integer|min:1',
-            'searchType' => 'string|nullable|in:name,email,dni,telefono',
-            'searchTerm' => 'string|nullable',
-        ]);
-
-        if ($validator->fails()) {
-            return [
-                'message' => 'Error en la validación',
-                'errors' => $validator->errors(),
-                'status' => 422
-            ];
-        }
-
         $perPage = $request->query('limit', 10);
         $sortBy = $request->query('sortBy', 'created_at');
         $order = $request->query('order', 'desc');
