@@ -65,7 +65,7 @@ class HorarioController extends Controller
     public function habilitarFranjaHoraria(Request $request)
     {
         $user = Auth::user();
-        abort_unless($user->tokenCan('horarios:habilitar') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+        abort_unless($user->tokenCan('horarios:indisponibilizar') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
         
         return $this->horarioService->habilitarFranjaHoraria($request);
     }
