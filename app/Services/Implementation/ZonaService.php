@@ -159,7 +159,7 @@ class ZonaService implements ZonaServiceInterface
             $numGrupos = $request->input('num_grupos');
             if ($numGrupos < 1 || $numEquipos % $numGrupos != 0) {
                 return response()->json([
-                    'numero_grupos' => $numGrupos,
+                    'num_grupos' => $numGrupos,
                     'numero_equipos' => $numEquipos,
                     'message' => 'El número de grupos debe ser mayor o igual a 1 y los equipos deben dividirse equitativamente entre los grupos',
                     'status' => 400
@@ -305,50 +305,45 @@ class ZonaService implements ZonaServiceInterface
             $numFechas = max($numFechas, $numEquipos - 1);
         }
 
-            for ($i = 0; $i < $numFechas; $i++) {
-                $fecha = Fecha::create([
-                    'nombre' => 'Fecha ' . ($i + 1),
-                    'fecha_inicio' => $fechaInicial->copy()->addWeeks($i),
-                    'fecha_fin' => $fechaInicial->copy()->addWeeks($i)->addDays(1),
-                    'estado' => 'Pendiente',
-                    'zona_id' => $zona->id,
-                ]);
+        for ($i = 0; $i < $numFechas; $i++) {
+            $fecha = Fecha::create([
+                'nombre' => 'Fecha ' . ($i + 1),
+                'fecha_inicio' => now()->addWeeks($i),
+                'fecha_fin' => now()->addWeeks($i)->addDays(1),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
 
-                foreach ($zona->grupos as $grupo) {
-                    $equipos = $grupo->equipos;
-                    $numEquipos = $equipos->count();
-        
-                    $equiposArray = $equipos->toArray();
-                    shuffle($equiposArray);
-        
-                    $partidos = [];
-        
-                    // Crear partidos para la fecha
-                    for ($j = 0; $j < $numEquipos / 2; $j++) {
-                        $local = $equiposArray[$j];
-                        $visitante = $equiposArray[$numEquipos - 1 - $j];
-        
-                        $partido = Partido::create([
-                            'fecha_id' => $fecha->id,
-                            'equipo_local_id' => $local['id'],
-                            'equipo_visitante_id' => $visitante['id'],
-                            'estado' => 'Pendiente',
-                            'fecha' => $fecha->fecha_inicio,
-                            'horario_id' => null,
-                            'cancha_id' => null,
-                        ]);
-        
-                        $partidos[] = $partido;
-                    }
-        
-                    $fecha->partidos()->saveMany($partidos);
-        
-                    // Rotar equipos para la siguiente fecha
-                    $last = array_pop($equiposArray);
-                    array_splice($equiposArray, 1, 0, [$last]);
+            foreach ($zona->grupos()->with('equipos')->get() as $grupo) {
+                $equipos = $grupo->equipos; // Aquí tienes los equipos del grupo
+                $numEquipos = $equipos->count();
+
+                $equiposArray = $equipos->toArray();
+                shuffle($equiposArray);
+
+                $partidos = [];
+
+                // Crear partidos para la fecha
+                for ($j = 0; $j < $numEquipos / 2; $j++) {
+                    $local = $equiposArray[$j];
+                    $visitante = $equiposArray[$numEquipos - 1 - $j];
+
+                    $partido = Partido::create([
+                        'fecha_id' => $fecha->id,
+                        'equipo_local_id' => $local['id'],
+                        'equipo_visitante_id' => $visitante['id'],
+                        'estado' => 'Pendiente',
+                        'fecha' => $fecha->fecha_inicio,
+                        'horario_id' => null,
+                        'cancha_id' => null,
+                    ]);
+
+                    // Asociar los equipos al partido en la tabla pivote
+                    $partido->equipos()->attach([$local['id'], $visitante['id']]);
                 }
-        
-                $fechas[] = $fecha;
+            }
+
+            $fechas[] = $fecha;
         }
 
         return $fechas;

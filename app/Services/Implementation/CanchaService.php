@@ -63,7 +63,8 @@ class CanchaService implements CanchaServiceInterface
             'precio_por_hora' => 'required|numeric',
             'seña' => 'required|numeric',
             'activa' => 'required|boolean',
-            'descripcion' => 'nullable|string'
+            'descripcion' => 'nullable|string',
+            'deporte_id' => 'required|exists:deportes,id'
         ]);
 
         if ($validator->fails()) {
@@ -80,7 +81,8 @@ class CanchaService implements CanchaServiceInterface
             'precio_por_hora' => $request->precio_por_hora,
             'seña' => $request->seña,
             'activa' => $request->activa,
-            'descripcion' => $request->descripcion
+            'descripcion' => $request->descripcion,
+            'deporte_id' => $request->deporte_id
         ]);
 
         // Registrar auditoría
@@ -116,7 +118,8 @@ class CanchaService implements CanchaServiceInterface
             'precio_por_hora' => 'sometimes|numeric',
             'seña' => 'sometimes|numeric',
             'activa' => 'sometimes|boolean',
-            'descripcion' => 'nullable|string'
+            'descripcion' => 'nullable|string',
+            'deporte_id' => 'sometimes|exists:deportes,id'
         ]);
 
         if ($validator->fails()) {
@@ -151,6 +154,10 @@ class CanchaService implements CanchaServiceInterface
 
         if ($request->has('descripcion')) {
             $cancha->descripcion = $request->descripcion;
+        }
+
+        if($request->has('deporte_id')){
+            $cancha->deporte_id = $request->deporte_id;
         }
 
         $cancha->save();

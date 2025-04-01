@@ -109,6 +109,13 @@ class JugadorService implements JugadorServiceInterface
         return Jugador::where('equipo_id', $equipoId)->get();
     }
 
+    public function getByZona($zonaId)
+    {
+        return Jugador::whereHas('equipo', function ($query) use ($zonaId) {
+            $query->where('zona_id', $zonaId);
+        })->with('equipo')->get();
+    }
+
     public function createMultiple(Request $request)
     {
         $validator = Validator::make($request->all(), [
