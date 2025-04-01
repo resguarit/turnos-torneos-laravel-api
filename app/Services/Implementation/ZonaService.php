@@ -6,12 +6,14 @@ namespace App\Services\Implementation;
 use App\Models\Zona;
 use App\Models\Fecha;
 use App\Models\Partido;
+use App\Models\Equipo;
 use App\Services\Interface\ZonaServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\Enums\ZonaFormato;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\Grupo;
 use Carbon\Carbon;
 
@@ -393,5 +395,92 @@ class ZonaService implements ZonaServiceInterface
         }
 
         return $grupos;
+    }
+
+    public function reemplazarEquipo($zonaId, $equipoIdViejo, $equipoIdNuevo)
+    {
+        try {
+            DB::beginTransaction();
+            
+            $zona = Zona::find($zonaId);
+            if (!$zona) {
+                return response()->json([
+                    'message' => 'Zona no encontrada',
+                    'status' => 404
+                ], 404);
+            }
+            
+            // Verificar que el equipo viejo pertenezca a la zona
+            $equipoViejo = Equipo::where('id', $equipoIdViejo)->where('zona_id', $zonaId)->first();
+            if (!$equipoViejo) {
+                return response()->json([
+                    'message' => 'El equipo a reemplazar no pertenece a esta zona',
+                    'status' => 400
+                ], 400);
+            }
+            
+            // Verificar que el equipo nuevo exista
+            $equipoNuevo = Equipo::find($equipoIdNuevo);
+            if (!$equipoNuevo) {
+                return response()->json([
+                    'message' => 'El equipo nuevo no existe',
+                    'status' => 404
+                ], 404);
+            }
+            
+            // Asignar el equipo nuevo a la zona
+            $equipoNuevo->zona_id = $zonaId;
+            $equipoNuevo->save();
+            
+            // Desasignar el equipo viejo de la zona
+            $equipoViejo->zona_id = null;
+            $equipoViejo->save();
+            
+            // Reemplazar el equipo en todos los partidos
+            $partidos = Partido::whereHas('fecha', function($query) use ($zonaId) {
+                $query->where('zona_id', $zonaId);
+            })->where(function($query) use ($equipoIdViejo) {
+                $query->where('equipo_local_id', $equipoIdViejo)
+                    ->orWhere('equipo_visitante_id', $equipoIdViejo);
+            })->get();
+            
+            // También actualizar grupos si es formato de grupos
+            $grupos = Grupo::where('zona_id', $zonaId)->get();
+            foreach ($grupos as $grupo) {
+                $equiposGrupo = json_decode($grupo->equipos_json, true) ?: [];
+                if (in_array($equipoIdViejo, $equiposGrupo)) {
+                    // Reemplazar el ID del equipo viejo por el nuevo
+                    $equiposGrupo = array_map(function($id) use ($equipoIdViejo, $equipoIdNuevo) {
+                        return $id == $equipoIdViejo ? $equipoIdNuevo : $id;
+                    }, $equiposGrupo);
+                    $grupo->equipos_json = json_encode($equiposGrupo);
+                    $grupo->save();
+                }
+            }
+            
+            foreach ($partidos as $partido) {
+                if ($partido->equipo_local_id == $equipoIdViejo) {
+                    $partido->equipo_local_id = $equipoIdNuevo;
+                }
+                if ($partido->equipo_visitante_id == $equipoIdViejo) {
+                    $partido->equipo_visitante_id = $equipoIdNuevo;
+                }
+                $partido->save();
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Equipo reemplazado correctamente',
+                'status' => 200
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al reemplazar el equipo',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 }

@@ -78,4 +78,13 @@ class ZonaController extends Controller
             ], $e->getCode());
         }
     }
+
+    public function reemplazarEquipo(Request $request, $zonaId)
+    {
+        return $this->zonaService->reemplazarEquipo(
+            $zonaId, 
+            $request->input('equipo_viejo_id'), 
+            $request->input('equipo_nuevo_id')
+        );
+    }
 }

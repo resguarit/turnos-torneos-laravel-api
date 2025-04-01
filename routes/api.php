@@ -98,6 +98,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/equipos/{id}', [EquipoController::class, 'update']);
     Route::delete('/equipos/{id}', [EquipoController::class, 'destroy']);
     Route::get('/zonas/{zonaId}/equipos', [EquipoController::class, 'getByZona']);
+    Route::get('/equipos/exclude-zona/{zonaId}', [EquipoController::class, 'getExcludeZona']);
 
     Route::get('/jugadores', [JugadorController::class, 'index']);
     Route::get('/jugadores/{id}', [JugadorController::class, 'show']);
@@ -114,6 +115,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
     Route::get('/torneos/{torneoId}/zonas', [ZonaController::class, 'getByTorneo']);
     Route::post('/zonas/{zonaId}/fechas', [ZonaController::class, 'createFechas']);
+    Route::post('/zonas/{zonaId}/reemplazar-equipo', [ZonaController::class, 'reemplazarEquipo']);
 
     Route::get('/fechas', [FechaController::class, 'index']);
     Route::get('/fechas/{id}', [FechaController::class, 'show']);
@@ -155,7 +157,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/grupos/{grupoId}/equipos/{equipoId}', [GrupoController::class, 'eliminarEquipoDeGrupo']);
     Route::get('/zonas/{zonaId}/grupos', [GrupoController::class, 'getByZona']);
     Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
-
+    
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
