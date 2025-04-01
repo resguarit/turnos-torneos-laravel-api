@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/Api/FechaController.php
 
 namespace App\Http\Controllers\Api;
 
@@ -58,5 +57,9 @@ class FechaController extends Controller
     public function postergarFechas($fechaId)
     {
         return $this->fechaService->postergarFechas($fechaId);
+    }
+    public function verificarEstadoFecha($fechaId)
+    {
+        return $this->fechaService->verificarEstadoFecha($fechaId);
     }
 }

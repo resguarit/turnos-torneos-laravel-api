@@ -124,6 +124,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/fechas/{id}', [FechaController::class, 'destroy']);
     Route::get('/zonas/{zonaId}/fechas', [FechaController::class, 'getByZona']);
     Route::post('/fechas/{fechaId}/postergar', [FechaController::class, 'postergarFechas']);
+    Route::post('/fechas/{fechaId}/verificar-estado', [FechaController::class, 'verificarEstadoFecha']);
 
     Route::get('/partidos', [PartidoController::class, 'index']);
     Route::get('/partidos/{id}', [PartidoController::class, 'show']);

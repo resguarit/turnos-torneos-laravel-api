@@ -143,4 +143,47 @@ class FechaService implements FechaServiceInterface
             'status' => 200
         ], 200);
     }
+
+    public function verificarEstadoFecha($fechaId)
+    {
+        $fecha = Fecha::with('partidos')->findOrFail($fechaId);
+        $todosFinalizados = true;
+        
+        // No actualizar si ya está finalizada
+        if ($fecha->estado === 'Finalizada') {
+            return response()->json([
+                'message' => 'La fecha ya estaba marcada como Finalizada',
+                'fecha' => $fecha
+            ]);
+        }
+        
+        // Verificar que haya partidos y que todos estén finalizados
+        if ($fecha->partidos->isEmpty()) {
+            return response()->json([
+                'message' => 'La fecha no tiene partidos asociados',
+                'fecha' => $fecha
+            ]);
+        }
+        
+        foreach ($fecha->partidos as $partido) {
+            if ($partido->estado !== 'Finalizado') {
+                $todosFinalizados = false;
+                break;
+            }
+        }
+        
+        if ($todosFinalizados) {
+            $fecha->estado = 'Finalizada';
+            $fecha->save();
+            return response()->json([
+                'message' => 'Fecha actualizada a Finalizada',
+                'fecha' => $fecha
+            ]);
+        }
+        
+        return response()->json([
+            'message' => 'No se actualizó el estado de la fecha porque hay partidos sin finalizar',
+            'fecha' => $fecha
+        ]);
+    }
 }
