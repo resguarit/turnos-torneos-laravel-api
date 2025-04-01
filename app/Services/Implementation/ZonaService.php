@@ -142,7 +142,7 @@ class ZonaService implements ZonaServiceInterface
             $numGrupos = $request->input('num_grupos');
             if ($numGrupos < 1 || $numEquipos % $numGrupos != 0) {
                 return response()->json([
-                    'numero_grupos' => $numGrupos,
+                    'num_grupos' => $numGrupos,
                     'numero_equipos' => $numEquipos,
                     'message' => 'El número de grupos debe ser mayor o igual a 1 y los equipos deben dividirse equitativamente entre los grupos',
                     'status' => 400
