@@ -354,7 +354,7 @@ class ZonaService implements ZonaServiceInterface
 
     public function crearGruposAleatoriamente($zonaId, $numGrupos)
     {
-        $zona = Zona::with('equipos')->find($zonaId);
+        $zona = Zona::with('equipos', 'grupos')->find($zonaId);
 
         if (!$zona) {
             throw new \Exception('Zona no encontrada', 404);
@@ -363,14 +363,17 @@ class ZonaService implements ZonaServiceInterface
         $equipos = $zona->equipos;
         $numEquipos = $equipos->count();
 
-        if ($numEquipos < 2 || $numEquipos % 2 != 0) {
-            throw new \Exception('El número de equipos debe ser par y mayor o igual a 2', 400);
+        if ($numEquipos < 2 || $numEquipos % $numGrupos !== 0) {
+            throw new \Exception('El número de equipos debe ser divisible por el número de grupos.', 400);
         }
 
-        if ($numGrupos < 1) {
-            throw new \Exception('El número de grupos debe ser mayor o igual a 1', 400);
+        // Eliminar los grupos existentes
+        foreach ($zona->grupos as $grupo) {
+            $grupo->equipos()->detach();
+            $grupo->delete();
         }
 
+        // Crear nuevos grupos
         $equiposArray = $equipos->toArray();
         shuffle($equiposArray);
 

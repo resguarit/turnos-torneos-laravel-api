@@ -54,4 +54,15 @@ class GrupoController extends Controller
     {
         return response()->json($this->grupoService->getByZona($zonaId), 200);
     }
+
+    public function eliminarEquipoDeGrupo($grupoId, $equipoId)
+    {
+        $result = $this->grupoService->eliminarEquipoDeGrupo($grupoId, $equipoId);
+
+        return response()->json([
+            'message' => $result['message'],
+            'status' => $result['status'],
+            'error' => $result['status'] === 500 ? $result['error'] : null,
+        ], $result['status']);
+    }
 }

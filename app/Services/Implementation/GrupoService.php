@@ -101,4 +101,31 @@ class GrupoService implements GrupoServiceInterface
     {
         return Grupo::where('zona_id', $zonaId)->with('equipos')->get();
     }
+    
+    public function eliminarEquipoDeGrupo($grupoId, $equipoId)
+    {
+        try {
+            $grupo = Grupo::findOrFail($grupoId);
+            $equipo = $grupo->equipos()->findOrFail($equipoId);
+
+            // Eliminar la relación entre el grupo y el equipo
+            $grupo->equipos()->detach($equipoId);
+
+            return [
+                'message' => 'Equipo eliminado del grupo correctamente',
+                'status' => 200,
+            ];
+        } catch (ModelNotFoundException $e) {
+            return [
+                'message' => 'Grupo o equipo no encontrado',
+                'status' => 404,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'message' => 'Error al eliminar el equipo del grupo',
+                'error' => $e->getMessage(),
+                'status' => 500,
+            ];
+        }
+    }
 }

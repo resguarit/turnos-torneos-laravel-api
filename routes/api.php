@@ -152,9 +152,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/grupos', [GrupoController::class, 'store']);
     Route::put('/grupos/{id}', [GrupoController::class, 'update']);
     Route::delete('/grupos/{id}', [GrupoController::class, 'destroy']);
+    Route::delete('/grupos/{grupoId}/equipos/{equipoId}', [GrupoController::class, 'eliminarEquipoDeGrupo']);
     Route::get('/zonas/{zonaId}/grupos', [GrupoController::class, 'getByZona']);
-
-    // Ruta temporal para probar la creación de grupos aleatoriamente
     Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
 
 }); 
