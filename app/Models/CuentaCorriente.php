@@ -9,6 +9,9 @@ class CuentaCorriente extends Model
 {
     use SoftDeletes;
 
+    // Especificar el nombre correcto de la tabla
+    protected $table = 'cuentas_corrientes';
+
     protected $fillable = [
         'persona_id', 'saldo'
     ];

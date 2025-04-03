@@ -9,6 +9,7 @@ use App\Models\Horario;
 use App\Services\Interface\DashboardServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Transaccion;
 
 class DashboardService implements DashboardServiceInterface
 {
@@ -43,14 +44,16 @@ class DashboardService implements DashboardServiceInterface
 
     public function usuariosActivos()
     {
-        $usuariosActivosActual = User::whereHas('turnos', function ($query) {
-            $query->where('estado', '!=', 'Cancelada')
+        // Obtener usuarios activos a través de la relación persona->turnos
+        $usuariosActivosActual = User::whereHas('persona.turnos', function ($query) {
+            $query->where('estado', '!=', 'Cancelado')
                   ->whereYear('fecha_turno', Carbon::now()->year)
                   ->whereMonth('fecha_turno', Carbon::now()->month);
         })->count();
 
-        $usuariosActivosAnterior = User::whereHas('turnos', function ($query) {
-            $query->where('estado', '!=', 'Cancelada')
+        // Obtener usuarios activos del mes anterior
+        $usuariosActivosAnterior = User::whereHas('persona.turnos', function ($query) {
+            $query->where('estado', '!=', 'Cancelado')
                   ->whereYear('fecha_turno', Carbon::now()->subMonth()->year)
                   ->whereMonth('fecha_turno', Carbon::now()->subMonth()->month);
         })->count();
@@ -72,33 +75,30 @@ class DashboardService implements DashboardServiceInterface
 
     public function ingresos()
     {
-        $ingresosActual = Turno::whereYear('fecha_turno', Carbon::now()->year)
-            ->whereMonth('fecha_turno', Carbon::now()->month)
-            ->where(function ($query) {
-                $query->where('estado', 'Pagado')
-                      ->orWhere('estado', 'Señado');
-            })
-            ->sum(DB::raw('CASE WHEN estado = "Pagado" THEN monto_total ELSE monto_seña END'));
+        // Obtener ingresos netos del mes actual (todas las transacciones de caja)
+        $ingresosActual = Transaccion::whereYear('created_at', Carbon::now()->year)
+            ->whereMonth('created_at', Carbon::now()->month)
+            ->whereNotNull('caja_id')  // Solo transacciones registradas en caja
+            ->sum('monto');
 
-        $ingresosAnterior = Turno::whereYear('fecha_turno', Carbon::now()->subMonth()->year)
-            ->whereMonth('fecha_turno', Carbon::now()->subMonth()->month)
-            ->where(function ($query) {
-                $query->where('estado', 'Pagado')
-                      ->orWhere('estado', 'Señado');
-            })
-            ->sum(DB::raw('CASE WHEN estado = "Pagado" THEN monto_total ELSE monto_seña END'));
+        // Obtener ingresos netos del mes anterior
+        $ingresosAnterior = Transaccion::whereYear('created_at', Carbon::now()->subMonth()->year)
+            ->whereMonth('created_at', Carbon::now()->subMonth()->month)
+            ->whereNotNull('caja_id')  // Solo transacciones registradas en caja
+            ->sum('monto');
 
-        if ($ingresosAnterior > 0) {
-            $cambio = (($ingresosActual - $ingresosAnterior) / $ingresosAnterior) * 100;
+        // Calcular el cambio porcentual
+        if ($ingresosAnterior != 0) {  // Cambiado a != 0 porque podría ser negativo
+            $cambio = (($ingresosActual - $ingresosAnterior) / abs($ingresosAnterior)) * 100;
         } else {
-            $cambio = $ingresosActual * 100;
+            $cambio = $ingresosActual != 0 ? 100 : 0;
         }
 
         $tendencia = $cambio > 0 ? 'subida' : ($cambio < 0 ? 'bajada' : 'neutral');
 
         return response()->json([
-            'ingresos' => number_format($ingresosActual, 2),
-            'cambio' => number_format($cambio, 2),
+            'ingresos' => $ingresosActual,
+            'cambio' => number_format(abs($cambio), 2),
             'tendencia' => $tendencia
         ], 200);
     }

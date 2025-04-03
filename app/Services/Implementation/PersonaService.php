@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use App\Models\CuentaCorriente;
 
 class PersonaService implements PersonaServiceInterface
 {
@@ -30,23 +31,43 @@ class PersonaService implements PersonaServiceInterface
             ];
         }
 
-        $persona = Persona::create([
-            'name' => $request->name,
-            'dni' => $request->dni,
-            'telefono' => $request->telefono,
-            'direccion' => $request->direccion ?? null,
-        ]);
-
-        return [
-            'message' => 'Persona creada con éxito',
-            'status' => 201
-        ];
+        try {
+            DB::beginTransaction();
+    
+            $persona = Persona::create([
+                'name' => $request->name,
+                'dni' => $request->dni,
+                'telefono' => $request->telefono,
+                'direccion' => $request->direccion ?? null,
+            ]);
+    
+            $cuentaCorriente = CuentaCorriente::create([
+                'persona_id' => $persona->id,
+                'saldo' => 0,
+            ]);
+    
+            DB::commit();
+    
+            return [
+                'message' => 'Persona creada con éxito',
+                'persona' => $persona,
+                'cuenta_corriente' => $cuentaCorriente,
+                'status' => 201
+            ];
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return [
+                'message' => 'Error al crear la persona y su cuenta corriente',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ];
+        }
     }
 
     public function updatePersona(Request $request, $id)
     {
-
-        
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string',
             'dni' => 'sometimes|string|unique:personas,dni,' . $id,
@@ -69,6 +90,14 @@ class PersonaService implements PersonaServiceInterface
                 'message' => 'Persona no encontrada',
                 'status' => 404
             ];
+        }
+        // Actualizar el usuario asociado si existe
+        $usuario = $persona->usuario;
+        if ($usuario) {
+            if ($request->has('dni')) {
+                $usuario->dni = $request->dni;
+            }
+            $usuario->save();
         }
 
         $persona->fill($request->all());

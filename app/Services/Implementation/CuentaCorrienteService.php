@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
-class CuentaCorrientesService implements CuentaCorrienteServiceInterface
+class CuentaCorrienteService implements CuentaCorrienteServiceInterface
 {
     public function getCuentaCorrienteByPersona($personaId)
     {
@@ -56,26 +56,27 @@ class CuentaCorrientesService implements CuentaCorrienteServiceInterface
         }
     }
 
-    public function getAllCuentasCorrientes(Request $request)
-    {
-
+    public function getCuentasCorrientes(Request $request)
+    {   
         try {
             $perPage = $request->query('limit', 10);
             $sortBy = $request->query('sortBy', 'created_at');
             $order = $request->query('order', 'desc');
             $page = $request->query('page', 1);
-            $searchType = $request->query('searchType');
             $searchTerm = $request->query('searchTerm');
 
             // Consulta base para cuentas corrientes con personas
             $query = CuentaCorriente::with('persona');
 
-            // Filtrar por término de búsqueda si se proporciona
-            if ($searchType && $searchTerm) {
-                $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
-                    $q->where($searchType, 'like', "%{$searchTerm}%");
+            // Filtrar por DNI si se proporciona
+            if ($searchTerm) {
+                $query->whereHas('persona', function ($q) use ($searchTerm) {
+                    $q->where('dni', 'like', "%{$searchTerm}%");
                 });
             }
+
+            // Agregar el conteo de transacciones
+            $query->withCount('transacciones');
 
             // Ordenar y paginar
             $cuentasCorrientes = $query->orderBy($sortBy, $order)

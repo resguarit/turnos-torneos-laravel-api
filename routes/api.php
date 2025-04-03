@@ -19,6 +19,13 @@ use App\Http\Controllers\Api\ZonaController;
 use App\Http\Controllers\Api\FechaController;
 use App\Http\Controllers\Api\PartidoController;
 use App\Http\Controllers\Api\EstadisticaController;
+use App\Http\Controllers\Api\GrupoController;
+use App\Http\Controllers\Api\PersonaController;
+use App\Http\Controllers\Api\CuentaCorrienteController;
+use App\Http\Controllers\Api\TransaccionesController;
+use App\Http\Controllers\MetodoPagoController;
+use App\Http\Controllers\Api\CajaController;
+use App\Http\Controllers\Api\TransaccionController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -55,8 +62,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
     Route::post('/turnos/cancelarbloqueo', [BloqueoTemporalController::class, 'cancelarBloqueo']);
-    Route::get('/turnos/listarbloqueos', [BloqueoTemporalController::class, 'listarBloqueos']);
-
+    
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
@@ -74,7 +80,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/usuarios/{id}', [UserController::class, 'destroy']);
     Route::post('/create-user', [UserController::class, 'createUser']);
     Route::post('/logout', [UserController::class, 'logout']);
-    
+
+    Route::post('/apertura-caja', [CajaController::class, 'abrirCaja']);
+    Route::get('/caja-abierta', [CajaController::class, 'getCaja']);
+    Route::get('/cajas', [CajaController::class, 'index']);
+    Route::post('/cierre-caja', [CajaController::class, 'cerrarCaja']);
+
     Route::get('/auditorias', [AuditoriaController::class, 'index']);
 
     Route::get('/deportes', [DeporteController::class, 'index']);
@@ -102,6 +113,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/jugadores/{id}', [JugadorController::class, 'update']);
     Route::delete('/jugadores/{id}', [JugadorController::class, 'destroy']);
     Route::get('/equipos/{equipoId}/jugadores', [JugadorController::class, 'getByEquipo']);
+    Route::post('/equipos/{equipoId}/jugadores/multiple', [JugadorController::class, 'createMultiple']);
 
     Route::get('/zonas', [ZonaController::class, 'index']);
     Route::get('/zonas/{id}', [ZonaController::class, 'show']);
@@ -109,6 +121,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/zonas/{id}', [ZonaController::class, 'update']);
     Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
     Route::get('/torneos/{torneoId}/zonas', [ZonaController::class, 'getByTorneo']);
+    Route::post('/zonas/{zonaId}/fechas', [ZonaController::class, 'createFechas']);
 
     Route::get('/fechas', [FechaController::class, 'index']);
     Route::get('/fechas/{id}', [FechaController::class, 'show']);
@@ -135,6 +148,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/jugadores/{jugadorId}/estadisticas', [EstadisticaController::class, 'getByJugador']);
     Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);
 
+    Route::get('/metodos-pago', [MetodoPagoController::class, 'index']);
+    Route::post('/metodos-pago', [MetodoPagoController::class, 'store']);
+    Route::put('/metodos-pago/{id}', [MetodoPagoController::class, 'update']);
+    Route::delete('/metodos-pago/{id}', [MetodoPagoController::class, 'destroy']);
+
+    Route::get('/grupos', [GrupoController::class, 'index']);
+    Route::get('/grupos/{id}', [GrupoController::class, 'show']);
+    Route::post('/grupos', [GrupoController::class, 'store']);
+    Route::put('/grupos/{id}', [GrupoController::class, 'update']);
+    Route::delete('/grupos/{id}', [GrupoController::class, 'destroy']);
+    Route::get('/zonas/{zonaId}/grupos', [GrupoController::class, 'getByZona']);
+
+    // Ruta temporal para probar la creación de grupos aleatoriamente
+    Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
+
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
@@ -142,6 +170,17 @@ Route::get('/disponibilidad/dias', [DisponibilidadController::class, 'getDiasNoD
 Route::get('/disponibilidad/fecha', [DisponibilidadController::class, 'getHorariosDisponiblesPorFecha']);
 Route::get('/disponibilidad/cancha', [DisponibilidadController::class, 'getCanchasPorHorarioFecha']);
 
+Route::get('/personas', [PersonaController::class, 'index']);
+Route::post('/personas', [PersonaController::class, 'store']);
+Route::patch('/personas/{id}', [PersonaController::class, 'update']);
+
+Route::get('/cuentas-corrientes', [CuentaCorrienteController::class, 'index']);
+Route::get('/cuentas-corrientes/persona/{id}', [CuentaCorrienteController::class, 'show']);
+
+Route::get('/transacciones', [TransaccionesController::class, 'index']);
+Route::post('/transacciones', [TransaccionesController::class, 'store']);
+Route::get('/transacciones/turno/{id}', [TransaccionesController::class, 'saldoPorTurno']);
+Route::get('/transacciones/caja/{cajaId}', [TransaccionesController::class, 'getTransaccionesPorCaja']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);

@@ -53,4 +53,9 @@ class JugadorController extends Controller
     {
         return response()->json($this->jugadorService->getByEquipo($equipoId), 200);
     }
+
+    public function createMultiple(Request $request)
+    {
+        return $this->jugadorService->createMultiple($request);
+    }
 }

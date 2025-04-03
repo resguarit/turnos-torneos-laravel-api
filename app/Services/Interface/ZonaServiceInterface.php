@@ -13,4 +13,5 @@ interface ZonaServiceInterface
     public function update(Request $request, $id);
     public function delete($id);
     public function getByTorneo($torneoId);
+    public function createFechas(Request $request, $zonaId);
 }

@@ -54,4 +54,28 @@ class ZonaController extends Controller
     {
         return response()->json($this->zonaService->getByTorneo($torneoId), 200);
     }
+
+    public function createFechas(Request $request, $zonaId)
+    {
+        return $this->zonaService->createFechas($request, $zonaId);
+    }
+
+    public function crearGruposAleatoriamente(Request $request, $zonaId)
+    {
+        try {
+            $numGrupos = $request->input('num_grupos');
+            $grupos = $this->zonaService->crearGruposAleatoriamente($zonaId, $numGrupos);
+
+            return response()->json([
+                'message' => 'Grupos creados correctamente',
+                'grupos' => $grupos,
+                'status' => 201
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'status' => $e->getCode()
+            ], $e->getCode());
+        }
+    }
 }

@@ -39,6 +39,16 @@ use App\Services\Interface\PartidoServiceInterface;
 use App\Services\Implementation\PartidoService;
 use App\Services\Interface\EstadisticaServiceInterface;
 use App\Services\Implementation\EstadisticaService;
+use App\Services\Interface\GrupoServiceInterface;
+use App\Services\Implementation\GrupoService;
+use App\Services\Interface\PersonaServiceInterface;
+use App\Services\Implementation\PersonaService;
+use App\Services\Interface\CuentaCorrienteServiceInterface;
+use App\Services\Implementation\CuentaCorrienteService;
+use App\Services\Interface\TransaccionServiceInterface;
+use App\Services\Implementation\TransaccionService;
+use App\Services\Interface\CajaServiceInterface;
+use App\Services\Implementation\CajaService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -65,6 +75,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(FechaServiceInterface::class, FechaService::class);
         $this->app->bind(PartidoServiceInterface::class, PartidoService::class);
         $this->app->bind(EstadisticaServiceInterface::class, EstadisticaService::class);
+        $this->app->bind(GrupoServiceInterface::class, GrupoService::class);
+        $this->app->bind(PersonaServiceInterface::class, PersonaService::class);
+        $this->app->bind(CuentaCorrienteServiceInterface::class, CuentaCorrienteService::class);
+        $this->app->bind(TransaccionServiceInterface::class, TransaccionService::class);
+        $this->app->bind(CajaServiceInterface::class, CajaService::class);
     }
 
     /**

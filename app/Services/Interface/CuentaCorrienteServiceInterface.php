@@ -8,7 +8,7 @@ interface CuentaCorrienteServiceInterface
 {
     public function getCuentaCorrienteByPersona($personaId);
 
-    public function getAllCuentasCorrientes(Request $request);
+    public function getCuentasCorrientes(Request $request);
 
     public function getMiCuentaCorriente();
 

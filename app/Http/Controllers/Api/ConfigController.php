@@ -18,9 +18,6 @@ class ConfigController extends Controller
 
     public function configurarHorarios(Request $request)
     {
-        $user = Auth::user();
-        abort_unless($user->tokenCan('horarios:config') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-        
         return $this->configService->configurarHorarios($request);
     }
 }

@@ -11,13 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('jugadores', function (Blueprint $table) {
+        Schema::create('grupos', function (Blueprint $table) {
             $table->id();
             $table->string('nombre');
-            $table->string('apellido');
-            $table->string('dni')->unique();
-            $table->string('telefono')->nullable();
-            $table->date('fecha_nacimiento');
+            $table->unsignedBigInteger('zona_id');
+            $table->foreign('zona_id')->references('id')->on('zonas')->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -27,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('jugadors');
+        Schema::dropIfExists('grupos');
     }
 };

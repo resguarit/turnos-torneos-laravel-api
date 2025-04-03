@@ -30,10 +30,7 @@ class CanchaController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $user = Auth::user();
-        abort_unless($user->tokenCan('canchas:create') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-        
+    { 
         return $this->canchaService->storeCancha($request);
     }
 
@@ -47,9 +44,6 @@ class CanchaController extends Controller
 
     public function destroy($id)
     {
-        $user = Auth::user();
-        abort_unless($user->tokenCan('canchas:destroy') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-        
         return $this->canchaService->deleteCancha($id);
     }
 }
