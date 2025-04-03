@@ -170,7 +170,7 @@ class ZonaService implements ZonaServiceInterface
 
         return response()->json([
             'message' => 'Fechas creadas correctamente',
-            'fechas' => $fechas,
+            'fechas' => Fecha::with('partidos.equipos')->where('zona_id', $zona->id)->get(),
             'status' => 201
         ], 201);
     }
@@ -240,8 +240,13 @@ class ZonaService implements ZonaServiceInterface
 
     private function createFechasEliminatoria($zona, $equipos, $fechaInicial)
     {
+        $numEquipos = $equipos->count();
+
+        // Determinar el nombre de la fecha según el número de equipos
+        $nombreFecha = $this->getNombreEliminatoria($numEquipos);
+
         $fecha = Fecha::create([
-            'nombre' => 'Eliminatoria',
+            'nombre' => $nombreFecha,
             'fecha_inicio' => $fechaInicial,
             'fecha_fin' => $fechaInicial->copy()->addDays(1),
             'estado' => 'Pendiente',
@@ -253,7 +258,6 @@ class ZonaService implements ZonaServiceInterface
         // Crear partidos para la fecha
         $equiposArray = $equipos->toArray();
         shuffle($equiposArray);
-        $numEquipos = count($equiposArray);
 
         for ($i = 0; $i < $numEquipos / 2; $i++) {
             $local = $equiposArray[$i];
@@ -269,12 +273,38 @@ class ZonaService implements ZonaServiceInterface
                 'cancha_id' => null, // Permitir valores nulos
             ]);
 
+            // Asociar los equipos al partido en la tabla pivote
+            $partido->equipos()->attach([$local['id'], $visitante['id']]);
+
             $partidos[] = $partido;
         }
 
         $fecha->partidos = $partidos;
 
         return [$fecha];
+    }
+
+    /**
+     * Obtener el nombre de la eliminatoria según el número de equipos.
+     */
+    private function getNombreEliminatoria($numEquipos)
+    {
+        switch ($numEquipos) {
+            case 2:
+                return 'Final';
+            case 4:
+                return 'Semifinal';
+            case 8:
+                return 'Cuartos de Final';
+            case 16:
+                return 'Octavos de Final';
+            case 32:
+                return 'Dieciseisavos de Final';
+            case 64:
+                return 'Treintaidosavos de Final';
+            default:
+                return 'Eliminatoria';
+        }
     }
 
     private function createFechasGrupos($zonaId, $numGrupos, $fechaInicial)
