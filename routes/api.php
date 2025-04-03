@@ -162,6 +162,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/zonas/{zonaId}/grupos', [GrupoController::class, 'getByZona']);
     Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
     Route::post('/zonas/{zonaId}/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCanchaPorZona']);
+    Route::post('/zona/{zonaId}/generar-siguiente-ronda', [ZonaController::class, 'generarSiguienteRonda']);
     
 
     Route::get('/auditorias', [AuditoriaController::class, 'index']);

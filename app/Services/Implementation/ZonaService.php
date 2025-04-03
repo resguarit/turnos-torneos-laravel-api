@@ -142,7 +142,15 @@ class ZonaService implements ZonaServiceInterface
 
         if ($numEquipos < 2) {
             return response()->json([
-                'message' => 'El número de equipos debe ser par y mayor o igual a 2',
+                'message' => 'El número de equipos debe ser mayor o igual a 2',
+                'status' => 400
+            ], 400);
+        }
+
+        // Validar que el número de equipos sea 4, 8 o 16 para eliminatoria
+        if ($zona->formato === ZonaFormato::ELIMINATORIA && !in_array($numEquipos, [4, 8, 16])) {
+            return response()->json([
+                'message' => 'El número de equipos debe ser 4, 8 o 16 para un torneo eliminatoria',
                 'status' => 400
             ], 400);
         }
@@ -153,6 +161,8 @@ class ZonaService implements ZonaServiceInterface
 
         if ($zona->formato === ZonaFormato::LIGA) {
             $fechas = $this->createFechasLiga($zona, $equipos, $fechaInicial);
+        } elseif ($zona->formato === ZonaFormato::LIGA_IDA_VUELTA) {
+            $fechas = $this->createFechasLigaIdaVuelta($zona, $equipos, $fechaInicial);
         } elseif ($zona->formato === ZonaFormato::ELIMINATORIA) {
             $fechas = $this->createFechasEliminatoria($zona, $equipos, $fechaInicial);
         } elseif ($zona->formato === ZonaFormato::GRUPOS) {
@@ -223,6 +233,89 @@ class ZonaService implements ZonaServiceInterface
 
                 // Agregar los equipos al array de equipos del partido
                 $partido->equipos()->attach([$local['id'], $visitante['id']]);
+
+                $partidos[] = $partido;
+            }
+
+            $fecha->partidos = $partidos;
+            $fechas[] = $fecha;
+
+            // Rotar equipos para la siguiente fecha
+            $last = array_pop($equiposArray);
+            array_splice($equiposArray, 1, 0, [$last]);
+        }
+
+        return $fechas;
+    }
+
+    private function createFechasLigaIdaVuelta($zona, $equipos, $fechaInicial)
+    {
+        $numEquipos = $equipos->count();
+        $equiposArray = $equipos->toArray();
+        $fechas = [];
+
+        // Crear partidos de ida
+        for ($i = 0; $i < $numEquipos - 1; $i++) {
+            $fecha = Fecha::create([
+                'nombre' => 'Fecha Ida ' . ($i + 1),
+                'fecha_inicio' => $fechaInicial->copy()->addWeeks($i),
+                'fecha_fin' => $fechaInicial->copy()->addWeeks($i)->addDays(1),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
+
+            $partidos = [];
+
+            for ($j = 0; $j < $numEquipos / 2; $j++) {
+                $local = $equiposArray[$j];
+                $visitante = $equiposArray[$numEquipos - 1 - $j];
+
+                $partido = Partido::create([
+                    'fecha_id' => $fecha->id,
+                    'equipo_local_id' => $local['id'],
+                    'equipo_visitante_id' => $visitante['id'],
+                    'estado' => 'Pendiente',
+                    'fecha' => $fecha->fecha_inicio,
+                    'horario_id' => null,
+                    'cancha_id' => null,
+                ]);
+
+                $partidos[] = $partido;
+            }
+
+            $fecha->partidos = $partidos;
+            $fechas[] = $fecha;
+
+            // Rotar equipos para la siguiente fecha
+            $last = array_pop($equiposArray);
+            array_splice($equiposArray, 1, 0, [$last]);
+        }
+
+        // Crear partidos de vuelta
+        for ($i = 0; $i < $numEquipos - 1; $i++) {
+            $fecha = Fecha::create([
+                'nombre' => 'Fecha Vuelta ' . ($i + 1),
+                'fecha_inicio' => $fechaInicial->copy()->addWeeks($numEquipos - 1 + $i),
+                'fecha_fin' => $fechaInicial->copy()->addWeeks($numEquipos - 1 + $i)->addDays(1),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
+
+            $partidos = [];
+
+            for ($j = 0; $j < $numEquipos / 2; $j++) {
+                $local = $equiposArray[$numEquipos - 1 - $j];
+                $visitante = $equiposArray[$j];
+
+                $partido = Partido::create([
+                    'fecha_id' => $fecha->id,
+                    'equipo_local_id' => $local['id'],
+                    'equipo_visitante_id' => $visitante['id'],
+                    'estado' => 'Pendiente',
+                    'fecha' => $fecha->fecha_inicio,
+                    'horario_id' => null,
+                    'cancha_id' => null,
+                ]);
 
                 $partidos[] = $partido;
             }
@@ -507,5 +600,94 @@ class ZonaService implements ZonaServiceInterface
                 'status' => 500
             ], 500);
         }
+    }
+
+    public function generarSiguienteRonda(Request $request, $zonaId)
+    {
+        $validator = Validator::make($request->all(), [
+            'equipos' => 'required|array|min:2', // Validar que se pasen los equipos
+            'fecha_anterior_id' => 'required|exists:fechas,id', // Validar que la fecha anterior exista
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $zona = Zona::find($zonaId);
+        if (!$zona) {
+            return response()->json([
+                'message' => 'Zona no encontrada',
+                'status' => 404
+            ], 404);
+        }
+
+        $equipos = Equipo::whereIn('id', $request->input('equipos'))->get();
+        $fechaAnterior = Fecha::find($request->input('fecha_anterior_id'));
+
+        return $this->createSiguienteRondaEliminatoria($zona, $equipos, $fechaAnterior);
+    }
+
+    private function createSiguienteRondaEliminatoria($zona, $equipos, $fechaAnterior)
+    {
+        $numEquipos = count($equipos);
+
+        // Validar que el número de equipos sea una potencia de 2
+        if (!in_array($numEquipos, [2, 4, 8, 16, 32, 64])) {
+            return response()->json([
+                'message' => 'El número de equipos debe ser una potencia de 2 (2, 4, 8, 16, etc.) para continuar en un torneo eliminatoria',
+                'status' => 400
+            ], 400);
+        }
+
+        // Determinar el nombre de la nueva fase
+        $nombreFase = $this->getNombreEliminatoria($numEquipos);
+
+        // Convertir fecha_fin a un objeto Carbon
+        $fechaFinAnterior = Carbon::parse($fechaAnterior->fecha_fin);
+
+        // Crear la nueva fecha
+        $fecha = Fecha::create([
+            'nombre' => $nombreFase,
+            'fecha_inicio' => $fechaFinAnterior->copy()->addDays(1), // La nueva fecha comienza después de la anterior
+            'fecha_fin' => $fechaFinAnterior->copy()->addDays(2),
+            'estado' => 'Pendiente',
+            'zona_id' => $zona->id,
+        ]);
+
+        $partidos = [];
+
+        // Convertir la colección de equipos a un array y barajar
+        $equiposArray = $equipos->toArray();
+        shuffle($equiposArray);
+
+        // Crear los partidos para la nueva fase
+        for ($i = 0; $i < $numEquipos / 2; $i++) {
+            $local = $equiposArray[$i];
+            $visitante = $equiposArray[$numEquipos - 1 - $i];
+
+            $partido = Partido::create([
+                'fecha_id' => $fecha->id,
+                'equipo_local_id' => $local['id'],
+                'equipo_visitante_id' => $visitante['id'],
+                'estado' => 'Pendiente',
+                'fecha' => $fecha->fecha_inicio,
+                'horario_id' => null,
+                'cancha_id' => null,
+            ]);
+
+            $partidos[] = $partido;
+        }
+
+        $fecha->partidos = $partidos;
+
+        return response()->json([
+            'message' => 'Siguiente ronda creada correctamente',
+            'fecha' => $fecha,
+            'status' => 201
+        ], 201);
     }
 }

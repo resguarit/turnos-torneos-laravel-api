@@ -87,4 +87,9 @@ class ZonaController extends Controller
             $request->input('equipo_nuevo_id')
         );
     }
+
+    public function generarSiguienteRonda(Request $request, $zonaId)
+    {
+        return $this->zonaService->generarSiguienteRonda($request, $zonaId);
+    }
 }
