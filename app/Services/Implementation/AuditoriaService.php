@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Request;
 
 class AuditoriaService implements AuditoriaServiceInterface
 {
-    public function registrar(string $accion, string $entidad, ?int $entidad_id = null, ?array $datos_antiguos = null, ?array $datos_nuevos = null, ?int $usuario_id_forzado = null)
+    public static function registrar(string $accion, string $entidad, ?int $entidad_id = null, ?array $datos_antiguos = null, ?array $datos_nuevos = null, ?int $usuario_id_forzado = null)
     {
         try {
             $usuario_id = $usuario_id_forzado ?? Auth::id();
