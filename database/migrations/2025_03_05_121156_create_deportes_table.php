@@ -3,7 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-
+use App\Models\Deporte;
 return new class extends Migration
 {
     /**
@@ -17,6 +17,32 @@ return new class extends Migration
             $table->integer('jugadores_por_equipo');
             $table->timestamps();
         });
+
+        Deporte::create([
+            'nombre' => 'Fútbol',
+            'jugadores_por_equipo' => 5,
+        ]);
+
+        Deporte::create([
+            'nombre' => 'Fútbol',
+            'jugadores_por_equipo' => 6,
+        ]);
+
+        Deporte::create([
+            'nombre' => 'Fútbol',
+            'jugadores_por_equipo' => 7,
+        ]);
+
+        Deporte::create([
+            'nombre' => 'Fútbol',
+            'jugadores_por_equipo' => 9,
+        ]);
+
+        Deporte::create([
+            'nombre' => 'Fútbol',
+            'jugadores_por_equipo' => 11,
+        ]);
+
     }
 
     /**
