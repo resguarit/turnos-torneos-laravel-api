@@ -66,7 +66,7 @@ class UserController extends Controller
             ], 422);
         }
 
-        $response = $this->userService->createUser($request->all());
+        $response = $this->userService->createUser($request);
         return response()->json($response, $response['status']);
     }
 

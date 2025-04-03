@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 
 interface UserServiceInterface
 {
-    public function createUser(array $data);
+    public function createUser(Request $request);
     public function getUsers($request);
     public function show($id);
     public function update($id, array $data);
