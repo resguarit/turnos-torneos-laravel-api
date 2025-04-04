@@ -605,8 +605,8 @@ class ZonaService implements ZonaServiceInterface
     public function generarSiguienteRonda(Request $request, $zonaId)
     {
         $validator = Validator::make($request->all(), [
-            'equipos' => 'required|array|min:2', // Validar que se pasen los equipos
-            'fecha_anterior_id' => 'required|exists:fechas,id', // Validar que la fecha anterior exista
+            'winners' => 'required|array|min:2',
+            'fecha_anterior_id' => 'required|exists:fechas,id',
         ]);
 
         if ($validator->fails()) {
@@ -625,69 +625,69 @@ class ZonaService implements ZonaServiceInterface
             ], 404);
         }
 
-        $equipos = Equipo::whereIn('id', $request->input('equipos'))->get();
-        $fechaAnterior = Fecha::find($request->input('fecha_anterior_id'));
+        $winners = $request->input('winners');
+        $numEquipos = count($winners);
 
-        return $this->createSiguienteRondaEliminatoria($zona, $equipos, $fechaAnterior);
-    }
-
-    private function createSiguienteRondaEliminatoria($zona, $equipos, $fechaAnterior)
-    {
-        $numEquipos = count($equipos);
-
-        // Validar que el número de equipos sea una potencia de 2
+        // Validar que sea potencia de 2
         if (!in_array($numEquipos, [2, 4, 8, 16, 32, 64])) {
             return response()->json([
-                'message' => 'El número de equipos debe ser una potencia de 2 (2, 4, 8, 16, etc.) para continuar en un torneo eliminatoria',
+                'message' => 'El número de equipos debe ser una potencia de 2',
                 'status' => 400
             ], 400);
         }
 
-        // Determinar el nombre de la nueva fase
-        $nombreFase = $this->getNombreEliminatoria($numEquipos);
-
-        // Convertir fecha_fin a un objeto Carbon
+        $fechaAnterior = Fecha::find($request->input('fecha_anterior_id'));
         $fechaFinAnterior = Carbon::parse($fechaAnterior->fecha_fin);
 
-        // Crear la nueva fecha
+        // Crear nueva fecha
         $fecha = Fecha::create([
-            'nombre' => $nombreFase,
-            'fecha_inicio' => $fechaFinAnterior->copy()->addDays(1), // La nueva fecha comienza después de la anterior
+            'nombre' => $this->getNombreEliminatoria($numEquipos),
+            'fecha_inicio' => $fechaFinAnterior->copy()->addDays(1),
             'fecha_fin' => $fechaFinAnterior->copy()->addDays(2),
             'estado' => 'Pendiente',
             'zona_id' => $zona->id,
         ]);
 
+        // Crear partidos con los ganadores
         $partidos = [];
+        for ($i = 0; $i < $numEquipos; $i += 2) {
+            $localId = $winners[$i];
+            $visitanteId = $winners[$i + 1] ?? null;
 
-        // Convertir la colección de equipos a un array y barajar
-        $equiposArray = $equipos->toArray();
-        shuffle($equiposArray);
-
-        // Crear los partidos para la nueva fase
-        for ($i = 0; $i < $numEquipos / 2; $i++) {
-            $local = $equiposArray[$i];
-            $visitante = $equiposArray[$numEquipos - 1 - $i];
+            if (!$visitanteId) break;
 
             $partido = Partido::create([
                 'fecha_id' => $fecha->id,
-                'equipo_local_id' => $local['id'],
-                'equipo_visitante_id' => $visitante['id'],
+                'equipo_local_id' => $localId,
+                'equipo_visitante_id' => $visitanteId,
                 'estado' => 'Pendiente',
                 'fecha' => $fecha->fecha_inicio,
                 'horario_id' => null,
                 'cancha_id' => null,
             ]);
 
+            $partido->equipos()->attach([$localId, $visitanteId]);
             $partidos[] = $partido;
         }
 
-        $fecha->partidos = $partidos;
-
         return response()->json([
             'message' => 'Siguiente ronda creada correctamente',
-            'fecha' => $fecha,
+            'fecha' => $fecha->load('partidos.equipos'),
             'status' => 201
         ], 201);
     }
+
+    private function getNumeroRonda($numEquipos)
+{
+    return match($numEquipos) {
+        2 => 1,    // Final
+        4 => 2,    // Semifinal
+        8 => 3,    // Cuartos
+        16 => 4,   // Octavos
+        32 => 5,   // Dieciseisavos
+        64 => 6    // Treintaidosavos
+    };
+}
+
+    
 }
