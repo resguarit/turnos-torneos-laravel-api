@@ -160,7 +160,9 @@ class PartidoService implements PartidoServiceInterface
         $horarioInicio = Carbon::createFromFormat('H:i', $request->horario_inicio);
 
         // Obtener las fechas de la zona
-        $fechas = Fecha::where('zona_id', $zonaId)->with('partidos')->get();
+        $fechas = Fecha::where('zona_id', $zonaId)->with(['partidos' => function ($query) {
+            $query->whereNull('horario_id')->whereNull('cancha_id'); // Filtrar partidos sin horario ni cancha
+        }])->get();
 
         if ($fechas->isEmpty()) {
             return response()->json([
