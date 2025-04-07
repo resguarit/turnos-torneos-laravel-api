@@ -61,11 +61,11 @@ class FechaService implements FechaServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date',
-            'estado' => ['required', 'string', 'max:255', 'in:' . implode(',', FechaEstado::values())],
-            'zona_id' => 'required|exists:zonas,id',
+            'nombre' => 'sometimes|string|max:255',
+            'fecha_inicio' => 'sometimes|date',
+            'fecha_fin' => 'sometimes|date',
+            'estado' => ['sometimes', 'string', 'max:255', 'in:' . implode(',', FechaEstado::values())],
+            'zona_id' => 'sometimes|exists:zonas,id',
         ]);
 
         if ($validator->fails()) {
