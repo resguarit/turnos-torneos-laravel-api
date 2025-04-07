@@ -159,6 +159,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/grupos/{id}', [GrupoController::class, 'update']);
     Route::delete('/grupos/{id}', [GrupoController::class, 'destroy']);
     Route::delete('/grupos/{grupoId}/equipos/{equipoId}', [GrupoController::class, 'eliminarEquipoDeGrupo']);
+    Route::delete('/zonas/{zonaId}/eliminar-grupos-zona', [GrupoController::class, 'eliminarGruposDeZona']);
     Route::get('/zonas/{zonaId}/grupos', [GrupoController::class, 'getByZona']);
     Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
     Route::post('/zonas/{zonaId}/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCanchaPorZona']);

@@ -128,4 +128,35 @@ class GrupoService implements GrupoServiceInterface
             ];
         }
     }
+
+    public function eliminarGruposDeZona($zonaId)
+    {
+        try {
+            // Buscar los grupos de la zona
+            $grupos = Grupo::where('zona_id', $zonaId)->get();
+
+            if ($grupos->isEmpty()) {
+                return response()->json([
+                    'message' => 'No se encontraron grupos para la zona especificada',
+                    'status' => 404
+                ], 404);
+            }
+
+            // Eliminar los grupos
+            foreach ($grupos as $grupo) {
+                $grupo->delete();
+            }
+
+            return response()->json([
+                'message' => 'Todos los grupos de la zona han sido eliminados correctamente',
+                'status' => 200
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al eliminar los grupos de la zona',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
+    }
 }

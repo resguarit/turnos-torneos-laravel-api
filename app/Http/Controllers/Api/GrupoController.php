@@ -65,4 +65,9 @@ class GrupoController extends Controller
             'error' => $result['status'] === 500 ? $result['error'] : null,
         ], $result['status']);
     }
+
+    public function eliminarGruposDeZona(Request $request, $zonaId)
+    {
+        return $this->grupoService->eliminarGruposDeZona($zonaId);
+    }
 }
