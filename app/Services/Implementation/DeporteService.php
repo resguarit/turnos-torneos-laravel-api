@@ -24,7 +24,7 @@ class DeporteService implements DeporteServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|string|max:255',
-            'descripcion' => 'nullable|string',
+            'jugadores_por_equipo' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -57,7 +57,7 @@ class DeporteService implements DeporteServiceInterface
 
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|string|max:255',
-            'descripcion' => 'nullable|string',
+            'jugadores_por_equipo' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
