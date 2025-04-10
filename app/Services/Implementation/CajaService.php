@@ -16,7 +16,9 @@ class CajaService implements CajaServiceInterface
     public function getCaja()
     {
         $caja = Caja::where('activa', true)
-            ->with(['empleado', 'transacciones.metodoPago'])
+            ->with(['empleado', 'transacciones' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            }, 'transacciones.metodoPago'])
             ->first();
 
         if (!$caja) {

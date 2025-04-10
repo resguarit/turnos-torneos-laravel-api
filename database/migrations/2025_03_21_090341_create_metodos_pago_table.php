@@ -20,19 +20,19 @@ return new class extends Migration
         });
 
         MetodoPago::create([
-            'nombre' => 'Efectivo',
+            'nombre' => 'efectivo',
             'descripcion' => 'Pago en efectivo',
             'activo' => true,
         ]);
 
         MetodoPago::create([
-            'nombre' => 'Tarjeta de Crédito',
+            'nombre' => 'tarjeta',
             'descripcion' => 'Pago con tarjeta de crédito',
             'activo' => true,
         ]);
 
         MetodoPago::create([
-            'nombre' => 'Transferencia Bancaria',
+            'nombre' => 'transferencia',
             'descripcion' => 'Pago por transferencia bancaria',
             'activo' => true,
         ]);

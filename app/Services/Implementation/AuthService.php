@@ -8,6 +8,7 @@ use App\Models\Auditoria;
 use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
 use Illuminate\Support\Facades\DB;
+use App\Models\CuentaCorriente;
 
 class AuthService implements AuthServiceInterface
 {
@@ -67,6 +68,13 @@ class AuthService implements AuthServiceInterface
                 ]);
             }
 
+            if (!$persona->cuentaCorriente) {
+                $cuentaCorriente = CuentaCorriente::create([
+                    'persona_id' => $persona->id,
+                    'saldo' => 0
+                ]);
+            }
+
             if ($persona->user) {
                 return [
                     'message' => 'Ya existe un usuario registrado con este DNI',
@@ -88,6 +96,7 @@ class AuthService implements AuthServiceInterface
             return [
                 'message' => 'Usuario registrado exitosamente',
                 'user' => $user,
+                'persona' => $persona,
                 'status' => 201
             ];
         } catch (\Exception $e) {

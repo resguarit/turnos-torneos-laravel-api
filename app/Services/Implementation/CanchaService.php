@@ -8,12 +8,13 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Services\Interface\CanchaServiceInterface;
 use App\Services\Implementation\AuditoriaService;
+use App\Models\Deporte;
 
 class CanchaService implements CanchaServiceInterface
 {
     public function getCanchas()
     {
-        $canchas = Cancha::all();
+        $canchas = Cancha::with('deporte')->get();
 
         return response()->json([
             'canchas' => $canchas,
@@ -54,7 +55,7 @@ class CanchaService implements CanchaServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'nro' => 'required|unique:canchas',
-            'tipo_cancha' => 'required|max:200',
+            'deporte_id' => 'required|exists:deportes,id',
             'precio_por_hora' => 'required|numeric',
             'seña' => 'required|numeric',
             'activa' => 'required|boolean',
@@ -69,23 +70,18 @@ class CanchaService implements CanchaServiceInterface
             ], 400);
         }
 
+        $deporte = Deporte::find($request->deporte_id);
+        $tipoCancha = strtoupper(substr($deporte->nombre, 0, 1)) . $deporte->jugadores_por_equipo;
+
         $cancha = Cancha::create([
             'nro' => $request->nro,
-            'tipo_cancha' => $request->tipo_cancha,
+            'tipo_cancha' => $tipoCancha,
+            'deporte_id' => $request->deporte_id,
             'precio_por_hora' => $request->precio_por_hora,
             'seña' => $request->seña,
             'activa' => $request->activa,
             'descripcion' => $request->descripcion
         ]);
-
-        // Registrar auditoría con datos como JSON
-        AuditoriaService::registrar(
-            'crear', 
-            'canchas', 
-            $cancha->id, 
-            null, 
-            json_encode($cancha->toArray(), JSON_PRETTY_PRINT)
-        );
 
         return response()->json([
             'message' => 'Cancha creada correctamente',
@@ -122,7 +118,7 @@ class CanchaService implements CanchaServiceInterface
             ], 400);
         }
 
-        $datosAnteriores = json_encode($cancha->toArray(), JSON_PRETTY_PRINT);
+        $datosAnteriores = $cancha->toArray();
         
         if($request->has('nro')){
             $cancha->nro = $request->nro;
@@ -150,13 +146,12 @@ class CanchaService implements CanchaServiceInterface
 
         $cancha->save();
 
-        // Registrar auditoría con datos como JSON
         AuditoriaService::registrar(
             'modificar', 
             'canchas', 
             $cancha->id, 
             $datosAnteriores, 
-            json_encode($cancha->fresh()->toArray(), JSON_PRETTY_PRINT)
+            $cancha->fresh()->toArray()
         );
 
         return response()->json([
@@ -170,11 +165,10 @@ class CanchaService implements CanchaServiceInterface
     {
         try {
             $cancha = Cancha::findOrFail($id);
-            $datosAnteriores = json_encode($cancha->toArray(), JSON_PRETTY_PRINT);
+            $datosAnteriores = $cancha->toArray();
             
             $cancha->delete();
 
-            // Registrar auditoría con datos como JSON
             AuditoriaService::registrar(
                 'eliminar', 
                 'canchas', 
