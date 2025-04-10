@@ -251,7 +251,22 @@ class ZonaService implements ZonaServiceInterface
     private function createFechasLigaIdaVuelta($zona, $equipos, $fechaInicial)
     {
         $numEquipos = $equipos->count();
-        $equiposArray = $equipos->toArray();
+
+        // Validar que haya equipos suficientes
+        if ($numEquipos < 2) {
+            return response()->json([
+                'message' => 'El número de equipos debe ser mayor o igual a 2',
+                'status' => 400
+            ], 400);
+        }
+
+        // Convertir los equipos a un array si es una colección
+        if ($equipos instanceof \Illuminate\Database\Eloquent\Collection) {
+            $equiposArray = $equipos->toArray();
+        } else {
+            $equiposArray = $equipos;
+        }
+
         $fechas = [];
 
         // Crear partidos de ida
@@ -279,6 +294,9 @@ class ZonaService implements ZonaServiceInterface
                     'horario_id' => null,
                     'cancha_id' => null,
                 ]);
+
+                // Asociar los equipos al partido en la tabla pivote
+                $partido->equipos()->attach([$local['id'], $visitante['id']]);
 
                 $partidos[] = $partido;
             }
@@ -316,6 +334,9 @@ class ZonaService implements ZonaServiceInterface
                     'horario_id' => null,
                     'cancha_id' => null,
                 ]);
+
+                // Asociar los equipos al partido en la tabla pivote
+                $partido->equipos()->attach([$local['id'], $visitante['id']]);
 
                 $partidos[] = $partido;
             }

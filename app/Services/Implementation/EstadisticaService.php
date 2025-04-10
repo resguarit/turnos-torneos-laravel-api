@@ -25,10 +25,10 @@ class EstadisticaService implements EstadisticaServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'nro_camiseta' => 'nullable|integer',
-            'goles' => 'required|integer',
-            'asistencias' => 'required|integer',
-            'rojas' => 'required|integer',
-            'amarillas' => 'required|integer',
+            'goles' => 'nullable|integer',
+            'asistencias' => 'nullable|integer',
+            'rojas' => 'nullable|integer',
+            'amarillas' => 'nullable|integer',
             'partido_id' => 'required|exists:partidos,id',
             'jugador_id' => 'required|exists:jugadores,id',
         ]);
