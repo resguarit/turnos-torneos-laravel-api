@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use App\Models\CuentaCorriente;
+use App\Services\Implementation\AuditoriaService;
 
 class PersonaService implements PersonaServiceInterface
 {
@@ -112,20 +113,61 @@ class PersonaService implements PersonaServiceInterface
     public function deletePersona($id)
     {
         try {
-            $persona = Persona::findOrFail($id);
-        } catch (ModelNotFoundException $e) {
+            DB::beginTransaction();
+
+            $persona = Persona::with(['usuario', 'turnos', 'cuentaCorriente'])->find($id);
+            
+            if (!$persona) {
+                return [
+                    'message' => 'Persona no encontrada',
+                    'status' => 404
+                ];
+            }
+
+            // Si la persona tiene un usuario asociado, no se puede eliminar
+            if ($persona->usuario) {
+                return [
+                    'message' => 'No se puede eliminar una persona que tiene un usuario asociado',
+                    'status' => 403
+                ];
+            }
+
+            $datosAnteriores = $persona->toArray();
+
+            // Actualizar las referencias en turnos y cuenta corriente
+            if ($persona->turnos) {
+                $persona->turnos()->update(['persona_id' => null]);
+            }
+
+            if ($persona->cuentaCorriente) {
+                $persona->cuentaCorriente()->update(['persona_id' => null]);
+            }
+
+            // Eliminar la persona
+            $persona->delete();
+
+            AuditoriaService::registrar(
+                'eliminar', 
+                'personas', 
+                $id, 
+                $datosAnteriores, 
+                null
+            );
+
+            DB::commit();
+
             return [
-                'message' => 'Persona no encontrada',
-                'status' => 404
+                'message' => 'Persona eliminada con éxito',
+                'status' => 200
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'message' => 'Error al eliminar la persona: ' . $e->getMessage(),
+                'status' => 500
             ];
         }
-
-        $persona->delete();
-
-        return [
-            'message' => 'Persona eliminada con éxito',
-            'status' => 200
-        ];
     }
 
     public function restorePersona($id)

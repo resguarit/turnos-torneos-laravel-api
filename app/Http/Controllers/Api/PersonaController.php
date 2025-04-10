@@ -30,4 +30,12 @@ class PersonaController extends Controller
     {
         return $this->personaService->updatePersona($request, $id);
     }
+
+    public function destroy($id)
+    {
+        $authUser = Auth::user();
+        abort_unless($authUser->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
+
+        return $this->personaService->deletePersona($id);
+    }
 }

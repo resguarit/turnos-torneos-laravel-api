@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Persona;
 use App\Services\Implementation\AuditoriaService;
+use Illuminate\Support\Facades\DB;
+use App\Models\CuentaCorriente;
 
 class UserService implements UserServiceInterface
 {
@@ -45,28 +47,56 @@ class UserService implements UserServiceInterface
 
     public function createUser(Request $request)
     {
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'dni' => $request->dni,
-            'telefono' => $request->telefono,
-            'password' => Hash::make($request->password),
-            'rol' => $request->rol ?? 'cliente'
-        ]);
+        try {
+            DB::beginTransaction();
 
-        AuditoriaService::registrar(
-            'crear', 
-            'usuarios', 
-            $user->id, 
-            null, 
-            json_encode($user->toArray(), JSON_PRETTY_PRINT)
-        );
+            // Crear la persona
+            $persona = Persona::create([
+                'name' => $request->name,
+                'dni' => $request->dni,
+                'telefono' => $request->telefono,
+                'direccion' => $request->direccion ?? null,
+            ]);
 
-        return [
-            'message' => 'Usuario creado correctamente',
-            'user' => $user,
-            'status' => 201
-        ];
+            // Crear la cuenta corriente para la persona
+            $cuentaCorriente = CuentaCorriente::create([
+                'persona_id' => $persona->id,
+                'saldo' => 0
+            ]);
+
+            // Crear el usuario
+            $user = User::create([
+                'email' => $request->email,
+                'dni' => $request->dni,
+                'password' => Hash::make($request->password),
+                'rol' => $request->rol ?? 'cliente',
+                'persona_id' => $persona->id
+            ]);
+
+            AuditoriaService::registrar(
+                'crear', 
+                'usuarios', 
+                $user->id, 
+                null, 
+                $user->toArray()
+            );
+
+            DB::commit();
+
+            return [
+                'message' => 'Usuario creado correctamente',
+                'user' => $user,
+                'persona' => $persona,
+                'status' => 201
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'message' => 'Error al crear el usuario: ' . $e->getMessage(),
+                'status' => 500
+            ];
+        }
     }
 
     public function login(array $credentials)
@@ -168,25 +198,63 @@ class UserService implements UserServiceInterface
         ], 200);
     }
 
-    public function deleteUser($id)
+    public function destroy($id)
     {
-        $user = User::findOrFail($id);
-        $datosAnteriores = $user->toArray();
-        
-        $user->delete();
+        try {
+            DB::beginTransaction();
 
-        AuditoriaService::registrar(
-            'eliminar', 
-            'usuarios', 
-            $id, 
-            $datosAnteriores, 
-            null
-        );
+            $user = User::with(['persona'])->find($id);
+            
+            if (!$user) {
+                return [
+                    'message' => 'Usuario no encontrado',
+                    'status' => 404
+                ];
+            }
 
-        return response()->json([
-            'message' => 'Usuario eliminado correctamente',
-            'status' => 200
-        ], 200);
+            // Verificar si el usuario es admin
+            if ($user->rol === 'admin') {
+                return [
+                    'message' => 'No se puede eliminar un usuario administrador',
+                    'status' => 403
+                ];
+            }
+
+            $datosAnteriores = $user->toArray();
+
+            // Si el usuario tiene una persona asociada
+            if ($user->persona) {
+                $persona = $user->persona;
+
+                // 3. Eliminar la persona
+                $persona->delete();
+            }
+
+            // 4. Finalmente eliminar el usuario
+            $user->delete();
+
+            AuditoriaService::registrar(
+                'eliminar', 
+                'usuarios', 
+                $id, 
+                $datosAnteriores, 
+                null
+            );
+
+            DB::commit();
+
+            return [
+                'message' => 'Usuario eliminado con éxito',
+                'status' => 200
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'message' => 'Error al eliminar el usuario: ' . $e->getMessage(),
+                'status' => 500
+            ];
+        }
     }
 
     public function update($id, array $data)
@@ -244,35 +312,6 @@ class UserService implements UserServiceInterface
 
         return [
             'message' => 'Usuario actualizado correctamente',
-            'status' => 200
-        ];
-    }
-
-    public function destroy($id)
-    {
-        $user = User::find($id);
-        
-        if (!$user) {
-            return [
-                'message' => 'Usuario no encontrado',
-                'status' => 404
-            ];
-        }
-        
-        $datosAnteriores = json_encode($user->toArray(), JSON_PRETTY_PRINT);
-        
-        $user->delete();
-
-        AuditoriaService::registrar(
-            'eliminar', 
-            'usuarios', 
-            $id, 
-            $datosAnteriores, 
-            null
-        );
-
-        return [
-            'message' => 'Usuario eliminado con éxito',
             'status' => 200
         ];
     }
