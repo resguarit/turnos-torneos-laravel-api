@@ -267,6 +267,12 @@ class ZonaService implements ZonaServiceInterface
             $equiposArray = $equipos;
         }
 
+        // Si el número de equipos es impar, agregar un equipo "libre"
+        if ($numEquipos % 2 != 0) {
+            $equiposArray[] = ['id' => null, 'nombre' => 'Libre'];
+            $numEquipos++;
+        }
+
         $fechas = [];
 
         // Crear partidos de ida
@@ -285,6 +291,11 @@ class ZonaService implements ZonaServiceInterface
                 $local = $equiposArray[$j];
                 $visitante = $equiposArray[$numEquipos - 1 - $j];
 
+                // Si alguno de los equipos es "Libre", no crear el partido
+                if ($local['id'] === null || $visitante['id'] === null) {
+                    continue;
+                }
+
                 $partido = Partido::create([
                     'fecha_id' => $fecha->id,
                     'equipo_local_id' => $local['id'],
@@ -294,9 +305,6 @@ class ZonaService implements ZonaServiceInterface
                     'horario_id' => null,
                     'cancha_id' => null,
                 ]);
-
-                // Asociar los equipos al partido en la tabla pivote
-                $partido->equipos()->attach([$local['id'], $visitante['id']]);
 
                 $partidos[] = $partido;
             }
@@ -325,6 +333,11 @@ class ZonaService implements ZonaServiceInterface
                 $local = $equiposArray[$numEquipos - 1 - $j];
                 $visitante = $equiposArray[$j];
 
+                // Si alguno de los equipos es "Libre", no crear el partido
+                if ($local['id'] === null || $visitante['id'] === null) {
+                    continue;
+                }
+
                 $partido = Partido::create([
                     'fecha_id' => $fecha->id,
                     'equipo_local_id' => $local['id'],
@@ -334,9 +347,6 @@ class ZonaService implements ZonaServiceInterface
                     'horario_id' => null,
                     'cancha_id' => null,
                 ]);
-
-                // Asociar los equipos al partido en la tabla pivote
-                $partido->equipos()->attach([$local['id'], $visitante['id']]);
 
                 $partidos[] = $partido;
             }

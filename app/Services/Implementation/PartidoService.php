@@ -38,8 +38,8 @@ class PartidoService implements PartidoServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date',
-            'horario_id' => 'required|exists:horarios,id',
-            'cancha_id' => 'required|exists:canchas,id',
+            'horario_id' => 'nullable|exists:horarios,id',
+            'cancha_id' => 'nullable|exists:canchas,id',
             'estado' => ['required', 'string', Rule::in(PartidoEstado::values())],
             'marcador_local' => 'nullable|integer',
             'marcador_visitante' => 'nullable|integer',
@@ -66,7 +66,7 @@ class PartidoService implements PartidoServiceInterface
 
     public function update(Request $request, $id)
     {
-        $partido = Partido::find($id);
+        $partido = Partido::with('equipos')->find($id);
 
         if (!$partido) {
             return response()->json([
@@ -77,8 +77,8 @@ class PartidoService implements PartidoServiceInterface
 
         $validator = Validator::make($request->all(), [
             'fecha' => 'sometimes|date',
-            'horario_id' => 'sometimes|exists:horarios,id',
-            'cancha_id' => 'sometimes|exists:canchas,id',
+            'horario_id' => 'nullable|exists:horarios,id',
+            'cancha_id' => 'nullable|exists:canchas,id',
             'estado' => ['sometimes', 'string', Rule::in(PartidoEstado::values())],
             'marcador_local' => 'nullable|integer',
             'marcador_visitante' => 'nullable|integer',
