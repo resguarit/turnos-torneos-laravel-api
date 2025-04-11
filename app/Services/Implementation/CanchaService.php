@@ -54,7 +54,7 @@ class CanchaService implements CanchaServiceInterface
     public function storeCancha(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nro' => 'required|unique:canchas',
+            'nro' => 'required',
             'deporte_id' => 'required|exists:deportes,id',
             'precio_por_hora' => 'required|numeric',
             'seña' => 'required|numeric',
