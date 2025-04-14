@@ -164,6 +164,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
     Route::post('/zonas/{zonaId}/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCanchaPorZona']);
     Route::post('/zona/{zonaId}/generar-siguiente-ronda', [ZonaController::class, 'generarSiguienteRonda']);
+    Route::post('/zonas/{zonaId}/crear-playoff', [ZonaController::class, 'crearPlayoff']);
+    Route::post('/grupos/{grupoId}/equipos/{equipoId}', [GrupoController::class, 'agregarEquipoAGrupo']);
+    Route::put('/grupos/{grupoId}/equipos', [GrupoController::class, 'actualizarEquiposDeGrupo']);
     
 
     Route::get('/auditorias', [AuditoriaController::class, 'index']);

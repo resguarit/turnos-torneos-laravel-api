@@ -70,4 +70,28 @@ class GrupoController extends Controller
     {
         return $this->grupoService->eliminarGruposDeZona($zonaId);
     }
+
+    public function agregarEquipoAGrupo($grupoId, $equipoId)
+    {
+        $result = $this->grupoService->agregarEquipoAGrupo($grupoId, $equipoId);
+
+        return response()->json([
+            'message' => $result['message'],
+            'status' => $result['status'],
+            'error' => $result['status'] === 500 ? $result['error'] : null,
+        ], $result['status']);
+    }
+
+    public function actualizarEquiposDeGrupo(Request $request, $grupoId)
+    {
+        $equipoIds = $request->input('equipos'); // Array de IDs de equipos
+
+        $result = $this->grupoService->actualizarEquiposDeGrupo($grupoId, $equipoIds);
+
+        return response()->json([
+            'message' => $result['message'],
+            'status' => $result['status'],
+            'error' => $result['status'] === 500 ? $result['error'] : null,
+        ], $result['status']);
+    }
 }

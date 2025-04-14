@@ -92,4 +92,9 @@ class ZonaController extends Controller
     {
         return $this->zonaService->generarSiguienteRonda($request, $zonaId);
     }
+
+    public function crearPlayoff(Request $request, $zonaId)
+    {
+        return $this->zonaService->crearPlayoff($request, $zonaId);
+    }
 }

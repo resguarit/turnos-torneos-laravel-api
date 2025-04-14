@@ -159,4 +159,64 @@ class GrupoService implements GrupoServiceInterface
             ], 500);
         }
     }
+
+    public function agregarEquipoAGrupo($grupoId, $equipoId)
+    {
+        try {
+            $grupo = Grupo::findOrFail($grupoId);
+            $equipoYaEnGrupo = $grupo->equipos()->where('equipo_id', $equipoId)->exists();
+
+            if ($equipoYaEnGrupo) {
+                return [
+                    'message' => 'El equipo ya pertenece a este grupo',
+                    'status' => 400,
+                ];
+            }
+
+            // Asociar el equipo al grupo
+            $grupo->equipos()->attach($equipoId);
+
+            return [
+                'message' => 'Equipo agregado al grupo correctamente',
+                'status' => 200,
+            ];
+        } catch (ModelNotFoundException $e) {
+            return [
+                'message' => 'Grupo o equipo no encontrado',
+                'status' => 404,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'message' => 'Error al agregar el equipo al grupo',
+                'error' => $e->getMessage(),
+                'status' => 500,
+            ];
+        }
+    }
+
+    public function actualizarEquiposDeGrupo($grupoId, array $equipoIds)
+    {
+        try {
+            $grupo = Grupo::findOrFail($grupoId);
+
+            // Actualizar los equipos asociados al grupo
+            $grupo->equipos()->sync($equipoIds);
+
+            return [
+                'message' => 'Equipos del grupo actualizados correctamente',
+                'status' => 200,
+            ];
+        } catch (ModelNotFoundException $e) {
+            return [
+                'message' => 'Grupo no encontrado',
+                'status' => 404,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'message' => 'Error al actualizar los equipos del grupo',
+                'error' => $e->getMessage(),
+                'status' => 500,
+            ];
+        }
+    }
 }

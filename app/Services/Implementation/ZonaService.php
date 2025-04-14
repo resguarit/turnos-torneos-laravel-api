@@ -176,6 +176,11 @@ class ZonaService implements ZonaServiceInterface
                 ], 400);
             }
             $fechas = $this->createFechasGrupos($zonaId, $numGrupos, $fechaInicial);
+        } elseif ($zona->formato === ZonaFormato::LIGA_PLAYOFF) {
+            // Usar la lógica de Liga para la fase de Liga
+            $fechas = $this->createFechasLiga($zona, $equipos, $fechaInicial);
+
+            // Aquí podrías agregar lógica adicional para la fase de Playoff si es necesario
         }
 
         return response()->json([
@@ -720,5 +725,90 @@ class ZonaService implements ZonaServiceInterface
     };
 }
 
-    
+    public function crearPlayoff(Request $request, $zonaId)
+    {
+        $validator = Validator::make($request->all(), [
+            'equipos' => 'required|array|min:2', // Lista de equipos clasificados
+            'fecha_inicial' => 'required|date_format:Y-m-d', // Fecha inicial del playoff
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $zona = Zona::find($zonaId);
+
+        if (!$zona) {
+            return response()->json([
+                'message' => 'Zona no encontrada',
+                'status' => 404
+            ], 404);
+        }
+
+        $equipos = $request->input('equipos');
+        $numEquipos = count($equipos);
+
+        // Validar que el número de equipos sea una potencia de 2 (2, 4, 8, 16, etc.)
+        if (!in_array($numEquipos, [2, 4, 8, 16, 32, 64])) {
+            return response()->json([
+                'message' => 'El número de equipos debe ser una potencia de 2 (2, 4, 8, 16, etc.)',
+                'status' => 400
+            ], 400);
+        }
+
+        $fechaInicial = Carbon::createFromFormat('Y-m-d', $request->input('fecha_inicial'));
+
+        // Crear la fecha para los cruces
+        $nombreFecha = $this->getNombreEliminatoria($numEquipos);
+
+        $fecha = Fecha::create([
+            'nombre' => $nombreFecha,
+            'fecha_inicio' => $fechaInicial,
+            'fecha_fin' => $fechaInicial->copy()->addDays(1),
+            'estado' => 'Pendiente',
+            'zona_id' => $zona->id,
+        ]);
+
+        $partidos = [];
+
+        // Barajar los equipos para generar cruces aleatorios
+        shuffle($equipos);
+
+        // Crear los partidos para la fecha
+        for ($i = 0; $i < $numEquipos; $i += 2) {
+            $local = $equipos[$i];
+            $visitante = $equipos[$i + 1] ?? null;
+
+            if (!$visitante) {
+                break; // Si no hay un equipo visitante, no se crea el partido
+            }
+
+            $partido = Partido::create([
+                'fecha_id' => $fecha->id,
+                'equipo_local_id' => $local,
+                'equipo_visitante_id' => $visitante,
+                'estado' => 'Pendiente',
+                'fecha' => $fecha->fecha_inicio,
+                'horario_id' => null,
+                'cancha_id' => null,
+            ]);
+
+            // Asociar los equipos al partido en la tabla pivote
+            $partido->equipos()->attach([$local, $visitante]);
+
+            $partidos[] = $partido;
+        }
+
+        $fecha->partidos = $partidos;
+
+        return response()->json([
+            'message' => 'Playoff creado correctamente',
+            'fecha' => $fecha->load('partidos.equipos'),
+            'status' => 201
+        ], 201);
+    }
 }
