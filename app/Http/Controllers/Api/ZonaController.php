@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\Interface\ZonaServiceInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ZonaController extends Controller
 {
@@ -96,5 +97,41 @@ class ZonaController extends Controller
     public function crearPlayoff(Request $request, $zonaId)
     {
         return $this->zonaService->crearPlayoff($request, $zonaId);
+    }
+
+    public function agregarEquipos(Request $request, $zonaId)
+    {
+        $validator = Validator::make($request->all(), [
+            'equipo_ids' => 'required|array',
+            'equipo_ids.*' => 'required|integer|exists:equipos,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        return $this->zonaService->agregarEquipos($zonaId, $request->input('equipo_ids'));
+    }
+
+    public function quitarEquipos(Request $request, $zonaId)
+    {
+        $validator = Validator::make($request->all(), [
+            'equipo_ids' => 'required|array',
+            'equipo_ids.*' => 'required|integer|exists:equipos,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        return $this->zonaService->quitarEquipos($zonaId, $request->input('equipo_ids'));
     }
 }

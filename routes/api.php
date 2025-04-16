@@ -111,14 +111,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/equipos/{equipoId}/jugadores', [JugadorController::class, 'getByEquipo']);
     Route::post('/equipos/{equipoId}/jugadores/multiple', [JugadorController::class, 'createMultiple']);
 
-    Route::get('/zonas', [ZonaController::class, 'index']);
-    Route::get('/zonas/{id}', [ZonaController::class, 'show']);
-    Route::post('/zonas', [ZonaController::class, 'store']);
-    Route::put('/zonas/{id}', [ZonaController::class, 'update']);
-    Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
-
-    Route::post('/zonas/{zonaId}/fechas', [ZonaController::class, 'createFechas']);
-    Route::post('/zonas/{zonaId}/reemplazar-equipo', [ZonaController::class, 'reemplazarEquipo']);
+    Route::prefix('zonas')->group(function () {
+        Route::get('/', [ZonaController::class, 'index']);
+        Route::get('/{id}', [ZonaController::class, 'show']);
+        Route::post('/', [ZonaController::class, 'store']);
+        Route::put('/{id}', [ZonaController::class, 'update']);
+        Route::delete('/{id}', [ZonaController::class, 'destroy']);
+        Route::get('/torneo/{torneoId}', [ZonaController::class, 'getByTorneo']);
+        Route::post('/{zonaId}/fechas', [ZonaController::class, 'createFechas']);
+        Route::post('/{zonaId}/grupos-aleatorios', [ZonaController::class, 'crearGruposAleatoriamente']);
+        Route::post('/{zonaId}/reemplazar-equipo', [ZonaController::class, 'reemplazarEquipo']);
+        Route::post('/{zonaId}/siguiente-ronda', [ZonaController::class, 'generarSiguienteRonda']);
+        Route::post('/{zonaId}/playoff', [ZonaController::class, 'crearPlayoff']);
+        Route::post('/{zonaId}/equipos', [ZonaController::class, 'agregarEquipos']);
+        Route::delete('/{zonaId}/equipos', [ZonaController::class, 'quitarEquipos']);
+    });
 
     Route::get('/fechas', [FechaController::class, 'index']);
     Route::get('/fechas/{id}', [FechaController::class, 'show']);

@@ -437,106 +437,106 @@ class ZonaService implements ZonaServiceInterface
     }
 
     private function createFechasGrupos($zonaId, $numGrupos, $fechaInicial)
-{
-    $zona = Zona::with('grupos.equipos')->find($zonaId);
+    {
+        $zona = Zona::with('grupos.equipos')->find($zonaId);
 
-    if (!$zona) {
-        return response()->json([
-            'message' => 'Zona no encontrada',
-            'status' => 404
-        ], 404);
-    }
-
-    if ($numGrupos < 2) {
-        return response()->json([
-            'num_grupos' => $numGrupos,
-            'message' => 'El número de grupos debe ser mayor o igual a 2',
-            'status' => 400
-        ], 400);
-    }
-
-    $fechas = [];
-    $numFechas = 0;
-
-    // Determinar el número máximo de fechas necesarias para cualquier grupo
-    foreach ($zona->grupos as $grupo) {
-        $numEquipos = $grupo->equipos->count();
-        if ($numEquipos >= 2) {
-            $numFechas = max($numFechas, $numEquipos - 1);
-        }
-    }
-
-    // Inicializar las rotaciones para cada grupo
-    $rotaciones = [];
-    foreach ($zona->grupos as $grupo) {
-        $equipos = $grupo->equipos;
-        $numEquipos = $equipos->count();
-        $equiposArray = $equipos->toArray();
-
-        // Añadir equipo "Libre" si es impar
-        if ($numEquipos % 2 != 0) {
-            $equiposArray[] = ['id' => null, 'nombre' => 'Libre'];
+        if (!$zona) {
+            return response()->json([
+                'message' => 'Zona no encontrada',
+                'status' => 404
+            ], 404);
         }
 
-        $rotaciones[$grupo->id] = $equiposArray;
-    }
+        if ($numGrupos < 2) {
+            return response()->json([
+                'num_grupos' => $numGrupos,
+                'message' => 'El número de grupos debe ser mayor o igual a 2',
+                'status' => 400
+            ], 400);
+        }
 
-    // Generar las fechas
-    for ($i = 0; $i < $numFechas; $i++) {
-        $fecha = Fecha::create([
-            'nombre' => 'Fecha ' . ($i + 1),
-            'fecha_inicio' => $fechaInicial->copy()->addWeeks($i),
-            'fecha_fin' => $fechaInicial->copy()->addWeeks($i)->addDays(1),
-            'estado' => 'Pendiente',
-            'zona_id' => $zona->id,
-        ]);
+        $fechas = [];
+        $numFechas = 0;
 
-        $partidos = [];
-
+        // Determinar el número máximo de fechas necesarias para cualquier grupo
         foreach ($zona->grupos as $grupo) {
-            $grupoId = $grupo->id;
-            if (!isset($rotaciones[$grupoId])) continue;
-
-            $equiposArray = $rotaciones[$grupoId];
-            $numEquipos = count($equiposArray);
-
-            if ($numEquipos < 2) continue;
-
-            // Generar partidos para esta fecha
-            for ($j = 0; $j < $numEquipos / 2; $j++) {
-                $local = $equiposArray[$j];
-                $visitante = $equiposArray[$numEquipos - 1 - $j];
-
-                if ($local['id'] === null || $visitante['id'] === null) continue;
-
-                $partido = Partido::create([
-                    'fecha_id' => $fecha->id,
-                    'equipo_local_id' => $local['id'],
-                    'equipo_visitante_id' => $visitante['id'],
-                    'estado' => 'Pendiente',
-                    'fecha' => $fecha->fecha_inicio,
-                    'horario_id' => null,
-                    'cancha_id' => null,
-                ]);
-
-                $partido->equipos()->attach([$local['id'], $visitante['id']]);
-                $partidos[] = $partido;
-            }
-
-            // Rotar para la próxima fecha (excepto en la última iteración)
-            if ($i < $numFechas - 1) {
-                $last = array_pop($equiposArray);
-                array_splice($equiposArray, 1, 0, [$last]);
-                $rotaciones[$grupoId] = $equiposArray;
+            $numEquipos = $grupo->equipos->count();
+            if ($numEquipos >= 2) {
+                $numFechas = max($numFechas, $numEquipos - 1);
             }
         }
 
-        $fecha->partidos = $partidos;
-        $fechas[] = $fecha;
-    }
+        // Inicializar las rotaciones para cada grupo
+        $rotaciones = [];
+        foreach ($zona->grupos as $grupo) {
+            $equipos = $grupo->equipos;
+            $numEquipos = $equipos->count();
+            $equiposArray = $equipos->toArray();
 
-    return $fechas;
-}
+            // Añadir equipo "Libre" si es impar
+            if ($numEquipos % 2 != 0) {
+                $equiposArray[] = ['id' => null, 'nombre' => 'Libre'];
+            }
+
+            $rotaciones[$grupo->id] = $equiposArray;
+        }
+
+        // Generar las fechas
+        for ($i = 0; $i < $numFechas; $i++) {
+            $fecha = Fecha::create([
+                'nombre' => 'Fecha ' . ($i + 1),
+                'fecha_inicio' => $fechaInicial->copy()->addWeeks($i),
+                'fecha_fin' => $fechaInicial->copy()->addWeeks($i)->addDays(1),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
+
+            $partidos = [];
+
+            foreach ($zona->grupos as $grupo) {
+                $grupoId = $grupo->id;
+                if (!isset($rotaciones[$grupoId])) continue;
+
+                $equiposArray = $rotaciones[$grupoId];
+                $numEquipos = count($equiposArray);
+
+                if ($numEquipos < 2) continue;
+
+                // Generar partidos para esta fecha
+                for ($j = 0; $j < $numEquipos / 2; $j++) {
+                    $local = $equiposArray[$j];
+                    $visitante = $equiposArray[$numEquipos - 1 - $j];
+
+                    if ($local['id'] === null || $visitante['id'] === null) continue;
+
+                    $partido = Partido::create([
+                        'fecha_id' => $fecha->id,
+                        'equipo_local_id' => $local['id'],
+                        'equipo_visitante_id' => $visitante['id'],
+                        'estado' => 'Pendiente',
+                        'fecha' => $fecha->fecha_inicio,
+                        'horario_id' => null,
+                        'cancha_id' => null,
+                    ]);
+
+                    $partido->equipos()->attach([$local['id'], $visitante['id']]);
+                    $partidos[] = $partido;
+                }
+
+                // Rotar para la próxima fecha (excepto en la última iteración)
+                if ($i < $numFechas - 1) {
+                    $last = array_pop($equiposArray);
+                    array_splice($equiposArray, 1, 0, [$last]);
+                    $rotaciones[$grupoId] = $equiposArray;
+                }
+            }
+
+            $fecha->partidos = $partidos;
+            $fechas[] = $fecha;
+        }
+
+        return $fechas;
+    }
 
     public function crearGruposAleatoriamente($zonaId, $numGrupos)
     {
@@ -595,7 +595,10 @@ class ZonaService implements ZonaServiceInterface
             }
             
             // Verificar que el equipo viejo pertenezca a la zona
-            $equipoViejo = Equipo::where('id', $equipoIdViejo)->where('zona_id', $zonaId)->first();
+            $equipoViejo = Equipo::whereHas('zonas', function($query) use ($zonaId) {
+                $query->where('zonas.id', $zonaId);
+            })->where('id', $equipoIdViejo)->first();
+
             if (!$equipoViejo) {
                 return response()->json([
                     'message' => 'El equipo a reemplazar no pertenece a esta zona',
@@ -612,13 +615,11 @@ class ZonaService implements ZonaServiceInterface
                 ], 404);
             }
             
-            // Asignar el equipo nuevo a la zona
-            $equipoNuevo->zona_id = $zonaId;
-            $equipoNuevo->save();
-            
             // Desasignar el equipo viejo de la zona
-            $equipoViejo->zona_id = null;
-            $equipoViejo->save();
+            $equipoViejo->zonas()->detach($zonaId);
+            
+            // Asignar el equipo nuevo a la zona
+            $equipoNuevo->zonas()->attach($zonaId);
             
             // Reemplazar el equipo en todos los partidos
             $partidos = Partido::whereHas('fecha', function($query) use ($zonaId) {
@@ -627,20 +628,6 @@ class ZonaService implements ZonaServiceInterface
                 $query->where('equipo_local_id', $equipoIdViejo)
                     ->orWhere('equipo_visitante_id', $equipoIdViejo);
             })->get();
-            
-            // También actualizar grupos si es formato de grupos
-            $grupos = Grupo::where('zona_id', $zonaId)->get();
-            foreach ($grupos as $grupo) {
-                $equiposGrupo = json_decode($grupo->equipos_json, true) ?: [];
-                if (in_array($equipoIdViejo, $equiposGrupo)) {
-                    // Reemplazar el ID del equipo viejo por el nuevo
-                    $equiposGrupo = array_map(function($id) use ($equipoIdViejo, $equipoIdNuevo) {
-                        return $id == $equipoIdViejo ? $equipoIdNuevo : $id;
-                    }, $equiposGrupo);
-                    $grupo->equipos_json = json_encode($equiposGrupo);
-                    $grupo->save();
-                }
-            }
             
             foreach ($partidos as $partido) {
                 if ($partido->equipo_local_id == $equipoIdViejo) {
@@ -744,16 +731,16 @@ class ZonaService implements ZonaServiceInterface
     }
 
     private function getNumeroRonda($numEquipos)
-{
-    return match($numEquipos) {
-        2 => 1,    // Final
-        4 => 2,    // Semifinal
-        8 => 3,    // Cuartos
-        16 => 4,   // Octavos
-        32 => 5,   // Dieciseisavos
-        64 => 6    // Treintaidosavos
-    };
-}
+    {
+        return match($numEquipos) {
+            2 => 1,    // Final
+            4 => 2,    // Semifinal
+            8 => 3,    // Cuartos
+            16 => 4,   // Octavos
+            32 => 5,   // Dieciseisavos
+            64 => 6    // Treintaidosavos
+        };
+    }
 
     public function crearPlayoff(Request $request, $zonaId)
     {
@@ -840,5 +827,65 @@ class ZonaService implements ZonaServiceInterface
             'fecha' => $fecha->load('partidos.equipos'),
             'status' => 201
         ], 201);
+    }
+
+    public function agregarEquipos($zonaId, array $equipoIds)
+    {
+        try {
+            $zona = Zona::findOrFail($zonaId);
+            
+            // Verificar que los equipos existan
+            $equiposExistentes = Equipo::whereIn('id', $equipoIds)->count();
+            if ($equiposExistentes !== count($equipoIds)) {
+                return response()->json([
+                    'message' => 'Uno o más equipos no existen',
+                    'status' => 404
+                ], 404);
+            }
+
+            // Agregar los equipos a la zona
+            $zona->equipos()->attach($equipoIds);
+
+            return response()->json([
+                'message' => 'Equipos agregados correctamente a la zona',
+                'status' => 200
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al agregar equipos a la zona',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
+    }
+
+    public function quitarEquipos($zonaId, array $equipoIds)
+    {
+        try {
+            $zona = Zona::findOrFail($zonaId);
+            
+            // Verificar que los equipos existan
+            $equiposExistentes = Equipo::whereIn('id', $equipoIds)->count();
+            if ($equiposExistentes !== count($equipoIds)) {
+                return response()->json([
+                    'message' => 'Uno o más equipos no existen',
+                    'status' => 404
+                ], 404);
+            }
+
+            // Quitar los equipos de la zona
+            $zona->equipos()->detach($equipoIds);
+
+            return response()->json([
+                'message' => 'Equipos quitados correctamente de la zona',
+                'status' => 200
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al quitar equipos de la zona',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 }
