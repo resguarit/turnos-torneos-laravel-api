@@ -111,8 +111,8 @@ class JugadorService implements JugadorServiceInterface
 
     public function getByZona($zonaId)
     {
-        return Jugador::whereHas('equipo', function ($query) use ($zonaId) {
-            $query->where('zona_id', $zonaId);
+        return Jugador::whereHas('equipo.zonas', function ($query) use ($zonaId) {
+            $query->where('zonas.id', $zonaId);
         })->with('equipo')->get();
     }
 
