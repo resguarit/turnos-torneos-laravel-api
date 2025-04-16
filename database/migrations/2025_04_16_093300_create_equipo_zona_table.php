@@ -16,6 +16,17 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        // Verificar si la tabla pivote existe
+        if (Schema::hasTable('equipo_zona')) {
+            // Mover los equipos que tienen zona_id a la tabla pivote
+            DB::statement('
+                INSERT INTO equipo_zona (equipo_id, zona_id, created_at, updated_at)
+                SELECT id, zona_id, NOW(), NOW()
+                FROM equipos
+                WHERE zona_id IS NOT NULL
+            ');
+        }
+
         // Luego eliminar la columna zona_id de equipos
         Schema::table('equipos', function (Blueprint $table) {
             $table->dropForeign(['zona_id']);

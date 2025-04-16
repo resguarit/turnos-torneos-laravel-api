@@ -27,19 +27,14 @@ class EquipoService implements EquipoServiceInterface
                 'required',
                 'string',
                 'max:255',
-                function ($attribute, $value, $fail) use ($request) {
-                    $zonaId = $request->input('zona_id');
-                    $equiposEnZona = Equipo::whereHas('zonas', function ($query) use ($zonaId, $value) {
-                        $query->where('zonas.id', $zonaId);
-                    })->where('nombre', $value)->exists();
-                    
-                    if ($equiposEnZona) {
-                        $fail('El nombre del equipo ya existe en esta zona.');
+                function ($attribute, $value, $fail) {
+                    $equipoExistente = Equipo::where('nombre', $value)->exists();
+                    if ($equipoExistente) {
+                        $fail('El nombre del equipo ya existe.');
                     }
                 },
             ],
             'escudo' => 'nullable|string',
-            'zona_id' => 'required|exists:zonas,id',
         ]);
 
         if ($validator->fails()) {
@@ -54,9 +49,6 @@ class EquipoService implements EquipoServiceInterface
             'nombre' => $request->nombre,
             'escudo' => $request->escudo
         ]);
-
-        // Asociar el equipo con la zona
-        $equipo->zonas()->attach($request->zona_id);
 
         return response()->json([
             'message' => 'Equipo creado correctamente',
@@ -114,7 +106,7 @@ class EquipoService implements EquipoServiceInterface
 
         // Actualizar la zona si se proporciona
         if ($request->has('zona_id')) {
-            $equipo->zonas()->sync([$request->zona_id]);
+            $equipo->zonas()->attach($request->zona_id);
         }
 
         return response()->json([

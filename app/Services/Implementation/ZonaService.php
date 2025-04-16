@@ -236,7 +236,7 @@ class ZonaService implements ZonaServiceInterface
                     'cancha_id' => null,
                 ]);
 
-                // Agregar los equipos al array de equipos del partido
+                // Asociar los equipos al partido en la tabla pivote
                 $partido->equipos()->attach([$local['id'], $visitante['id']]);
 
                 $partidos[] = $partido;
@@ -311,6 +311,9 @@ class ZonaService implements ZonaServiceInterface
                     'cancha_id' => null,
                 ]);
 
+                // Asociar los equipos al partido en la tabla pivote
+                $partido->equipos()->attach([$local['id'], $visitante['id']]);
+
                 $partidos[] = $partido;
             }
 
@@ -352,6 +355,9 @@ class ZonaService implements ZonaServiceInterface
                     'horario_id' => null,
                     'cancha_id' => null,
                 ]);
+
+                // Asociar los equipos al partido en la tabla pivote
+                $partido->equipos()->attach([$local['id'], $visitante['id']]);
 
                 $partidos[] = $partido;
             }
@@ -519,6 +525,7 @@ class ZonaService implements ZonaServiceInterface
                         'cancha_id' => null,
                     ]);
 
+                    // Asociar los equipos al partido en la tabla pivote
                     $partido->equipos()->attach([$local['id'], $visitante['id']]);
                     $partidos[] = $partido;
                 }

@@ -57,6 +57,11 @@ class PartidoService implements PartidoServiceInterface
 
         $partido = Partido::create($request->all());
 
+        // Asociar los equipos al partido en la tabla pivote
+        if ($request->has('equipo_local_id') && $request->has('equipo_visitante_id')) {
+            $partido->equipos()->attach([$request->equipo_local_id, $request->equipo_visitante_id]);
+        }
+
         return response()->json([
             'message' => 'Partido creado correctamente',
             'partido' => $partido,
