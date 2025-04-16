@@ -437,76 +437,106 @@ class ZonaService implements ZonaServiceInterface
     }
 
     private function createFechasGrupos($zonaId, $numGrupos, $fechaInicial)
-    {
-        $zona = Zona::with('grupos.equipos')->find($zonaId);
+{
+    $zona = Zona::with('grupos.equipos')->find($zonaId);
 
-        if (!$zona) {
-            return response()->json([
-                'message' => 'Zona no encontrada',
-                'status' => 404
-            ], 404);
-        }
+    if (!$zona) {
+        return response()->json([
+            'message' => 'Zona no encontrada',
+            'status' => 404
+        ], 404);
+    }
 
-        if ($numGrupos < 2) {
-            return response()->json([
-                'numero_grupos' => $numGrupos,
-                'message' => 'El número de grupos debe ser mayor o igual a 2',
-                'status' => 400
-            ], 400);
-        }
+    if ($numGrupos < 2) {
+        return response()->json([
+            'num_grupos' => $numGrupos,
+            'message' => 'El número de grupos debe ser mayor o igual a 2',
+            'status' => 400
+        ], 400);
+    }
 
-        $fechas = [];
-        $numFechas = 0;
+    $fechas = [];
+    $numFechas = 0;
 
-        foreach ($zona->grupos as $grupo) {
-            $equipos = $grupo->equipos;
-            $numEquipos = $equipos->count();
+    // Determinar el número máximo de fechas necesarias para cualquier grupo
+    foreach ($zona->grupos as $grupo) {
+        $numEquipos = $grupo->equipos->count();
+        if ($numEquipos >= 2) {
             $numFechas = max($numFechas, $numEquipos - 1);
         }
+    }
 
-        for ($i = 0; $i < $numFechas; $i++) {
-            $fecha = Fecha::create([
-                'nombre' => 'Fecha ' . ($i + 1),
-                'fecha_inicio' => now()->addWeeks($i),
-                'fecha_fin' => now()->addWeeks($i)->addDays(1),
-                'estado' => 'Pendiente',
-                'zona_id' => $zona->id,
-            ]);
+    // Inicializar las rotaciones para cada grupo
+    $rotaciones = [];
+    foreach ($zona->grupos as $grupo) {
+        $equipos = $grupo->equipos;
+        $numEquipos = $equipos->count();
+        $equiposArray = $equipos->toArray();
 
-            foreach ($zona->grupos()->with('equipos')->get() as $grupo) {
-                $equipos = $grupo->equipos; // Aquí tienes los equipos del grupo
-                $numEquipos = $equipos->count();
-
-                $equiposArray = $equipos->toArray();
-                shuffle($equiposArray);
-
-                $partidos = [];
-
-                // Crear partidos para la fecha
-                for ($j = 0; $j < $numEquipos / 2; $j++) {
-                    $local = $equiposArray[$j];
-                    $visitante = $equiposArray[$numEquipos - 1 - $j];
-
-                    $partido = Partido::create([
-                        'fecha_id' => $fecha->id,
-                        'equipo_local_id' => $local['id'],
-                        'equipo_visitante_id' => $visitante['id'],
-                        'estado' => 'Pendiente',
-                        'fecha' => $fecha->fecha_inicio,
-                        'horario_id' => null,
-                        'cancha_id' => null,
-                    ]);
-
-                    // Asociar los equipos al partido en la tabla pivote
-                    $partido->equipos()->attach([$local['id'], $visitante['id']]);
-                }
-            }
-
-            $fechas[] = $fecha;
+        // Añadir equipo "Libre" si es impar
+        if ($numEquipos % 2 != 0) {
+            $equiposArray[] = ['id' => null, 'nombre' => 'Libre'];
         }
 
-        return $fechas;
+        $rotaciones[$grupo->id] = $equiposArray;
     }
+
+    // Generar las fechas
+    for ($i = 0; $i < $numFechas; $i++) {
+        $fecha = Fecha::create([
+            'nombre' => 'Fecha ' . ($i + 1),
+            'fecha_inicio' => $fechaInicial->copy()->addWeeks($i),
+            'fecha_fin' => $fechaInicial->copy()->addWeeks($i)->addDays(1),
+            'estado' => 'Pendiente',
+            'zona_id' => $zona->id,
+        ]);
+
+        $partidos = [];
+
+        foreach ($zona->grupos as $grupo) {
+            $grupoId = $grupo->id;
+            if (!isset($rotaciones[$grupoId])) continue;
+
+            $equiposArray = $rotaciones[$grupoId];
+            $numEquipos = count($equiposArray);
+
+            if ($numEquipos < 2) continue;
+
+            // Generar partidos para esta fecha
+            for ($j = 0; $j < $numEquipos / 2; $j++) {
+                $local = $equiposArray[$j];
+                $visitante = $equiposArray[$numEquipos - 1 - $j];
+
+                if ($local['id'] === null || $visitante['id'] === null) continue;
+
+                $partido = Partido::create([
+                    'fecha_id' => $fecha->id,
+                    'equipo_local_id' => $local['id'],
+                    'equipo_visitante_id' => $visitante['id'],
+                    'estado' => 'Pendiente',
+                    'fecha' => $fecha->fecha_inicio,
+                    'horario_id' => null,
+                    'cancha_id' => null,
+                ]);
+
+                $partido->equipos()->attach([$local['id'], $visitante['id']]);
+                $partidos[] = $partido;
+            }
+
+            // Rotar para la próxima fecha (excepto en la última iteración)
+            if ($i < $numFechas - 1) {
+                $last = array_pop($equiposArray);
+                array_splice($equiposArray, 1, 0, [$last]);
+                $rotaciones[$grupoId] = $equiposArray;
+            }
+        }
+
+        $fecha->partidos = $partidos;
+        $fechas[] = $fecha;
+    }
+
+    return $fechas;
+}
 
     public function crearGruposAleatoriamente($zonaId, $numGrupos)
     {
