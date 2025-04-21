@@ -26,7 +26,7 @@ class ZonaService implements ZonaServiceInterface
 
     public function getById($id)
     {
-        return Zona::with('equipos', 'fechas')->find($id);
+        return Zona::with('equipos', 'fechas', 'torneo')->find($id);
     }
 
     public function create(Request $request)

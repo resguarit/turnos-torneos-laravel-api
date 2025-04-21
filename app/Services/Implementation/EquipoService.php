@@ -35,6 +35,7 @@ class EquipoService implements EquipoServiceInterface
                 },
             ],
             'escudo' => 'nullable|string',
+            'zona_id' => 'nullable|exists:zonas,id', // Validar que la zona exista si se proporciona
         ]);
 
         if ($validator->fails()) {
@@ -49,6 +50,11 @@ class EquipoService implements EquipoServiceInterface
             'nombre' => $request->nombre,
             'escudo' => $request->escudo
         ]);
+
+        // Asociar el equipo a la zona si se proporciona zona_id
+        if ($request->has('zona_id')) {
+            $equipo->zonas()->attach($request->zona_id); // Crear el registro en la tabla pivote equipo_zona
+        }
 
         return response()->json([
             'message' => 'Equipo creado correctamente',
