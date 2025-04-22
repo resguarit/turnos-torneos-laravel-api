@@ -94,5 +94,9 @@ class DatabaseSeeder extends Seeder
             'rol' => 'cliente',
             'persona_id' => $persona->id,
         ]);
+
+        $this->call([
+            EquiposYJugadoresSeeder::class,
+        ]);
     }
 }

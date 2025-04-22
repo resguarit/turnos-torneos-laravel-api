@@ -13,25 +13,25 @@ class MetodosPagoSeeder extends Seeder
     public function run(): void
     {
         MetodoPago::create([
-            'nombre' => 'Efectivo',
+            'nombre' => 'efectivo',
             'descripcion' => 'Pago en efectivo',
             'activo' => true,
         ]);
 
         MetodoPago::create([
-            'nombre' => 'Tarjeta de Crédito',
+            'nombre' => 'tarjeta',
             'descripcion' => 'Pago con tarjeta de crédito',
             'activo' => true,
         ]);
 
         MetodoPago::create([
-            'nombre' => 'Mercado Pago',
+            'nombre' => 'mercadopago',
             'descripcion' => 'Pago por Mercado Pago',
             'activo' => true,
         ]);
 
         MetodoPago::create([
-            'nombre' => 'Transferencia Bancaria',
+            'nombre' => 'transferencia',
             'descripcion' => 'Pago por transferencia bancaria',
             'activo' => true,
         ]);
