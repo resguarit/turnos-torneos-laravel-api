@@ -17,4 +17,5 @@ interface EstadisticaServiceInterface
     public function getByJugador($jugadorId);
     public function getByZona($zonaId);
     public function createOrUpdateMultiple(Request $request, $partidoId);
+    public function getJugadoresStatsByZona($zonaId);
 }

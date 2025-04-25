@@ -113,7 +113,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::prefix('zonas')->group(function () {
         Route::get('/', [ZonaController::class, 'index']);
-        Route::get('/{id}', [ZonaController::class, 'show']);
+
         Route::post('/', [ZonaController::class, 'store']);
         Route::put('/{id}', [ZonaController::class, 'update']);
         Route::delete('/{id}', [ZonaController::class, 'destroy']);
@@ -220,3 +220,4 @@ Route::get('/fechas/{fechaId}/partidos', [PartidoController::class, 'getByFecha'
 Route::get('/zonas/{zonaId}/estadisticas-grupos', [ZonaController::class, 'obtenerEstadisticasGrupos']);
 Route::get('/zonas/{zonaId}/estadisticas-liga', [ZonaController::class, 'obtenerEstadisticasLiga']);
 Route::get('/zonas/{zonaId}/estadisticas/jugadores', [EstadisticaController::class, 'getJugadoresStatsByZona']);
+Route::get('/zonas/{id}', [ZonaController::class, 'show']);
