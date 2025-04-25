@@ -20,4 +20,6 @@ interface ZonaServiceInterface
     public function crearPlayoff(Request $request, $zonaId);
     public function agregarEquipos($zonaId, array $equipoIds);
     public function quitarEquipos($zonaId, array $equipoIds);
+    public function calcularEstadisticasGrupos($zonaId); 
+    public function calcularEstadisticasLiga($zonaId);
 }

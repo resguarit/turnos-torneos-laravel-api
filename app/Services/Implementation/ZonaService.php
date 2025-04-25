@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\Grupo;
 use Carbon\Carbon;
+use App\Enums\PartidoEstado;
 
 class ZonaService implements ZonaServiceInterface
 {
@@ -894,5 +895,199 @@ class ZonaService implements ZonaServiceInterface
                 'status' => 500
             ], 500);
         }
+    }
+
+    public function calcularEstadisticasGrupos($zonaId)
+    {
+        $zona = Zona::with(['grupos.equipos', 'fechas.partidos' => function ($query) {
+            $query->where('estado', PartidoEstado::FINALIZADO)
+                  ->with(['equipoLocal', 'equipoVisitante']);
+        }])->find($zonaId);
+
+        if (!$zona) {
+            return response()->json(['message' => 'Zona no encontrada', 'status' => 404], 404);
+        }
+
+        if ($zona->formato !== ZonaFormato::GRUPOS) {
+             return response()->json(['message' => 'La zona no tiene formato de Grupos', 'status' => 400], 400);
+        }
+
+        $estadisticasGrupos = [];
+
+        // Get all finalized partidos for the zone efficiently
+        $partidosFinalizados = Partido::where('estado', PartidoEstado::FINALIZADO)
+            ->whereHas('fecha', function ($q) use ($zonaId) {
+                $q->where('zona_id', $zonaId);
+            })
+            ->with(['equipoLocal', 'equipoVisitante'])
+            ->get();
+
+        foreach ($zona->grupos as $grupo) {
+            $grupoData = [
+                'id' => $grupo->id,
+                'nombre' => $grupo->nombre,
+                'zona_id' => $grupo->zona_id,
+                'equipos' => [],
+            ];
+
+            foreach ($grupo->equipos as $equipo) {
+                $stats = [
+                    'puntaje' => 0,
+                    'partidosJugados' => 0,
+                    'partidosGanados' => 0,
+                    'partidosEmpatados' => 0,
+                    'partidosPerdidos' => 0,
+                    'golesFavor' => 0,
+                    'golesContra' => 0,
+                    'diferenciaGoles' => 0,
+                ];
+
+                foreach ($partidosFinalizados as $partido) {
+                    $esLocal = $partido->equipo_local_id === $equipo->id;
+                    $esVisitante = $partido->equipo_visitante_id === $equipo->id;
+
+                    if ($esLocal || $esVisitante) {
+                        $stats['partidosJugados']++;
+                        $marcadorLocal = $partido->marcador_local ?? 0;
+                        $marcadorVisitante = $partido->marcador_visitante ?? 0;
+
+                        if ($esLocal) {
+                            $stats['golesFavor'] += $marcadorLocal;
+                            $stats['golesContra'] += $marcadorVisitante;
+                            if ($marcadorLocal > $marcadorVisitante) {
+                                $stats['puntaje'] += 3;
+                                $stats['partidosGanados']++;
+                            } elseif ($marcadorLocal === $marcadorVisitante) {
+                                $stats['puntaje'] += 1;
+                                $stats['partidosEmpatados']++;
+                            } else {
+                                $stats['partidosPerdidos']++;
+                            }
+                        } else { // esVisitante
+                            $stats['golesFavor'] += $marcadorVisitante;
+                            $stats['golesContra'] += $marcadorLocal;
+                            if ($marcadorVisitante > $marcadorLocal) {
+                                $stats['puntaje'] += 3;
+                                $stats['partidosGanados']++;
+                            } elseif ($marcadorVisitante === $marcadorLocal) {
+                                $stats['puntaje'] += 1;
+                                $stats['partidosEmpatados']++;
+                            } else {
+                                $stats['partidosPerdidos']++;
+                            }
+                        }
+                    }
+                }
+
+                $stats['diferenciaGoles'] = $stats['golesFavor'] - $stats['golesContra'];
+
+                $grupoData['equipos'][] = array_merge($equipo->toArray(), $stats);
+            }
+             // Sort teams within the group by points (desc), then goal difference (desc), then goals for (desc)
+            usort($grupoData['equipos'], function ($a, $b) {
+                if ($b['puntaje'] !== $a['puntaje']) {
+                    return $b['puntaje'] <=> $a['puntaje'];
+                }
+                if ($b['diferenciaGoles'] !== $a['diferenciaGoles']) {
+                    return $b['diferenciaGoles'] <=> $a['diferenciaGoles'];
+                }
+                return $b['golesFavor'] <=> $a['golesFavor'];
+            });
+
+
+            $estadisticasGrupos[] = $grupoData;
+        }
+
+        return response()->json($estadisticasGrupos, 200);
+    }
+
+    public function calcularEstadisticasLiga($zonaId)
+    {
+        $zona = Zona::with('equipos')->find($zonaId);
+
+        if (!$zona) {
+            return response()->json(['message' => 'Zona no encontrada', 'status' => 404], 404);
+        }
+
+        if (!in_array($zona->formato, [ZonaFormato::LIGA, ZonaFormato::LIGA_PLAYOFF, ZonaFormato::LIGA_IDA_VUELTA])) {
+             return response()->json(['message' => 'La zona no tiene formato de Liga o Liga + Playoff o Liga Ida y Vuelta', 'status' => 400], 400);
+        }
+
+        $estadisticasEquipos = [];
+
+        // Get all finalized partidos for the zone efficiently
+        $partidosFinalizados = Partido::where('estado', PartidoEstado::FINALIZADO)
+            ->whereHas('fecha', function ($q) use ($zonaId) {
+                $q->where('zona_id', $zonaId);
+            })
+            ->with(['equipoLocal', 'equipoVisitante'])
+            ->get();
+
+        foreach ($zona->equipos as $equipo) {
+            $stats = [
+                'puntaje' => 0,
+                'partidosJugados' => 0,
+                'partidosGanados' => 0,
+                'partidosEmpatados' => 0,
+                'partidosPerdidos' => 0,
+                'golesFavor' => 0,
+                'golesContra' => 0,
+                'diferenciaGoles' => 0,
+            ];
+
+            foreach ($partidosFinalizados as $partido) {
+                $esLocal = $partido->equipo_local_id === $equipo->id;
+                $esVisitante = $partido->equipo_visitante_id === $equipo->id;
+
+                if ($esLocal || $esVisitante) {
+                    $stats['partidosJugados']++;
+                    $marcadorLocal = $partido->marcador_local ?? 0;
+                    $marcadorVisitante = $partido->marcador_visitante ?? 0;
+
+                    if ($esLocal) {
+                        $stats['golesFavor'] += $marcadorLocal;
+                        $stats['golesContra'] += $marcadorVisitante;
+                        if ($marcadorLocal > $marcadorVisitante) {
+                            $stats['puntaje'] += 3;
+                            $stats['partidosGanados']++;
+                        } elseif ($marcadorLocal === $marcadorVisitante) {
+                            $stats['puntaje'] += 1;
+                            $stats['partidosEmpatados']++;
+                        } else {
+                            $stats['partidosPerdidos']++;
+                        }
+                    } else { // esVisitante
+                        $stats['golesFavor'] += $marcadorVisitante;
+                        $stats['golesContra'] += $marcadorLocal;
+                        if ($marcadorVisitante > $marcadorLocal) {
+                            $stats['puntaje'] += 3;
+                            $stats['partidosGanados']++;
+                        } elseif ($marcadorVisitante === $marcadorLocal) {
+                            $stats['puntaje'] += 1;
+                            $stats['partidosEmpatados']++;
+                        } else {
+                            $stats['partidosPerdidos']++;
+                        }
+                    }
+                }
+            }
+
+            $stats['diferenciaGoles'] = $stats['golesFavor'] - $stats['golesContra'];
+
+            $estadisticasEquipos[] = array_merge($equipo->toArray(), $stats);
+        }
+
+        // Sort teams by points (desc), then goal difference (desc), then goals for (desc)
+        usort($estadisticasEquipos, function ($a, $b) {
+            if ($b['puntaje'] !== $a['puntaje']) {
+                return $b['puntaje'] <=> $a['puntaje'];
+            }
+            if ($b['diferenciaGoles'] !== $a['diferenciaGoles']) {
+                return $b['diferenciaGoles'] <=> $a['diferenciaGoles'];
+            }
+            return $b['golesFavor'] <=> $a['golesFavor'];
+        });
+
+        return response()->json($estadisticasEquipos, 200);
     }
 }

@@ -214,4 +214,5 @@ Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getBy
 Route::get('/zonas/{zonaId}/fechas', [FechaController::class, 'getByZona']);
 Route::get('/zonas/{zonaId}/equipos', [EquipoController::class, 'getByZona']);
 Route::get('/fechas/{fechaId}/partidos', [PartidoController::class, 'getByFecha']);
-
+Route::get('/zonas/{zonaId}/estadisticas-grupos', [ZonaController::class, 'obtenerEstadisticasGrupos']);
+Route::get('/zonas/{zonaId}/estadisticas-liga', [ZonaController::class, 'obtenerEstadisticasLiga']);

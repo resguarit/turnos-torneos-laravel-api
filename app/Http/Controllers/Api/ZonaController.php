@@ -134,4 +134,14 @@ class ZonaController extends Controller
 
         return $this->zonaService->quitarEquipos($zonaId, $request->input('equipo_ids'));
     }
+
+    public function obtenerEstadisticasGrupos($zonaId)
+    {
+        return $this->zonaService->calcularEstadisticasGrupos($zonaId);
+    }
+
+    public function obtenerEstadisticasLiga($zonaId)
+    {
+        return $this->zonaService->calcularEstadisticasLiga($zonaId);
+    }
 }
