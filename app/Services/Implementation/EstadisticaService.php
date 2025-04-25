@@ -8,6 +8,7 @@ use App\Models\Jugador;
 use App\Services\Interface\EstadisticaServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class EstadisticaService implements EstadisticaServiceInterface
 {
@@ -129,5 +130,66 @@ class EstadisticaService implements EstadisticaServiceInterface
         return Estadistica::whereHas('partido.fecha', function ($query) use ($zonaId) {
             $query->where('zona_id', $zonaId);
         })->with('partido', 'jugador')->get();
+    }
+
+    public function getJugadoresStatsByZona($zonaId)
+    {
+        $stats = Estadistica::select(
+            'jugador_id',
+            DB::raw('SUM(goles) as total_goles'),
+            DB::raw('SUM(amarillas) as total_amarillas'),
+            DB::raw('SUM(rojas) as total_rojas')
+        )
+        ->whereHas('partido.fecha', function ($query) use ($zonaId) {
+            $query->where('zona_id', $zonaId);
+        })
+        ->groupBy('jugador_id')
+        ->with(['jugador' => function ($query) {
+            $query->select('id', 'nombre', 'apellido', 'equipo_id') // Select necessary fields
+                  ->with(['equipo' => function ($query) {
+                      $query->select('id', 'nombre'); // Select necessary fields from equipo
+                  }]);
+        }])
+        ->get();
+
+        // Goleadores
+        $goleadores = $stats->filter(function ($item) {
+            return $item->total_goles > 0;
+        })->map(function ($item) {
+            return [
+                'nombre_completo' => $item->jugador->nombre . ' ' . $item->jugador->apellido,
+                'equipo' => $item->jugador->equipo->nombre ?? 'Sin equipo',
+                'goles' => (int) $item->total_goles,
+            ];
+        })->sortByDesc('goles')->values();
+
+        // Amonestados
+        $amonestados = $stats->filter(function ($item) {
+            return $item->total_amarillas > 0;
+        })->map(function ($item) {
+            return [
+                'nombre_completo' => $item->jugador->nombre . ' ' . $item->jugador->apellido,
+                'equipo' => $item->jugador->equipo->nombre ?? 'Sin equipo',
+                'amarillas' => (int) $item->total_amarillas,
+            ];
+        })->sortByDesc('amarillas')->values();
+
+        // Expulsados
+        $expulsados = $stats->filter(function ($item) {
+            return $item->total_rojas > 0;
+        })->map(function ($item) {
+            return [
+                'nombre_completo' => $item->jugador->nombre . ' ' . $item->jugador->apellido,
+                'equipo' => $item->jugador->equipo->nombre ?? 'Sin equipo',
+                'rojas' => (int) $item->total_rojas,
+            ];
+        })->sortByDesc('rojas')->values();
+
+
+        return response()->json([
+            'goleadores' => $goleadores,
+            'amonestados' => $amonestados,
+            'expulsados' => $expulsados,
+        ], 200);
     }
 }

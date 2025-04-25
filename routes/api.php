@@ -216,3 +216,4 @@ Route::get('/zonas/{zonaId}/equipos', [EquipoController::class, 'getByZona']);
 Route::get('/fechas/{fechaId}/partidos', [PartidoController::class, 'getByFecha']);
 Route::get('/zonas/{zonaId}/estadisticas-grupos', [ZonaController::class, 'obtenerEstadisticasGrupos']);
 Route::get('/zonas/{zonaId}/estadisticas-liga', [ZonaController::class, 'obtenerEstadisticasLiga']);
+Route::get('/zonas/{zonaId}/estadisticas/jugadores', [EstadisticaController::class, 'getJugadoresStatsByZona']);

@@ -69,4 +69,9 @@ class EstadisticaController extends Controller
     {
         return response()->json($this->estadisticaService->getByZona($zonaId), 200);
     }
+
+    public function getJugadoresStatsByZona($zonaId) 
+    {
+        return $this->estadisticaService->getJugadoresStatsByZona($zonaId);
+    }
 }

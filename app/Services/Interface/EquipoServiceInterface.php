@@ -13,4 +13,5 @@ interface EquipoServiceInterface
     public function update(Request $request, $id);
     public function delete($id);
     public function getByZona($zonaId);
+    public function getJugadoresStatsByZona($zonaId);
 }
