@@ -152,6 +152,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/estadisticas/{id}', [EstadisticaController::class, 'update']);
     Route::delete('/estadisticas/{id}', [EstadisticaController::class, 'destroy']);
     Route::get('/partidos/{partidoId}/estadisticas', [EstadisticaController::class, 'getByPartido']);
+    Route::post('/partidos/{partidoId}/estadisticas/multiple', [EstadisticaController::class, 'createOrUpdateMultiple']);
     Route::get('/equipos/{equipoId}/estadisticas', [EstadisticaController::class, 'getByEquipo']);
     Route::get('/jugadores/{jugadorId}/estadisticas', [EstadisticaController::class, 'getByJugador']);
     Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);

@@ -8,6 +8,7 @@ use App\Models\Jugador;
 use App\Services\Interface\EstadisticaServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class EstadisticaService implements EstadisticaServiceInterface
 {
@@ -129,5 +130,79 @@ class EstadisticaService implements EstadisticaServiceInterface
         return Estadistica::whereHas('partido.fecha', function ($query) use ($zonaId) {
             $query->where('zona_id', $zonaId);
         })->with('partido', 'jugador')->get();
+    }
+
+    public function createOrUpdateMultiple(Request $request, $partidoId)
+    {
+        $validator = Validator::make($request->all(), [
+            'estadisticas' => 'required|array',
+            'estadisticas.*.nro_camiseta' => 'required|integer|min:1',
+            'estadisticas.*.goles' => 'nullable|integer|min:0',
+            'estadisticas.*.asistencias' => 'nullable|integer|min:0',
+            'estadisticas.*.rojas' => 'nullable|integer|min:0',
+            'estadisticas.*.amarillas' => 'nullable|integer|min:0',
+            'estadisticas.*.jugador_id' => 'required|exists:jugadores,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación de una o más estadísticas',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $estadisticasData = $request->input('estadisticas');
+        $jugadorIdsEnviados = array_column($estadisticasData, 'jugador_id');
+        $results = [];
+
+        $jugadorIdsExistentes = Estadistica::where('partido_id', $partidoId)
+                                          ->pluck('jugador_id')
+                                          ->toArray();
+
+        DB::beginTransaction();
+        try {
+            foreach ($estadisticasData as $data) {
+                $estadistica = Estadistica::updateOrCreate(
+                    [
+                        'partido_id' => $partidoId,
+                        'jugador_id' => $data['jugador_id']
+                    ],
+                    [
+                        'nro_camiseta' => $data['nro_camiseta'],
+                        'goles' => $data['goles'] ?? 0,
+                        'asistencias' => $data['asistencias'] ?? 0,
+                        'amarillas' => $data['amarillas'] ?? 0,
+                        'rojas' => $data['rojas'] ?? 0,
+                    ]
+                );
+                $results[] = $estadistica;
+            }
+
+            $jugadorIdsParaBorrar = array_diff($jugadorIdsExistentes, $jugadorIdsEnviados);
+
+            if (!empty($jugadorIdsParaBorrar)) {
+                Estadistica::where('partido_id', $partidoId)
+                           ->whereIn('jugador_id', $jugadorIdsParaBorrar)
+                           ->delete();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Estadísticas procesadas correctamente',
+                'estadisticas_actualizadas' => $results,
+                'jugadores_eliminados' => $jugadorIdsParaBorrar,
+                'status' => 200
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al procesar las estadísticas',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 }

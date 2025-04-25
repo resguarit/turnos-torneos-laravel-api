@@ -69,4 +69,10 @@ class EstadisticaController extends Controller
     {
         return response()->json($this->estadisticaService->getByZona($zonaId), 200);
     }
+
+    // Nuevo método para manejar la creación/actualización múltiple
+    public function createOrUpdateMultiple(Request $request, $partidoId)
+    {
+        return $this->estadisticaService->createOrUpdateMultiple($request, $partidoId);
+    }
 }
