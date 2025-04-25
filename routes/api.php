@@ -132,6 +132,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/fechas', [FechaController::class, 'store']);
     Route::put('/fechas/{id}', [FechaController::class, 'update']);
     Route::delete('/fechas/{id}', [FechaController::class, 'destroy']);
+    Route::delete('/fechas', [FechaController::class, 'destroyMultiple']);
     Route::post('/fechas/{fechaId}/postergar', [FechaController::class, 'postergarFechas']);
     Route::post('/fechas/{fechaId}/verificar-estado', [FechaController::class, 'verificarEstadoFecha']);
 
@@ -141,7 +142,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/partidos/{id}', [PartidoController::class, 'update']);
     Route::delete('/partidos/{id}', [PartidoController::class, 'destroy']);
 
-    Route::get('/equipos/{equipoId}/partidos', [PartidoController::class, 'getByEquipo']);
+    Route::get('/equipos/{equipoId}/zona/{zonaId}/partidos', [PartidoController::class, 'getByEquipoAndZona']);
+    //Route::get('/zonas/{zonaId}/equipos/{equipoId}/partidos', [PartidoController::class, 'getByEquipoAndZona']);
     /* Route::post('/partidos/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCancha']); */
 
     Route::get('/estadisticas', [EstadisticaController::class, 'index']);
@@ -150,6 +152,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/estadisticas/{id}', [EstadisticaController::class, 'update']);
     Route::delete('/estadisticas/{id}', [EstadisticaController::class, 'destroy']);
     Route::get('/partidos/{partidoId}/estadisticas', [EstadisticaController::class, 'getByPartido']);
+    Route::post('/partidos/{partidoId}/estadisticas/multiple', [EstadisticaController::class, 'createOrUpdateMultiple']);
     Route::get('/equipos/{equipoId}/estadisticas', [EstadisticaController::class, 'getByEquipo']);
     Route::get('/jugadores/{jugadorId}/estadisticas', [EstadisticaController::class, 'getByJugador']);
     Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);

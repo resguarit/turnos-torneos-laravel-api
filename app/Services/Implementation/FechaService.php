@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use App\Enums\FechaEstado;
+use Illuminate\Support\Facades\DB;
 
 class FechaService implements FechaServiceInterface
 {
@@ -185,5 +186,38 @@ class FechaService implements FechaServiceInterface
             'message' => 'No se actualizó el estado de la fecha porque hay partidos sin finalizar',
             'fecha' => $fecha
         ]);
+    }
+
+    public function deleteMultiple(array $fechaIds)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Eliminar todas las fechas y sus relaciones
+            Fecha::whereIn('id', $fechaIds)->each(function ($fecha) {
+                // Eliminar primero los partidos asociados y sus relaciones
+                $fecha->partidos()->each(function ($partido) {
+                    $partido->equipos()->detach();
+                    $partido->estadisticas()->delete();
+                    $partido->delete();
+                });
+                
+                $fecha->delete();
+            });
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Fechas eliminadas correctamente',
+                'status' => 200
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al eliminar las fechas',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 }

@@ -132,10 +132,21 @@ class PartidoService implements PartidoServiceInterface
         return Partido::where('fecha_id', $fechaId)->with( 'equipoLocal', 'equipoVisitante', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
     }
 
-    public function getByEquipo($equipoId)
+    public function getByEquipo($equipoId, $zonaId)
     {
         return Partido::whereHas('equipos', function ($query) use ($equipoId) {
             $query->where('equipo_id', $equipoId);
+        })->whereHas('fecha', function ($query) use ($zonaId) {
+            $query->where('zona_id', $zonaId);
+        })->with('fecha', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
+    }
+
+    public function getByEquipoAndZona($equipoId, $zonaId)
+    {
+        return Partido::whereHas('equipos', function ($query) use ($equipoId) {
+            $query->where('equipo_id', $equipoId);
+        })->whereHas('fecha', function ($query) use ($zonaId) {
+            $query->where('zona_id', $zonaId);
         })->with('fecha', 'estadisticas', 'horario', 'cancha', 'ganador')->get();
     }
 
