@@ -220,16 +220,63 @@ class JugadorService implements JugadorServiceInterface
     public function searchByDni(Request $request)
     {
         $dniQuery = $request->query('dni');
+        $zonaId = $request->query('zona_id');
 
         if (!$dniQuery) {
             return response()->json([], 200);
         }
 
+        // Si no se pasa zona_id, comportamiento original
+        if (!$zonaId) {
+            $jugadores = Jugador::where('dni', 'like', $dniQuery . '%')
+                ->with('equipos')
+                ->limit(10)
+                ->get();
+            return response()->json($jugadores, 200);
+        }
+
+        // Obtener el torneo de la zona
+        $zona = \App\Models\Zona::with('torneo')->find($zonaId);
+        if (!$zona || !$zona->torneo) {
+            return response()->json([], 200);
+        }
+        $torneoId = $zona->torneo->id;
+
+        // Obtener equipos de ese torneo
+        $equiposTorneoIds = \App\Models\Equipo::whereHas('zonas', function($q) use ($torneoId) {
+            $q->where('torneo_id', $torneoId);
+        })->pluck('id');
+
+        // Jugadores que NO están en ningún equipo de ese torneo
         $jugadores = Jugador::where('dni', 'like', $dniQuery . '%')
-                            ->with('equipos') // Eager load teams relationship
-                            ->limit(10)
-                            ->get();
+            ->whereDoesntHave('equipos', function($q) use ($equiposTorneoIds) {
+                $q->whereIn('equipos.id', $equiposTorneoIds);
+            })
+            ->with('equipos')
+            ->limit(10)
+            ->get();
 
         return response()->json($jugadores, 200);
+    }
+    
+    public function asociarJugadorAEquipo($jugadorId, $equipoId)
+    {
+        $jugador = Jugador::find($jugadorId);
+        $equipo = Equipo::find($equipoId);
+
+        if (!$jugador || !$equipo) {
+            return response()->json([
+                'message' => 'Jugador o equipo no encontrado',
+                'status' => 404
+            ], 404);
+        }
+
+        // Asociar el jugador al equipo (no duplica si ya existe)
+        $jugador->equipos()->syncWithoutDetaching([$equipoId]);
+
+        return response()->json([
+            'message' => 'Jugador asociado correctamente al equipo',
+            'status' => 200
+        ], 200);
     }
 }

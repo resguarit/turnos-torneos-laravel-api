@@ -68,4 +68,11 @@ class JugadorController extends Controller
     {
         return $this->jugadorService->searchByDni($request);
     }
+
+    public function asociarJugadorAEquipo(Request $request)
+    {
+        $jugadorId = $request->input('jugador_id');
+        $equipoId = $request->input('equipo_id');
+        return $this->jugadorService->asociarJugadorAEquipo($jugadorId, $equipoId);
+    }
 }
