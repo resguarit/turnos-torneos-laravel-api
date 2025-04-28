@@ -63,4 +63,9 @@ class JugadorController extends Controller
     {
         return $this->jugadorService->createMultiple($request);
     }
+
+    public function searchByDni(Request $request) 
+    {
+        return $this->jugadorService->searchByDni($request);
+    }
 }

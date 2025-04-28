@@ -151,4 +151,23 @@ class JugadorService implements JugadorServiceInterface
             'status' => 201
         ], 201);
     }
+
+    public function searchByDni(Request $request)
+    {
+        $dniQuery = $request->query('dni');
+
+        if (!$dniQuery) {
+            // Return empty array or a specific message if no DNI is provided
+            return response()->json([], 200);
+        }
+
+        // Search for DNIs starting with the provided query
+        // Use 'like', '%' . $dniQuery . '%' if you want to match anywhere in the DNI
+        $jugadores = Jugador::where('dni', 'like', $dniQuery . '%')
+                            ->with('equipo') // Eager load team info
+                            ->limit(10) // Limit results for performance
+                            ->get();
+
+        return response()->json($jugadores, 200);
+    }
 }
