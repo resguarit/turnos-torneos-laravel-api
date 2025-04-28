@@ -4,20 +4,24 @@
 namespace App\Services\Implementation;
 
 use App\Models\Jugador;
+use App\Models\Equipo;
 use App\Services\Interface\JugadorServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class JugadorService implements JugadorServiceInterface
 {
     public function getAll()
     {
-        return Jugador::with('equipo')->get();
+        // Eager load the 'equipos' relationship
+        return Jugador::with('equipos')->get();
     }
 
     public function getById($id)
     {
-        return Jugador::with('equipo')->find($id);
+        // Eager load the 'equipos' relationship
+        return Jugador::with('equipos')->find($id);
     }
 
     public function create(Request $request)
@@ -28,7 +32,8 @@ class JugadorService implements JugadorServiceInterface
             'dni' => 'required|string|max:20|unique:jugadores,dni',
             'telefono' => 'nullable|string|max:20',
             'fecha_nacimiento' => 'required|date',
-            'equipo_id' => 'required|exists:equipos,id',
+            'equipo_ids' => 'required|array', // Expect an array of team IDs
+            'equipo_ids.*' => 'exists:equipos,id' // Validate each ID in the array
         ]);
 
         if ($validator->fails()) {
@@ -39,13 +44,30 @@ class JugadorService implements JugadorServiceInterface
             ], 400);
         }
 
-        $jugador = Jugador::create($request->all());
+        DB::beginTransaction();
+        try {
+            // Create player without equipo_id
+            $jugador = Jugador::create($request->except('equipo_ids'));
 
-        return response()->json([
-            'message' => 'Jugador creado correctamente',
-            'jugador' => $jugador,
-            'status' => 201
-        ], 201);
+            // Attach teams using the pivot table
+            $jugador->equipos()->attach($request->input('equipo_ids'));
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Jugador creado correctamente',
+                // Load the relationship for the response
+                'jugador' => $jugador->load('equipos'),
+                'status' => 201
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear el jugador o asociar equipos.',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
@@ -60,12 +82,13 @@ class JugadorService implements JugadorServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
-            'apellido' => 'required|string|max:255',
-            'dni' => 'required|string|max:20|unique:jugadores,dni,' . $id,
+            'nombre' => 'sometimes|required|string|max:255',
+            'apellido' => 'sometimes|required|string|max:255',
+            'dni' => 'sometimes|required|string|max:20|unique:jugadores,dni,' . $id,
             'telefono' => 'nullable|string|max:20',
-            'fecha_nacimiento' => 'required|date',
-            'equipo_id' => 'required|exists:equipos,id',
+            'fecha_nacimiento' => 'sometimes|required|date',
+            'equipo_ids' => 'sometimes|array', // Allow updating teams
+            'equipo_ids.*' => 'exists:equipos,id'
         ]);
 
         if ($validator->fails()) {
@@ -76,13 +99,31 @@ class JugadorService implements JugadorServiceInterface
             ], 400);
         }
 
-        $jugador->update($request->all());
+        DB::beginTransaction();
+        try {
+            // Update player details
+            $jugador->update($request->except('equipo_ids'));
 
-        return response()->json([
-            'message' => 'Jugador actualizado correctamente',
-            'jugador' => $jugador,
-            'status' => 200
-        ], 200);
+            // Sync teams if provided
+            if ($request->has('equipo_ids')) {
+                $jugador->equipos()->sync($request->input('equipo_ids'));
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Jugador actualizado correctamente',
+                'jugador' => $jugador->load('equipos'), // Load updated teams
+                'status' => 200
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+             return response()->json([
+                'message' => 'Error al actualizar el jugador o asociar equipos.',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 
     public function delete($id)
@@ -96,6 +137,9 @@ class JugadorService implements JugadorServiceInterface
             ], 404);
         }
 
+        // Detach from all teams (optional, cascade delete on pivot might handle this)
+        // $jugador->equipos()->detach();
+
         $jugador->delete();
 
         return response()->json([
@@ -106,14 +150,22 @@ class JugadorService implements JugadorServiceInterface
 
     public function getByEquipo($equipoId)
     {
-        return Jugador::where('equipo_id', $equipoId)->get();
+        // Find the team and load its players
+        $equipo = Equipo::with('jugadores')->find($equipoId);
+        return $equipo ? $equipo->jugadores : collect(); // Return players or empty collection
     }
 
     public function getByZona($zonaId)
     {
-        return Jugador::whereHas('equipo.zonas', function ($query) use ($zonaId) {
+        // Find players belonging to teams that are associated with the given zona
+        return Jugador::whereHas('equipos.zonas', function ($query) use ($zonaId) {
             $query->where('zonas.id', $zonaId);
-        })->with('equipo')->get();
+        })->with(['equipos' => function($q) use ($zonaId) {
+            // Optionally filter the loaded teams to only the relevant one(s) for the zone
+            $q->whereHas('zonas', function($zq) use ($zonaId) {
+                $zq->where('zonas.id', $zonaId);
+            });
+        }])->get();
     }
 
     public function createMultiple(Request $request)
@@ -125,11 +177,11 @@ class JugadorService implements JugadorServiceInterface
             'jugadores.*.dni' => 'required|string|max:20|unique:jugadores,dni',
             'jugadores.*.telefono' => 'nullable|string|max:20',
             'jugadores.*.fecha_nacimiento' => 'required|date',
-            'equipo_id' => 'required|exists:equipos,id',
+            'equipo_id' => 'required|exists:equipos,id', // Keep single equipo_id for this specific function's context
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
+             return response()->json([
                 'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 400
@@ -138,18 +190,31 @@ class JugadorService implements JugadorServiceInterface
 
         $equipoId = $request->input('equipo_id');
         $jugadoresData = $request->input('jugadores');
+        $createdJugadores = [];
 
-        $jugadores = [];
-        foreach ($jugadoresData as $jugadorData) {
-            $jugadorData['equipo_id'] = $equipoId;
-            $jugadores[] = Jugador::create($jugadorData);
+        DB::beginTransaction();
+        try {
+            foreach ($jugadoresData as $jugadorData) {
+                // Create player
+                $jugador = Jugador::create($jugadorData);
+                // Attach to the specified team
+                $jugador->equipos()->attach($equipoId);
+                $createdJugadores[] = $jugador->load('equipos');
+            }
+            DB::commit();
+            return response()->json([
+                'message' => 'Jugadores creados y asociados correctamente',
+                'jugadores' => $createdJugadores,
+                'status' => 201
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear jugadores múltiples.',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'Jugadores creados correctamente',
-            'jugadores' => $jugadores,
-            'status' => 201
-        ], 201);
     }
 
     public function searchByDni(Request $request)
@@ -157,15 +222,12 @@ class JugadorService implements JugadorServiceInterface
         $dniQuery = $request->query('dni');
 
         if (!$dniQuery) {
-            // Return empty array or a specific message if no DNI is provided
             return response()->json([], 200);
         }
 
-        // Search for DNIs starting with the provided query
-        // Use 'like', '%' . $dniQuery . '%' if you want to match anywhere in the DNI
         $jugadores = Jugador::where('dni', 'like', $dniQuery . '%')
-                            ->with('equipo') // Eager load team info
-                            ->limit(10) // Limit results for performance
+                            ->with('equipos') // Eager load teams relationship
+                            ->limit(10)
                             ->get();
 
         return response()->json($jugadores, 200);

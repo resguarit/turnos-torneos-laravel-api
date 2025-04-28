@@ -15,24 +15,22 @@ class EstadisticaService implements EstadisticaServiceInterface
 {
     public function getAll()
     {
-        return Estadistica::with('partido', 'jugador')->get();
+        return Estadistica::with('partido', 'jugador.equipos')->get();
     }
 
     public function getById($id)
     {
-        return Estadistica::with('partido', 'jugador')->find($id);
+        return Estadistica::with('partido', 'jugador.equipos')->find($id);
     }
 
     public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nro_camiseta' => 'nullable|integer',
-            'goles' => 'nullable|integer',
-            'asistencias' => 'nullable|integer',
-            'rojas' => 'nullable|integer',
-            'amarillas' => 'nullable|integer',
             'partido_id' => 'required|exists:partidos,id',
             'jugador_id' => 'required|exists:jugadores,id',
+            'goles' => 'required|integer|min:0',
+            'amarillas' => 'required|integer|min:0|max:2', // Assuming max 2 yellows
+            'rojas' => 'required|integer|min:0|max:1',     // Assuming max 1 red
         ]);
 
         if ($validator->fails()) {
@@ -47,7 +45,7 @@ class EstadisticaService implements EstadisticaServiceInterface
 
         return response()->json([
             'message' => 'Estadística creada correctamente',
-            'estadistica' => $estadistica,
+            'estadistica' => $estadistica->load('jugador.equipos'), // Load relation
             'status' => 201
         ], 201);
     }
@@ -64,13 +62,11 @@ class EstadisticaService implements EstadisticaServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'nro_camiseta' => 'nullable|integer',
-            'goles' => 'sometimes|integer',
-            'asistencias' => 'sometimes|integer',
-            'rojas' => 'sometimes|integer',
-            'amarillas' => 'sometimes|integer',
-            'partido_id' => 'sometimes|exists:partidos,id',
-            'jugador_id' => 'sometimes|exists:jugadores,id',
+            'partido_id' => 'sometimes|required|exists:partidos,id',
+            'jugador_id' => 'sometimes|required|exists:jugadores,id',
+            'goles' => 'sometimes|required|integer|min:0',
+            'amarillas' => 'sometimes|required|integer|min:0|max:2',
+            'rojas' => 'sometimes|required|integer|min:0|max:1',
         ]);
 
         if ($validator->fails()) {
@@ -85,7 +81,7 @@ class EstadisticaService implements EstadisticaServiceInterface
 
         return response()->json([
             'message' => 'Estadística actualizada correctamente',
-            'estadistica' => $estadistica,
+            'estadistica' => $estadistica->load('jugador.equipos'), // Load relation
             'status' => 200
         ], 200);
     }
@@ -111,43 +107,51 @@ class EstadisticaService implements EstadisticaServiceInterface
 
     public function getByPartido($partidoId)
     {
-        return Estadistica::where('partido_id', $partidoId)->with('jugador')->get();
+        // Include player's teams in the response
+        return Estadistica::where('partido_id', $partidoId)->with('jugador.equipos')->get();
     }
 
     public function getByEquipo($equipoId)
     {
-        return Estadistica::whereHas('jugador', function ($query) use ($equipoId) {
-            $query->where('equipo_id', $equipoId);
-        })->with('partido', 'jugador')->get();
+        // Find statistics for players who are part of the specified team
+        return Estadistica::whereHas('jugador.equipos', function ($query) use ($equipoId) {
+            $query->where('equipos.id', $equipoId);
+        })->with(['partido', 'jugador.equipos'])->get();
     }
 
     public function getByJugador($jugadorId)
     {
-        return Estadistica::where('jugador_id', $jugadorId)->with('partido')->get();
+        // Include player's teams
+        return Estadistica::where('jugador_id', $jugadorId)->with(['partido', 'jugador.equipos'])->get();
     }
 
     public function getByZona($zonaId)
     {
+        // Find statistics where the related match's date belongs to the zone
+        // Include player's teams, potentially filtered by the zone context if needed
         return Estadistica::whereHas('partido.fecha', function ($query) use ($zonaId) {
             $query->where('zona_id', $zonaId);
-        })->with('partido', 'jugador')->get();
+        })->with(['partido', 'jugador.equipos' => function($q) use ($zonaId) {
+             // Load only the team(s) relevant to this zone for the player
+             $q->whereHas('zonas', function($zq) use ($zonaId) {
+                $zq->where('zonas.id', $zonaId);
+             });
+        }])->get();
     }
 
     public function createOrUpdateMultiple(Request $request, $partidoId)
     {
         $validator = Validator::make($request->all(), [
             'estadisticas' => 'required|array',
-            'estadisticas.*.nro_camiseta' => 'required|integer|min:1',
-            'estadisticas.*.goles' => 'nullable|integer|min:0',
-            'estadisticas.*.asistencias' => 'nullable|integer|min:0',
-            'estadisticas.*.rojas' => 'nullable|integer|min:0',
-            'estadisticas.*.amarillas' => 'nullable|integer|min:0',
             'estadisticas.*.jugador_id' => 'required|exists:jugadores,id',
+            'estadisticas.*.goles' => 'required|integer|min:0',
+            'estadisticas.*.amarillas' => 'required|integer|min:0|max:2',
+            'estadisticas.*.rojas' => 'required|integer|min:0|max:1',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Error en la validación de una o más estadísticas',
+                'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 400
             ], 400);
@@ -170,14 +174,12 @@ class EstadisticaService implements EstadisticaServiceInterface
                         'jugador_id' => $data['jugador_id']
                     ],
                     [
-                        'nro_camiseta' => $data['nro_camiseta'],
-                        'goles' => $data['goles'] ?? 0,
-                        'asistencias' => $data['asistencias'] ?? 0,
-                        'amarillas' => $data['amarillas'] ?? 0,
-                        'rojas' => $data['rojas'] ?? 0,
+                        'goles' => $data['goles'],
+                        'amarillas' => $data['amarillas'],
+                        'rojas' => $data['rojas'],
                     ]
                 );
-                $results[] = $estadistica;
+                $results[] = $estadistica->load('jugador.equipos'); // Load relation
             }
 
             $jugadorIdsParaBorrar = array_diff($jugadorIdsExistentes, $jugadorIdsEnviados);
@@ -219,43 +221,56 @@ class EstadisticaService implements EstadisticaServiceInterface
             $query->where('zona_id', $zonaId);
         })
         ->groupBy('jugador_id')
-        ->with(['jugador' => function ($query) {
-            $query->select('id', 'nombre', 'apellido', 'equipo_id') // Select necessary fields
-                  ->with(['equipo' => function ($query) {
-                      $query->select('id', 'nombre'); // Select necessary fields from equipo
+        // Eager load jugador and their teams, filtering teams by the current zone
+        ->with(['jugador' => function ($query) use ($zonaId) {
+            $query->select('id', 'nombre', 'apellido') // Removed equipo_id
+                  ->with(['equipos' => function ($q) use ($zonaId) {
+                      $q->select('equipos.id', 'equipos.nombre') // Select necessary fields from equipo
+                        ->whereHas('zonas', function($zq) use ($zonaId){
+                            $zq->where('zonas.id', $zonaId); // Filter teams by zone
+                        });
                   }]);
         }])
         ->get();
 
+        // Helper function to get the team name for the current zone context
+        $getTeamName = function ($jugador) {
+            // Since we filtered eager loading, there should ideally be only one team.
+            // Add fallback logic if needed.
+            return $jugador->equipos->first()->nombre ?? 'Equipo Desconocido';
+        };
+
+
         // Goleadores
         $goleadores = $stats->filter(function ($item) {
-            return $item->total_goles > 0;
-        })->map(function ($item) {
+            // Ensure player and team data is loaded before accessing
+            return $item->total_goles > 0 && $item->jugador && $item->jugador->equipos->isNotEmpty();
+        })->map(function ($item) use ($getTeamName) {
             return [
                 'nombre_completo' => $item->jugador->nombre . ' ' . $item->jugador->apellido,
-                'equipo' => $item->jugador->equipo->nombre ?? 'Sin equipo',
+                'equipo' => $getTeamName($item->jugador), // Use helper
                 'goles' => (int) $item->total_goles,
             ];
         })->sortByDesc('goles')->values();
 
         // Amonestados
         $amonestados = $stats->filter(function ($item) {
-            return $item->total_amarillas > 0;
-        })->map(function ($item) {
+             return $item->total_amarillas > 0 && $item->jugador && $item->jugador->equipos->isNotEmpty();
+        })->map(function ($item) use ($getTeamName) {
             return [
                 'nombre_completo' => $item->jugador->nombre . ' ' . $item->jugador->apellido,
-                'equipo' => $item->jugador->equipo->nombre ?? 'Sin equipo',
+                'equipo' => $getTeamName($item->jugador), // Use helper
                 'amarillas' => (int) $item->total_amarillas,
             ];
         })->sortByDesc('amarillas')->values();
 
         // Expulsados
         $expulsados = $stats->filter(function ($item) {
-            return $item->total_rojas > 0;
-        })->map(function ($item) {
+             return $item->total_rojas > 0 && $item->jugador && $item->jugador->equipos->isNotEmpty();
+        })->map(function ($item) use ($getTeamName) {
             return [
                 'nombre_completo' => $item->jugador->nombre . ' ' . $item->jugador->apellido,
-                'equipo' => $item->jugador->equipo->nombre ?? 'Sin equipo',
+                'equipo' => $getTeamName($item->jugador), // Use helper
                 'rojas' => (int) $item->total_rojas,
             ];
         })->sortByDesc('rojas')->values();

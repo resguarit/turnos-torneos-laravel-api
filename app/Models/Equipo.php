@@ -12,13 +12,14 @@ class Equipo extends Model
 
     protected $fillable = ['nombre', 'escudo'];
 
-    public function jugadores()
+    public function jugadores() 
     {
-        return $this->hasMany(Jugador::class);
+        return $this->belongsToMany(Jugador::class, 'equipo_jugador');
     }
     
     public function zonas()
     {
         return $this->belongsToMany(Zona::class, 'equipo_zona');
     }
+
 }

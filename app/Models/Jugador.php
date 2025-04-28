@@ -12,10 +12,10 @@ class Jugador extends Model
     
     protected $table = 'jugadores';
 
-    protected $fillable = ['nombre', 'apellido', 'dni', 'telefono', 'fecha_nacimiento', 'equipo_id'];
+    protected $fillable = ['nombre', 'apellido', 'dni', 'telefono', 'fecha_nacimiento'];
 
-    public function equipo()
+    public function equipos() 
     {
-        return $this->belongsTo(Equipo::class);
+        return $this->belongsToMany(Equipo::class, 'equipo_jugador');
     }
 }
