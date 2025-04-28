@@ -84,7 +84,12 @@ class TurnoService implements TurnoServiceInterface
             }
         }
 
-        $turnos = $query->with(['persona', 'cancha', 'horario'])
+        $turnos = $query->with([
+            'persona',
+            'cancha',
+            'horario',
+            'partido.fecha.zona.torneo' // <-- agrega esto
+        ])
         ->join('horarios', 'turnos.horario_id', '=', 'horarios.id')
         ->orderBy('horarios.hora_inicio', 'asc')
         ->select('turnos.*')
@@ -1017,5 +1022,39 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 500
             ], 500);
         }
+    }
+
+    public function crearTurnoTorneo($partido)
+    {
+        // Verifica que el partido tenga fecha, horario y cancha asignados
+        if (!$partido->fecha || !$partido->horario_id || !$partido->cancha_id) {
+            return;
+        }
+
+        // Verifica si ya existe un turno de tipo Torneo para ese partido/cancha/horario/fecha
+        $existe = \App\Models\Turno::where('fecha_turno', $partido->fecha)
+            ->where('horario_id', $partido->horario_id)
+            ->where('cancha_id', $partido->cancha_id)
+            ->where('tipo', 'torneo')
+            ->where('partido_id', $partido->id)
+            ->first();
+
+        if ($existe) {
+            return; // Ya existe, no crear duplicado
+        }
+
+        // Crea el turno de tipo Torneo
+        \App\Models\Turno::create([
+            'fecha_turno' => $partido->fecha,
+            'fecha_reserva' => now(),
+            'horario_id' => $partido->horario_id,
+            'cancha_id' => $partido->cancha_id,
+            'persona_id' => null, // O el organizador si corresponde
+            'monto_total' => 0,
+            'monto_seña' => 0,
+            'estado' => \App\Enums\TurnoEstado::PAGADO, // O el estado que corresponda
+            'tipo' => 'torneo',
+            'partido_id' => $partido->id
+        ]);
     }
 }

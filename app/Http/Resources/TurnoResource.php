@@ -15,7 +15,7 @@ class TurnoResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return [
+        $data = [
             'id' => $this->id,
             'usuario' => [
                 'usuario_id' => $this->persona?->usuario?->id ?? null,
@@ -44,5 +44,33 @@ class TurnoResource extends JsonResource
             'tipo' => $this->tipo,
             'created_at' => $this->created_at,
         ];
+
+        if ($this->tipo === 'torneo' && $this->partido) {
+            // Forzamos a obtener el modelo, no el string
+            $fecha = $this->partido->fecha instanceof \App\Models\Fecha
+                ? $this->partido->fecha
+                : ($this->partido->fecha_id ? \App\Models\Fecha::find($this->partido->fecha_id) : null);
+
+            $zona = $fecha && $fecha->zona ? $fecha->zona : null;
+            $torneo = $zona && $zona->torneo ? $zona->torneo : null;
+
+            $data['partido'] = [
+                'id' => $this->partido->id,
+                'fecha' => $fecha ? [
+                    'id' => $fecha->id,
+                    'nombre' => $fecha->nombre ?? null,
+                    'zona' => $zona ? [
+                        'id' => $zona->id,
+                        'nombre' => $zona->nombre,
+                        'torneo' => $torneo ? [
+                            'id' => $torneo->id,
+                            'nombre' => $torneo->nombre,
+                        ] : null,
+                    ] : null,
+                ] : null,
+            ];
+        }
+
+        return $data;
     }
 }

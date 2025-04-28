@@ -62,6 +62,10 @@ class PartidoService implements PartidoServiceInterface
             $partido->equipos()->attach([$request->equipo_local_id, $request->equipo_visitante_id]);
         }
 
+        if ($partido->horario_id && $partido->cancha_id && $partido->fecha) {
+            app(\App\Services\Implementation\TurnoService::class)->crearTurnoTorneo($partido);
+        }
+
         return response()->json([
             'message' => 'Partido creado correctamente',
             'partido' => $partido,
@@ -100,6 +104,11 @@ class PartidoService implements PartidoServiceInterface
         }
 
         $partido->update($request->all());
+
+        $partido->refresh();
+        if ($partido->horario_id && $partido->cancha_id && $partido->fecha) {
+            app(\App\Services\Implementation\TurnoService::class)->crearTurnoTorneo($partido);
+        }
 
         return response()->json([
             'message' => 'Partido actualizado correctamente',
@@ -235,6 +244,7 @@ class PartidoService implements PartidoServiceInterface
                         $partido->cancha_id = null;
                         $partido->save();
                     }
+                    app(\App\Services\Implementation\TurnoService::class)->crearTurnoTorneo($partido);
                 }
 
                 // Incrementar el horario para el siguiente grupo de partidos
