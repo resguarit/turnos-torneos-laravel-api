@@ -651,19 +651,27 @@ class TurnoService implements TurnoServiceInterface
         }
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
-        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek); // Convertir el día de la semana a su nombre
+        $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
 
         $horarios = Horario::where('activo', true)
-                            ->where('dia', $diaSemana) // Filtrar por día de la semana
+                            ->where('dia', $diaSemana)
                             ->orderBy('hora_inicio', 'asc')
                             ->get();
 
         $canchas = Cancha::where('activa', true)->get();
 
+        // Incluir partido y sus relaciones para los turnos de tipo torneo
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                            ->with(['persona', 'horario', 'cancha'])
-                            ->where('estado', '!=', 'Cancelado')
-                            ->get();
+            ->with([
+                'persona',
+                'horario',
+                'cancha',
+                'partido.equipoLocal',
+                'partido.equipoVisitante',
+                'partido.fecha.zona.torneo' // <--- esto es clave
+            ])
+            ->where('estado', '!=', 'Cancelado')
+            ->get();
 
         $grid = [];
 
@@ -677,22 +685,52 @@ class TurnoService implements TurnoServiceInterface
                     return $t->horario->id === $horario->id && $t->cancha->id === $cancha->id;
                 });
 
+                $turnoData = null;
+                if ($turno) {
+                    if ($turno->tipo === 'torneo' && $turno->partido) {
+                        $partido = $turno->partido;
+                        // Usar la relación, no el atributo
+                        $fechaPartido = $partido->getRelation('fecha') ?? null;
+                        $zona = $fechaPartido && $fechaPartido->getRelation('zona') ? $fechaPartido->zona : null;
+                        $torneo = $zona && $zona->getRelation('torneo') ? $zona->torneo : null;
+
+                        $turnoData = [
+                            'id' => $turno->id,
+                            'tipo' => $turno->tipo,
+                            'estado' => $turno->estado,
+                            'partido' => [
+                                'id' => $partido->id,
+                                'fecha' => $fechaPartido ? $fechaPartido->nombre : null,
+                                'zona' => $zona ? $zona->nombre : null,
+                                'torneo' => $torneo ? $torneo->nombre : null,
+                                'equipos' => [
+                                    'local' => $partido->equipoLocal->nombre ?? null,
+                                    'visitante' => $partido->equipoVisitante->nombre ?? null,
+                                ],
+                            ],
+                        ];
+                    } else {
+                        // Turno normal
+                        $turnoData = [
+                            'id' => $turno->id,
+                            'usuario' => [
+                                'usuario_id' => $turno->persona->usuario?->id ?? null,
+                                'nombre' => $turno->persona->name,
+                                'dni' => $turno->persona->dni,
+                                'telefono' => $turno->persona->telefono,
+                            ],
+                            'monto_total' => $turno->monto_total,
+                            'monto_seña' => $turno->monto_seña,
+                            'estado' => $turno->estado,
+                            'tipo' => $turno->tipo,
+                        ];
+                    }
+                }
+
                 $grid[$hora][$cancha->nro] = [
                     'cancha' => $cancha->nro,
                     'tipo' => $cancha->tipo_cancha,
-                    'turno' => $turno ? [
-                        'id' => $turno->id,
-                        'usuario' => [
-                            'usuario_id' => $turno->persona->usuario?->id ?? null,
-                            'nombre' => $turno->persona->name,
-                            'dni' => $turno->persona->dni,
-                            'telefono' => $turno->persona->telefono,
-                        ],
-                        'monto_total' => $turno->monto_total,
-                        'monto_seña' => $turno->monto_seña,
-                        'estado' => $turno->estado,
-                        'tipo' => $turno->tipo,
-                    ] : null,
+                    'turno' => $turnoData,
                 ];
             }
         }
