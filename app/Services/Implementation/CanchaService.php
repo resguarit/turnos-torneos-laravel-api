@@ -85,6 +85,7 @@ class CanchaService implements CanchaServiceInterface
             'deporte_id' => $request->deporte_id
         ]);
 
+
         // Registrar auditoría
         AuditoriaService::registrar(
             'crear',
