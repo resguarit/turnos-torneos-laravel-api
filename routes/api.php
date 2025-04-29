@@ -112,6 +112,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/jugadores/asociar-a-equipo', [JugadorController::class, 'asociarJugadorAEquipo']);
     Route::get('/equipos/{equipoId}/jugadores', [JugadorController::class, 'getByEquipo']);
     Route::post('/equipos/{equipoId}/jugadores/multiple', [JugadorController::class, 'createMultiple']);
+    Route::get('/jugadores/info-por-dni/{dni}', [JugadorController::class, 'infoPorDni']);
 
     Route::prefix('zonas')->group(function () {
         Route::get('/', [ZonaController::class, 'index']);

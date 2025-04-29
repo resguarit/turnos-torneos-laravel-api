@@ -9,6 +9,7 @@ use App\Services\Interface\JugadorServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\Enums\FechaEstado;
 
 class JugadorService implements JugadorServiceInterface
 {
@@ -279,4 +280,73 @@ class JugadorService implements JugadorServiceInterface
             'status' => 200
         ], 200);
     }
+
+    public function getInfoJugadorByDni($dni)
+{
+    $jugador = \App\Models\Jugador::where('dni', $dni)
+        ->with([
+            'equipos.zonas.torneo',
+            'equipos.zonas.fechas.partidos.equipoLocal',
+            'equipos.zonas.fechas.partidos.equipoVisitante',
+            'equipos.zonas.fechas.partidos.cancha',
+            'equipos.zonas.fechas.partidos.horario'
+        ])
+        ->first();
+
+    if (!$jugador) {
+        return response()->json(['message' => 'Jugador no encontrado'], 404);
+    }
+
+    $equipos = $jugador->equipos->map(function ($equipo) {
+        $torneosZonas = $equipo->zonas->map(function ($zona) use ($equipo) {
+            $torneo = $zona->torneo;
+            
+            $fechaPendiente = $zona->fechas
+                ->where('estado', FechaEstado::PENDIENTE->value)
+                ->sortBy('fecha_inicio')
+                ->first();
+
+            if (!$fechaPendiente) return null;
+
+            $partido = $fechaPendiente->partidos->first(function ($partido) use ($equipo) {
+                return $partido->equipo_local_id == $equipo->id 
+                    || $partido->equipo_visitante_id == $equipo->id;
+            });
+
+            if (!$partido) return null;
+
+            return [
+                'torneo' => $torneo->only('id', 'nombre', 'descripcion'),
+                'zona' => $zona->only('id', 'nombre'),
+                'primera_fecha_pendiente' => [
+                    'fecha' => $fechaPendiente->only('id', 'nombre', 'fecha_inicio', 'estado'),
+                    'partido' => [
+                        'id' => $partido->id,
+                        'equipo_local' => optional($partido->equipoLocal)->nombre ?? 'Sin definir',
+                        'equipo_visitante' => optional($partido->equipoVisitante)->nombre ?? 'Sin definir',
+                        'cancha' => $partido->cancha ? [
+                            'nro' => $partido->cancha->nro,
+                            'tipo' => $partido->cancha->tipo_cancha
+                        ] : null,
+                        'horario' => $partido->horario ? [
+                            'inicio' => $partido->horario->hora_inicio,
+                            'fin' => $partido->horario->hora_fin
+                        ] : null,
+                        'fecha_partido' => $partido->fecha
+                    ]
+                ]
+            ];
+        })->filter()->values();
+
+        return [
+            'equipo' => $equipo->only('id', 'nombre'),
+            'competencias' => $torneosZonas
+        ];
+    });
+
+    return response()->json([
+        'jugador' => $jugador->only('id', 'nombre', 'dni'),
+        'equipos' => $equipos
+    ]);
+}
 }

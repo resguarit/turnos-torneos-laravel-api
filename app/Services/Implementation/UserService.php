@@ -104,6 +104,7 @@ class UserService implements UserServiceInterface
             'user_id' => $user->id,
             'rol' => $user->rol,
             'username' => $user->persona->name,
+            'dni' => $user->dni,
         ];
     }
 

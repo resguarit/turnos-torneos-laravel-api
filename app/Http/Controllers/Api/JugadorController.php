@@ -75,4 +75,9 @@ class JugadorController extends Controller
         $equipoId = $request->input('equipo_id');
         return $this->jugadorService->asociarJugadorAEquipo($jugadorId, $equipoId);
     }
+
+    public function infoPorDni($dni)
+    {
+        return app(\App\Services\Implementation\JugadorService::class)->getInfoJugadorByDni($dni);
+    }
 }

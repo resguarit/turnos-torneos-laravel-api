@@ -42,6 +42,7 @@ class AuthService implements AuthServiceInterface
             'user_id' => $user->id,
             'rol' => $user->rol,
             'username' => $user->persona->name ?? 'Usuario', // Asegurándonos de tener un valor predeterminado si es null
+            'dni' => $user->dni,
             'status' => 200
         ];
     }
