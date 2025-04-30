@@ -14,33 +14,39 @@ return new class extends Migration
         Schema::create('deportes', function (Blueprint $table) {
             $table->id();
             $table->string('nombre');
+            $table->integer('duracion_turno');
             $table->integer('jugadores_por_equipo');
             $table->timestamps();
         });
 
         Deporte::create([
-            'nombre' => 'Fútbol',
+            'nombre' => 'Futbol',
             'jugadores_por_equipo' => 5,
+            'duracion_turno' => 60,
         ]);
 
         Deporte::create([
-            'nombre' => 'Fútbol',
+            'nombre' => 'Futbol',
             'jugadores_por_equipo' => 6,
+            'duracion_turno' => 60,
         ]);
 
         Deporte::create([
-            'nombre' => 'Fútbol',
+            'nombre' => 'Futbol',
             'jugadores_por_equipo' => 7,
+            'duracion_turno' => 60,
         ]);
 
         Deporte::create([
-            'nombre' => 'Fútbol',
+            'nombre' => 'Futbol',
             'jugadores_por_equipo' => 9,
+            'duracion_turno' => 60,
         ]);
 
         Deporte::create([
-            'nombre' => 'Fútbol',
+            'nombre' => 'Futbol',
             'jugadores_por_equipo' => 11,
+            'duracion_turno' => 90,
         ]);
 
     }

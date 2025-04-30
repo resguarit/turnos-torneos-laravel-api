@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
+use App\Models\Deporte;
 class DisponibilidadService implements DisponibilidadServiceInterface
 {
     public function getHorariosNoDisponibles()
@@ -58,6 +58,7 @@ class DisponibilidadService implements DisponibilidadServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
+            'deporte_id' => 'required|exists:deportes,id',
         ]);
 
         if ($validator->fails()) {
@@ -70,43 +71,108 @@ class DisponibilidadService implements DisponibilidadServiceInterface
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
         $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
+        $deporte = Deporte::find($request->deporte_id);
 
-        $canchasCount = Cancha::where('activa', true)->count();
+        $canchasDeporte = Cancha::where('activa', true)->where('deporte_id', $deporte->id);
+
+        $canchasCount = $canchasDeporte->count();
+        
         $horarios = Horario::where('activo', true)
                             ->where('dia', $diaSemana)
+                            ->where('deporte_id', $deporte->id)
                             ->orderBy('hora_inicio')
                             ->get();
 
+        $canchasDisponibles = $canchasDeporte->get();
+
+        $canchasIds = $canchasDisponibles->pluck('id')->toArray();
+        
         $reservas = Turno::whereDate('fecha_turno', $fecha)
-                            ->where('estado', '!=', 'Cancelado')
-                            ->with('horario')
-                            ->get();
+                        ->whereIn('cancha_id', $canchasIds)
+                        ->where('estado', '!=', 'Cancelado')
+                        ->with('horario')
+                        ->get();
 
-        $noDisponibles = [];
+        // Agrupar por horario_id para contar reservas por horario
+        $reservasPorHorario = $reservas->groupBy('horario_id');
 
-        foreach ($reservas as $reserva) {
-            $horario = $reserva->horario;
-            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
-
-            if (!isset($noDisponibles[$intervalo])) {
-                $noDisponibles[$intervalo] = 0;
-            }
-
-            $noDisponibles[$intervalo]++;
-        }
-
+        // Verificar disponibilidad inicial para cada horario
         $result = [];
+        $horariosNoDisponibles = [];
 
         foreach ($horarios as $horario) {
-            $intervalo = $horario->hora_inicio . '-' . $horario->hora_fin;
-            $disponible = !isset($noDisponibles[$intervalo]) || $noDisponibles[$intervalo] < $canchasCount;
-
+            // Contar reservas para este horario específico
+            $reservasCount = isset($reservasPorHorario[$horario->id]) ? count($reservasPorHorario[$horario->id]) : 0;
+            
+            // Un horario no está disponible si todas las canchas están reservadas
+            $disponible = $reservasCount < $canchasCount;
+            
+            if (!$disponible) {
+                $horariosNoDisponibles[] = $horario->id;
+            }
+            
             $result[] = [
                 'id' => $horario->id,
                 'hora_inicio' => $horario->hora_inicio,
                 'hora_fin' => $horario->hora_fin,
                 'disponible' => $disponible
             ];
+        }
+
+        // Ahora verificamos los solapamientos entre todos los horarios
+        // Creamos un array de horarios con información de solapamiento
+        $horariosConSolapamientos = [];
+        
+        // Para cada par de horarios, verificamos si se solapan
+        foreach ($horarios as $horario1) {
+            foreach ($horarios as $horario2) {
+                if ($horario1->id != $horario2->id) {
+                    // Verificar solapamiento: hora_inicio1 < hora_fin2 Y hora_fin1 > hora_inicio2
+                    if ($horario1->hora_inicio < $horario2->hora_fin && $horario1->hora_fin > $horario2->hora_inicio) {
+                        if (!isset($horariosConSolapamientos[$horario1->id])) {
+                            $horariosConSolapamientos[$horario1->id] = [];
+                        }
+                        $horariosConSolapamientos[$horario1->id][] = $horario2->id;
+                    }
+                }
+            }
+        }
+        
+        // Verificamos si hay canchas suficientes para horarios solapados
+        foreach ($horarios as $index => $horario) {
+            if (isset($horariosConSolapamientos[$horario->id])) {
+                // Obtenemos los IDs de los horarios solapados
+                $solapados = $horariosConSolapamientos[$horario->id];
+                
+                // Obtenemos los IDs de las canchas reservadas para este horario
+                $canchasReservadasParaEsteHorario = isset($reservasPorHorario[$horario->id]) ? 
+                    $reservasPorHorario[$horario->id]->pluck('cancha_id')->toArray() : [];
+                
+                // Para cada horario solapado
+                foreach ($solapados as $solapadoId) {
+                    // Obtenemos los IDs de las canchas reservadas para el horario solapado
+                    $canchasReservadasParaSolapado = isset($reservasPorHorario[$solapadoId]) ? 
+                        $reservasPorHorario[$solapadoId]->pluck('cancha_id')->toArray() : [];
+                    
+                    // Unimos todas las canchas reservadas
+                    $todasCanchasReservadas = array_unique(array_merge(
+                        $canchasReservadasParaEsteHorario, 
+                        $canchasReservadasParaSolapado
+                    ));
+                    
+                    // Si el total de canchas reservadas entre ambos horarios llena todas las canchas,
+                    // entonces este horario no está disponible
+                    if (count($todasCanchasReservadas) >= $canchasCount) {
+                        foreach ($result as &$horarioResult) {
+                            if ($horarioResult['id'] == $horario->id) {
+                                $horarioResult['disponible'] = false;
+                                break;
+                            }
+                        }
+                        break; // Salimos del ciclo de solapados, ya sabemos que este horario no está disponible
+                    }
+                }
+            }
         }
 
         return response()->json(['horarios' => $result], 200);
@@ -117,6 +183,7 @@ class DisponibilidadService implements DisponibilidadServiceInterface
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
             'horario_id' => 'required|exists:horarios,id',
+            'deporte_id' => 'required|exists:deportes,id',
         ]);
 
         if ($validator->fails()) {
@@ -129,9 +196,11 @@ class DisponibilidadService implements DisponibilidadServiceInterface
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
         $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
+        $deporte = Deporte::find($request->deporte_id);
 
         $horario = Horario::where('id', $request->horario_id)
                           ->where('dia', $diaSemana)
+                          ->where('deporte_id', $deporte->id)
                           ->first();
 
         if (!$horario) {
@@ -141,25 +210,47 @@ class DisponibilidadService implements DisponibilidadServiceInterface
             ], 404);
         }
 
+        $canchas = Cancha::where('activa', true)->where('deporte_id', $deporte->id)->get();
+        $canchasIds = $canchas->pluck('id')->toArray();
+
+        // Buscar horarios solapados con el horario solicitado
+        $horariosSolapados = Horario::where('dia', $diaSemana)
+                           ->where('deporte_id', $deporte->id)
+                           ->where('activo', true)
+                           ->where(function($query) use ($horario) {
+                               $query->where(function($q) use ($horario) {
+                                   // El horario inicia durante el horario solicitado
+                                   $q->where('hora_inicio', '>=', $horario->hora_inicio)
+                                     ->where('hora_inicio', '<', $horario->hora_fin);
+                               })->orWhere(function($q) use ($horario) {
+                                   // El horario termina durante el horario solicitado
+                                   $q->where('hora_fin', '>', $horario->hora_inicio)
+                                     ->where('hora_fin', '<=', $horario->hora_fin);
+                               })->orWhere(function($q) use ($horario) {
+                                   // El horario cubre completamente el horario solicitado
+                                   $q->where('hora_inicio', '<=', $horario->hora_inicio)
+                                     ->where('hora_fin', '>=', $horario->hora_fin);
+                               });
+                           })
+                           ->pluck('id')
+                           ->toArray();
+
+        // Obtener todas las reservas para el horario solicitado y los solapados
         $turnos = Turno::whereDate('fecha_turno', $fecha)
-                        ->where('horario_id', $horario->id)
+                        ->whereIn('cancha_id', $canchasIds)
+                        ->whereIn('horario_id', $horariosSolapados)
                         ->where('estado', '!=', 'Cancelado')
                         ->with('cancha')
                         ->get();
 
-        $canchas = Cancha::where('activa', true)->get();
-
-        $noDisponibles = [];
-
-        foreach ($turnos as $turno) {
-            $cancha = $turno->cancha;
-            $noDisponibles[] = $cancha->id;
-        }
+        // Agrupar reservas por cancha_id para facilitar la verificación
+        $reservasPorCancha = $turnos->groupBy('cancha_id');
 
         $result = [];
 
         foreach ($canchas as $cancha) {
-            $disponible = !in_array($cancha->id, $noDisponibles);
+            // Una cancha está disponible si no tiene reservas en ningún horario solapado
+            $disponible = !isset($reservasPorCancha[$cancha->id]);
 
             $result[] = [
                 'id' => $cancha->id,
