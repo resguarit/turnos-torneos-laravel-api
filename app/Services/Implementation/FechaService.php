@@ -10,9 +10,17 @@ use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use App\Enums\FechaEstado;
 use Illuminate\Support\Facades\DB;
+use App\Services\Implementation\TurnoService; // Importa el servicio
 
 class FechaService implements FechaServiceInterface
 {
+    protected $turnoService;
+
+    public function __construct(TurnoService $turnoService)
+    {
+        $this->turnoService = $turnoService;
+    }
+
     public function getAll()
     {
         return Fecha::with('zona', 'partidos')->get();
@@ -192,16 +200,19 @@ class FechaService implements FechaServiceInterface
     {
         try {
             DB::beginTransaction();
+            $flag = false;
 
-            // Eliminar todas las fechas y sus relaciones
-            Fecha::whereIn('id', $fechaIds)->each(function ($fecha) {
-                // Eliminar primero los partidos asociados y sus relaciones
-                $fecha->partidos()->each(function ($partido) {
+            Fecha::whereIn('id', $fechaIds)->each(function ($fecha) use (&$flag) {
+                $fecha->partidos()->each(function ($partido) use (&$flag) {
+                    // Eliminar el turno asociado a este partido usando TurnoService
+                    if ($partido->turno) {
+                        app(TurnoService::class)->deleteTurno($partido->turno->id);
+                        $flag = true;
+                    }
                     $partido->equipos()->detach();
                     $partido->estadisticas()->delete();
                     $partido->delete();
                 });
-                
                 $fecha->delete();
             });
 
@@ -209,7 +220,8 @@ class FechaService implements FechaServiceInterface
 
             return response()->json([
                 'message' => 'Fechas eliminadas correctamente',
-                'status' => 200
+                'status' => 200,
+                'flag' => $flag
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
