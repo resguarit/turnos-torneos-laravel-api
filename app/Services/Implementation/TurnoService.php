@@ -222,36 +222,36 @@ class TurnoService implements TurnoServiceInterface
             ], 500);
         }
 
-            // Registrar transacción en cuenta corriente según el estado
-            // if ($request->estado != 'Pagado') {
-            //     // Buscar o crear la cuenta corriente de la persona
-            //     $cuentaCorriente = CuentaCorriente::firstOrCreate(
-            //         ['persona_id' => $persona->id],
-            //         ['saldo' => 0]
-            //     );
+            //Registrar transacción en cuenta corriente según el estado
+            if ($request->estado != 'Pagado') {
+                // Buscar o crear la cuenta corriente de la persona
+                $cuentaCorriente = CuentaCorriente::firstOrCreate(
+                    ['persona_id' => $persona->id],
+                    ['saldo' => 0]
+                );
                 
-                // // Determinar el monto de la transacción según el estado
-                // if ($request->estado == 'Pendiente') {
-                //     $montoTransaccion = -$monto_total; // Monto negativo por el total
-                //     $descripcion = "Reserva de turno #{$turno->id} (pendiente de pago)";
-                // } else if ($request->estado == 'Señado') {
-                //     $montoTransaccion = -($monto_total - $monto_seña); // Monto negativo por el total menos la seña
-                //     $descripcion = "Reserva de turno #{$turno->id} (señado)";
-                // }
+                // Determinar el monto de la transacción según el estado
+                if ($request->estado == 'Pendiente') {
+                    $montoTransaccion = -$monto_total; // Monto negativo por el total
+                    $descripcion = "Reserva de turno #{$turno->id} (pendiente de pago)";
+                } else if ($request->estado == 'Señado') {
+                    $montoTransaccion = -($monto_total - $monto_seña); // Monto negativo por el total menos la seña
+                    $descripcion = "Reserva de turno #{$turno->id} (señado)";
+                }
                 
-                // // Crear la transacción
-                // $transaccion = Transaccion::create([
-                //     'cuenta_corriente_id' => $cuentaCorriente->id,
-                //     'turno_id' => $turno->id,
-                //     'monto' => $montoTransaccion,
-                //     'tipo' => 'turno',
-                //     'descripcion' => $descripcion
-                // ]);
+                // Crear la transacción
+                $transaccion = Transaccion::create([
+                    'cuenta_corriente_id' => $cuentaCorriente->id,
+                    'turno_id' => $turno->id,
+                    'monto' => $montoTransaccion,
+                    'tipo' => 'turno',
+                    'descripcion' => $descripcion
+                ]);
                 
-                // // Actualizar el saldo de la cuenta corriente
-                // $cuentaCorriente->saldo += $montoTransaccion;
-                // $cuentaCorriente->save();
-            // }
+                // Actualizar el saldo de la cuenta corriente
+                $cuentaCorriente->saldo += $montoTransaccion;
+                $cuentaCorriente->save();
+            }
             
             DB::commit();
             
