@@ -50,10 +50,24 @@ class JugadorService implements JugadorServiceInterface
         try {
             $jugador = Jugador::create($request->except('equipos'));
 
-            // Asociar equipos con el campo capitan en la tabla pivote
             $equiposPivot = [];
             foreach ($request->input('equipos') as $equipo) {
                 $equiposPivot[$equipo['id']] = ['capitan' => $equipo['capitan']];
+
+                // Si es capitán, crear persona y cuenta corriente si no existen
+                if ($equipo['capitan']) {
+                    $persona = \App\Models\Persona::firstOrCreate(
+                        ['dni' => $jugador->dni],
+                        [
+                            'name' => $jugador->nombre . ' ' . $jugador->apellido,
+                            'telefono' => $jugador->telefono,
+                        ]
+                    );
+                    \App\Models\CuentaCorriente::firstOrCreate(
+                        ['persona_id' => $persona->id],
+                        ['saldo' => 0]
+                    );
+                }
             }
             $jugador->equipos()->attach($equiposPivot);
 

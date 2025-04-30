@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\CuentaCorrienteController;
 use App\Http\Controllers\Api\TransaccionesController;
 use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\Api\AuditoriaController;
+use App\Http\Controllers\Api\PagoController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -184,6 +185,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/auditorias', [AuditoriaController::class, 'index']);
 
+    Route::post('/equipos/{equipoId}/torneos/{torneoId}/pagar-inscripcion', [PagoController::class, 'registrarPagoInscripcion']);
+    Route::post('/fechas/{fechaId}/pagar', [PagoController::class, 'registrarPagoPorFecha']);
+    Route::get('/equipos/{equipoId}/torneos/{torneoId}/pago-inscripcion', [PagoController::class, 'obtenerPagoInscripcion']);
+    Route::get('/equipos/{equipoId}/zonas/{zonaId}/pago-fecha', [PagoController::class, 'obtenerPagoPorFecha']);
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
