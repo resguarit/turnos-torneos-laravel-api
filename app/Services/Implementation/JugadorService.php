@@ -33,8 +33,9 @@ class JugadorService implements JugadorServiceInterface
             'dni' => 'required|string|max:20|unique:jugadores,dni',
             'telefono' => 'nullable|string|max:20',
             'fecha_nacimiento' => 'required|date',
-            'equipo_ids' => 'required|array', // Expect an array of team IDs
-            'equipo_ids.*' => 'exists:equipos,id' // Validate each ID in the array
+            'equipos' => 'required|array',
+            'equipos.*.id' => 'required|exists:equipos,id',
+            'equipos.*.capitan' => 'required|boolean'
         ]);
 
         if ($validator->fails()) {
@@ -47,17 +48,19 @@ class JugadorService implements JugadorServiceInterface
 
         DB::beginTransaction();
         try {
-            // Create player without equipo_id
-            $jugador = Jugador::create($request->except('equipo_ids'));
+            $jugador = Jugador::create($request->except('equipos'));
 
-            // Attach teams using the pivot table
-            $jugador->equipos()->attach($request->input('equipo_ids'));
+            // Asociar equipos con el campo capitan en la tabla pivote
+            $equiposPivot = [];
+            foreach ($request->input('equipos') as $equipo) {
+                $equiposPivot[$equipo['id']] = ['capitan' => $equipo['capitan']];
+            }
+            $jugador->equipos()->attach($equiposPivot);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Jugador creado correctamente',
-                // Load the relationship for the response
                 'jugador' => $jugador->load('equipos'),
                 'status' => 201
             ], 201);
@@ -88,8 +91,9 @@ class JugadorService implements JugadorServiceInterface
             'dni' => 'sometimes|required|string|max:20|unique:jugadores,dni,' . $id,
             'telefono' => 'nullable|string|max:20',
             'fecha_nacimiento' => 'sometimes|required|date',
-            'equipo_ids' => 'sometimes|array', // Allow updating teams
-            'equipo_ids.*' => 'exists:equipos,id'
+            'equipos' => 'sometimes|array',
+            'equipos.*.id' => 'required_with:equipos|exists:equipos,id',
+            'equipos.*.capitan' => 'required_with:equipos|boolean'
         ]);
 
         if ($validator->fails()) {
@@ -102,24 +106,26 @@ class JugadorService implements JugadorServiceInterface
 
         DB::beginTransaction();
         try {
-            // Update player details
-            $jugador->update($request->except('equipo_ids'));
+            $jugador->update($request->except('equipos'));
 
-            // Sync teams if provided
-            if ($request->has('equipo_ids')) {
-                $jugador->equipos()->sync($request->input('equipo_ids'));
+            if ($request->has('equipos')) {
+                $equiposPivot = [];
+                foreach ($request->input('equipos') as $equipo) {
+                    $equiposPivot[$equipo['id']] = ['capitan' => $equipo['capitan']];
+                }
+                $jugador->equipos()->sync($equiposPivot);
             }
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Jugador actualizado correctamente',
-                'jugador' => $jugador->load('equipos'), // Load updated teams
+                'jugador' => $jugador->load('equipos'),
                 'status' => 200
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-             return response()->json([
+            return response()->json([
                 'message' => 'Error al actualizar el jugador o asociar equipos.',
                 'error' => $e->getMessage(),
                 'status' => 500
@@ -178,7 +184,8 @@ class JugadorService implements JugadorServiceInterface
             'jugadores.*.dni' => 'required|string|max:20|unique:jugadores,dni',
             'jugadores.*.telefono' => 'nullable|string|max:20',
             'jugadores.*.fecha_nacimiento' => 'required|date',
-            'equipo_id' => 'required|exists:equipos,id', // Keep single equipo_id for this specific function's context
+            'jugadores.*.capitan' => 'required|boolean', // Nuevo: validar capitan por jugador
+            'equipo_id' => 'required|exists:equipos,id',
         ]);
 
         if ($validator->fails()) {
@@ -196,10 +203,15 @@ class JugadorService implements JugadorServiceInterface
         DB::beginTransaction();
         try {
             foreach ($jugadoresData as $jugadorData) {
-                // Create player
+                // Extraer y quitar 'capitan' del array para crear el jugador
+                $capitan = $jugadorData['capitan'];
+                unset($jugadorData['capitan']);
+
+                // Crear jugador
                 $jugador = Jugador::create($jugadorData);
-                // Attach to the specified team
-                $jugador->equipos()->attach($equipoId);
+
+                // Asociar al equipo con el campo capitan en el pivote
+                $jugador->equipos()->attach($equipoId, ['capitan' => $capitan]);
                 $createdJugadores[] = $jugador->load('equipos');
             }
             DB::commit();
