@@ -30,4 +30,9 @@ class TransaccionesController extends Controller
     {
         return $this->transaccionService->saldoPorTurno($id);
     }
+
+    public function getTransaccionesPorCaja($cajaId)
+    {
+        return $this->transaccionService->getTransaccionesPorCaja($cajaId);
+    }
 }

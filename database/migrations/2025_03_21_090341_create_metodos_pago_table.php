@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use App\Models\MetodoPago;
+use App\Models\MetodoPago;
 return new class extends Migration
 {
     /**
@@ -32,17 +33,10 @@ return new class extends Migration
         ]);
 
         MetodoPago::create([
-            'nombre' => 'mercadopago',
-            'descripcion' => 'Pago por Mercado Pago',
-            'activo' => true,
-        ]);
-
-        MetodoPago::create([
             'nombre' => 'transferencia',
             'descripcion' => 'Pago por transferencia bancaria',
             'activo' => true,
         ]);
-    
     }
 
     /**

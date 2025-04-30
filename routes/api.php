@@ -23,6 +23,9 @@ use App\Http\Controllers\Api\PersonaController;
 use App\Http\Controllers\Api\CuentaCorrienteController;
 use App\Http\Controllers\Api\TransaccionesController;
 use App\Http\Controllers\MetodoPagoController;
+use App\Http\Controllers\Api\CajaController;
+use App\Http\Controllers\Api\TransaccionController;
+
 use App\Http\Controllers\Api\AuditoriaController;
 use App\Http\Controllers\Api\PagoController;
 
@@ -82,7 +85,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/usuarios/{id}', [UserController::class, 'destroy']);
     Route::post('/create-user', [UserController::class, 'createUser']);
     Route::post('/logout', [UserController::class, 'logout']);
-    
+
+    Route::post('/apertura-caja', [CajaController::class, 'abrirCaja']);
+    Route::get('/caja-abierta', [CajaController::class, 'getCaja']);
+    Route::get('/cajas', [CajaController::class, 'index']);
+    Route::post('/cierre-caja', [CajaController::class, 'cerrarCaja']);
+
+    Route::get('/auditorias', [AuditoriaController::class, 'index']);
 
     Route::get('/deportes', [DeporteController::class, 'index']);
     Route::get('/deportes/{id}', [DeporteController::class, 'show']);
@@ -189,6 +198,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/fechas/{fechaId}/pagar', [PagoController::class, 'registrarPagoPorFecha']);
     Route::get('/equipos/{equipoId}/torneos/{torneoId}/pago-inscripcion', [PagoController::class, 'obtenerPagoInscripcion']);
     Route::get('/equipos/{equipoId}/zonas/{zonaId}/pago-fecha', [PagoController::class, 'obtenerPagoPorFecha']);
+    
+    Route::delete('/personas/{id}', [PersonaController::class, 'destroy']);
+
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
@@ -206,6 +218,7 @@ Route::get('/cuentas-corrientes/persona/{id}', [CuentaCorrienteController::class
 Route::get('/transacciones', [TransaccionesController::class, 'index']);
 Route::post('/transacciones', [TransaccionesController::class, 'store']);
 Route::get('/transacciones/turno/{id}', [TransaccionesController::class, 'saldoPorTurno']);
+Route::get('/transacciones/caja/{cajaId}', [TransaccionesController::class, 'getTransaccionesPorCaja']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios', [HorarioController::class, 'index']);

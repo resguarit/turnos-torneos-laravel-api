@@ -12,7 +12,7 @@ class Transaccion extends Model
     protected $table = 'transacciones';
 
     protected $fillable = [
-        'cuenta_corriente_id', 'turno_id', 'monto', 'tipo', 'descripcion', 'caja_id', 'metodo_pago_id'  
+        'cuenta_corriente_id', 'turno_id', 'monto', 'tipo', 'descripcion', 'caja_id', 'metodo_pago_id'
     ];
 
     /**

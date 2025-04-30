@@ -30,7 +30,7 @@ class DatabaseSeeder extends Seeder
             'saldo' => 0,
         ]);
 
-        User::factory()->create([
+        User::create([
             'email' => 'admin@gmail.com',
             'dni' => '123456',
             'password' => bcrypt('password'),

@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Services\Interface\CanchaServiceInterface;
 use App\Services\Implementation\AuditoriaService;
 use Illuminate\Validation\Rule;
+use App\Models\Deporte;
 
 class CanchaService implements CanchaServiceInterface
 {
     public function getCanchas()
     {
-        $canchas = Cancha::all();
+        $canchas = Cancha::with('deporte')->get();
 
         return response()->json([
             'canchas' => $canchas,
@@ -75,9 +76,13 @@ class CanchaService implements CanchaServiceInterface
             ], 400);
         }
 
+        $deporte = Deporte::find($request->deporte_id);
+        $tipoCancha = strtoupper(substr($deporte->nombre, 0, 1)) . $deporte->jugadores_por_equipo;
+
         $cancha = Cancha::create([
             'nro' => $request->nro,
-            'tipo_cancha' => $request->tipo_cancha,
+            'tipo_cancha' => $tipoCancha,
+            'deporte_id' => $request->deporte_id,
             'precio_por_hora' => $request->precio_por_hora,
             'seña' => $request->seña,
             'activa' => $request->activa,
@@ -163,7 +168,6 @@ class CanchaService implements CanchaServiceInterface
 
         $cancha->save();
 
-        // Registrar auditoría
         AuditoriaService::registrar(
             'modificar',
             'canchas',
@@ -187,7 +191,6 @@ class CanchaService implements CanchaServiceInterface
 
             $cancha->delete();
 
-            // Registrar auditoría
             AuditoriaService::registrar(
                 'eliminar',
                 'canchas',

@@ -3,12 +3,13 @@
 namespace App\Services\Implementation;
 
 use App\Models\User;
-use App\Models\Auditoria;
 use App\Models\Persona;
+use App\Models\Auditoria;
 use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
 use Illuminate\Support\Facades\DB;
 use App\Services\Interface\AuditoriaServiceInterface;
+use App\Models\CuentaCorriente;
 
 class AuthService implements AuthServiceInterface
 {
@@ -49,6 +50,61 @@ class AuthService implements AuthServiceInterface
 
     public function register(array $data)
     {
+        DB::beginTransaction();
+        
+        try {
+            // Buscar si ya existe una persona con el mismo DNI
+            $persona = Persona::where('dni', $data['dni'])->first();
+
+            if (!$persona) {
+                // Si no existe, crear una nueva persona
+                $persona = Persona::create([
+                    'name' => $data['name'],
+                    'dni' => $data['dni'],
+                    'telefono' => $data['telefono'],
+                    'direccion' => $data['direccion'] ?? null,
+                ]);
+            }
+
+            if (!$persona->cuentaCorriente) {
+                $cuentaCorriente = CuentaCorriente::create([
+                    'persona_id' => $persona->id,
+                    'saldo' => 0
+                ]);
+            }
+
+            if ($persona->user) {
+                return [
+                    'message' => 'Ya existe un usuario registrado con este DNI',
+                    'status' => 400
+                ];
+            }
+
+            // Crear usuario asociado a la persona
+            $user = User::create([
+                'email' => $data['email'],
+                'dni' => $data['dni'],
+                'password' => Hash::make($data['password']),
+                'rol' => 'cliente',
+                'persona_id' => $persona->id
+            ]);
+            
+            DB::commit();
+            
+            return [
+                'message' => 'Usuario registrado exitosamente',
+                'user' => $user,
+                'persona' => $persona,
+                'status' => 201
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return [
+                'message' => 'Error al registrar usuario: ' . $e->getMessage(),
+                'status' => 500
+            ];
+        }
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
