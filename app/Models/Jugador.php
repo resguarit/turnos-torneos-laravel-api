@@ -14,8 +14,9 @@ class Jugador extends Model
 
     protected $fillable = ['nombre', 'apellido', 'dni', 'telefono', 'fecha_nacimiento'];
 
-    public function equipos() 
+    public function equipos()
     {
-        return $this->belongsToMany(Equipo::class, 'equipo_jugador');
+        return $this->belongsToMany(Equipo::class, 'equipo_jugador')
+            ->withPivot('capitan');
     }
 }
