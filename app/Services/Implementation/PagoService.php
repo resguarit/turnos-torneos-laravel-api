@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class PagoService
 {
-    public function registrarPagoInscripcion($equipoId, $torneoId)
+    public function registrarPagoInscripcion($equipoId, $torneoId, $metodoPagoId)
     {
         $equipo = Equipo::findOrFail($equipoId);
         $torneo = Torneo::findOrFail($torneoId);
@@ -39,7 +39,7 @@ class PagoService
         );
 
         // Buscar la primera caja abierta
-        $caja = \App\Models\Caja::where('estado', 'abierta')->orderBy('id')->first();
+        $caja = \App\Models\Caja::where('activa', 1)->orderBy('id')->first();
         if (!$caja) {
             return [
                 'message' => 'Error al registrar el pago',
@@ -55,11 +55,12 @@ class PagoService
             $transaccion = Transaccion::create([
                 'cuenta_corriente_id' => $cuentaCorriente->id,
                 'caja_id' => $caja->id,
-                'monto' => -$monto,
-                'tipo' => 'inscripcion',
+                'metodo_pago_id' => $metodoPagoId,
+                'monto' => $monto, // Cambia a positivo para un depósito
+                'tipo' => 'inscripcion', // Cambia el tipo a "deposito"
                 'descripcion' => "Pago inscripción torneo {$torneo->nombre} ({$torneo->id})"
             ]);
-            $cuentaCorriente->saldo -= $monto;
+            $cuentaCorriente->saldo += $monto; // Incrementa el saldo
             $cuentaCorriente->save();
 
             DB::commit();
@@ -79,7 +80,7 @@ class PagoService
         }
     }
 
-    public function registrarPagoPorFecha($fechaId)
+    public function registrarPagoPorFecha($fechaId, $metodoPagoId)
     {
         $fecha = \App\Models\Fecha::with('zona.equipos', 'zona.torneo')->findOrFail($fechaId);
 
@@ -125,7 +126,7 @@ class PagoService
             );
 
             // Buscar la primera caja abierta
-            $caja = \App\Models\Caja::where('estado', 'abierta')->orderBy('id')->first();
+            $caja = \App\Models\Caja::where('activa', 1)->orderBy('id')->first();
             if (!$caja) {
                 $pagos[] = [
                     'equipo_id' => $equipo->id,
@@ -143,11 +144,12 @@ class PagoService
                 $transaccion = \App\Models\Transaccion::create([
                     'cuenta_corriente_id' => $cuentaCorriente->id,
                     'caja_id' => $caja->id,
-                    'monto' => -$monto,
+                    'metodo_pago_id' => $metodoPagoId,
+                    'monto' => $monto,
                     'tipo' => 'fecha',
                     'descripcion' => "Pago de fecha '{$fecha->nombre}' del torneo {$torneo->nombre} ({$torneo->id})"
                 ]);
-                $cuentaCorriente->saldo -= $monto;
+                $cuentaCorriente->saldo += $monto;
                 $cuentaCorriente->save();
 
                 $pagos[] = [

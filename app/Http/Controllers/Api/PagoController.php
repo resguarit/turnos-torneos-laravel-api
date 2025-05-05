@@ -15,17 +15,17 @@ class PagoController extends Controller
         $this->pagoService = $pagoService;
     }
 
-    public function registrarPagoInscripcion($equipoId, $torneoId)
+    public function registrarPagoInscripcion($equipoId, $torneoId, $metodoPagoId)
     {
         return response()->json(
-            $this->pagoService->registrarPagoInscripcion($equipoId, $torneoId)
+            $this->pagoService->registrarPagoInscripcion($equipoId, $torneoId, $metodoPagoId)
         );
     }
     
-    public function registrarPagoPorFecha($fechaId)
+    public function registrarPagoPorFecha($fechaId, $metodoPagoId)
     {
         return response()->json(
-            $this->pagoService->registrarPagoPorFecha($fechaId)
+            $this->pagoService->registrarPagoPorFecha($fechaId, $metodoPagoId)
         );
     }
 

@@ -201,6 +201,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::delete('/personas/{id}', [PersonaController::class, 'destroy']);
 
+    Route::post('pago/inscripcion/{equipoId}/{torneoId}/{metodoPagoId}', [PagoController::class, 'registrarPagoInscripcion']);
+    Route::post('pago/fecha/{fechaId}/{metodoPagoId}', [PagoController::class, 'registrarPagoPorFecha']);
+
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
