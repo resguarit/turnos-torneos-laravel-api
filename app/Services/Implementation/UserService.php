@@ -44,7 +44,7 @@ class UserService implements UserServiceInterface
         ];
     }
 
-    public function createUser(array $data)
+    public function createUser(Request $request)
     {
         try {
             DB::beginTransaction();

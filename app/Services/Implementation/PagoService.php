@@ -38,12 +38,23 @@ class PagoService
             ['saldo' => 0]
         );
 
+        // Buscar la primera caja abierta
+        $caja = \App\Models\Caja::where('estado', 'abierta')->orderBy('id')->first();
+        if (!$caja) {
+            return [
+                'message' => 'Error al registrar el pago',
+                'error' => 'No hay una caja abierta disponible',
+                'status' => 400
+            ];
+        }
+
         // Registrar el pago (transacción)
         DB::beginTransaction();
         try {
             $monto = $torneo->precio_inscripcion;
             $transaccion = Transaccion::create([
                 'cuenta_corriente_id' => $cuentaCorriente->id,
+                'caja_id' => $caja->id,
                 'monto' => -$monto,
                 'tipo' => 'inscripcion',
                 'descripcion' => "Pago inscripción torneo {$torneo->nombre} ({$torneo->id})"
@@ -113,11 +124,25 @@ class PagoService
                 ['saldo' => 0]
             );
 
+            // Buscar la primera caja abierta
+            $caja = \App\Models\Caja::where('estado', 'abierta')->orderBy('id')->first();
+            if (!$caja) {
+                $pagos[] = [
+                    'equipo_id' => $equipo->id,
+                    'equipo' => $equipo->nombre,
+                    'status' => 'error',
+                    'message' => 'Error al registrar el pago',
+                    'error' => 'No hay una caja abierta disponible'
+                ];
+                continue;
+            }
+
             // Registrar el pago (transacción)
             try {
                 $monto = $torneo->precio_por_fecha;
                 $transaccion = \App\Models\Transaccion::create([
                     'cuenta_corriente_id' => $cuentaCorriente->id,
+                    'caja_id' => $caja->id,
                     'monto' => -$monto,
                     'tipo' => 'fecha',
                     'descripcion' => "Pago de fecha '{$fecha->nombre}' del torneo {$torneo->nombre} ({$torneo->id})"

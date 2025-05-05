@@ -39,8 +39,4 @@ class Cancha extends Model
         return $this->hasMany(BloqueoTemporal::class, 'cancha_id');
     }
 
-    public function deporte()
-    {
-        return $this->belongsTo(Deporte::class);
-    }
 }
