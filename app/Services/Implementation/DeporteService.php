@@ -12,7 +12,7 @@ class DeporteService implements DeporteServiceInterface
 {
     public function getAll()
     {
-        return Deporte::all();
+        return Deporte::with('canchas')->get();
     }
 
     public function getById($id)
