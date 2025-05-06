@@ -601,7 +601,7 @@ class TurnoService implements TurnoServiceInterface
     public function showTurno($id)
     {
         try {
-            $turno = Turno::with(['cancha', 'horario'])->findOrFail($id);
+            $turno = Turno::with(['cancha.deporte', 'horario'])->findOrFail($id);
 
             $data = [
             'turno' => new TurnoResource($turno),
