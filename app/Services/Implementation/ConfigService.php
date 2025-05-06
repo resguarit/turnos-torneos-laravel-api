@@ -88,12 +88,12 @@ class ConfigService implements ConfigServiceInterface
                 ]
             );
 
-            $deporte = Deporte::find($deporteId);
+            //$deporte = Deporte::find($deporteId);
             
-            $deporteNombre = strtolower($deporte->nombre);
-            if ($deporteNombre == 'futbol' || $deporteNombre == 'fútbol') {
-                $horaActual->subMinutes(30);
-            }
+            //$deporteNombre = strtolower($deporte->nombre);
+            //if ($deporteNombre == 'futbol' || $deporteNombre == 'fútbol') {
+            //    $horaActual->subMinutes(30);
+            //}
         }
     }
 
