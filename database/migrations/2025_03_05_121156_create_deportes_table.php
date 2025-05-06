@@ -27,28 +27,9 @@ return new class extends Migration
 
         Deporte::create([
             'nombre' => 'Futbol',
-            'jugadores_por_equipo' => 6,
-            'duracion_turno' => 60,
-        ]);
-
-        Deporte::create([
-            'nombre' => 'Futbol',
             'jugadores_por_equipo' => 7,
             'duracion_turno' => 60,
         ]);
-
-        Deporte::create([
-            'nombre' => 'Futbol',
-            'jugadores_por_equipo' => 9,
-            'duracion_turno' => 60,
-        ]);
-
-        Deporte::create([
-            'nombre' => 'Futbol',
-            'jugadores_por_equipo' => 11,
-            'duracion_turno' => 90,
-        ]);
-
     }
 
     /**
