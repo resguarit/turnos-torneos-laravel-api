@@ -625,6 +625,7 @@ class TurnoService implements TurnoServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
+            'deporte_id' => 'required|exists:deportes,id'
         ]);
 
         if ($validator->fails()) {
@@ -637,18 +638,31 @@ class TurnoService implements TurnoServiceInterface
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
         $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
+        $deporteId = $request->deporte_id;
 
-        $horarios = Horario::where('activo', true)
-                            ->where('dia', $diaSemana)
-                            ->orderBy('hora_inicio', 'asc')
-                            ->get();
+        // Consulta base de horarios - filtrar siempre por deporte
+        $horariosQuery = Horario::where('activo', true)
+                                ->where('dia', $diaSemana)
+                                ->where('deporte_id', $deporteId)
+                                ->orderBy('hora_inicio', 'asc');
+        
+        $horarios = $horariosQuery->get();
 
-        $canchas = Cancha::where('activa', true)->get();
+        // Consulta base de canchas - filtrar siempre por deporte
+        $canchasQuery = Cancha::where('activa', true)
+                              ->where('deporte_id', $deporteId);
+        
+        $canchas = $canchasQuery->get();
 
-        $turnos = Turno::whereDate('fecha_turno', $fecha)
+        // Consulta base de turnos - filtrar siempre por deporte a través de las canchas
+        $turnosQuery = Turno::whereDate('fecha_turno', $fecha)
                             ->with(['persona', 'horario', 'cancha'])
                             ->where('estado', '!=', 'Cancelado')
-                            ->get();
+                            ->whereHas('cancha', function($query) use ($deporteId) {
+                                $query->where('deporte_id', $deporteId);
+                            });
+        
+        $turnos = $turnosQuery->get();
 
         $grid = [];
 
@@ -658,27 +672,31 @@ class TurnoService implements TurnoServiceInterface
             $grid[$hora] = [];
 
             foreach ($canchas as $cancha) {
-                $turno = $turnos->first(function ($t) use ($horario, $cancha) {
-                    return $t->horario_id == $horario->id && $t->cancha_id == $cancha->id;
-                });
+                // Solo incluir canchas que coincidan con el deporte del horario
+                if ($cancha->deporte_id == $horario->deporte_id) {
+                    $turno = $turnos->first(function ($t) use ($horario, $cancha) {
+                        return $t->horario_id == $horario->id && $t->cancha_id == $cancha->id;
+                    });
 
-                $grid[$hora][$cancha->nro] = [
-                    'cancha' => $cancha->nro,
-                    'tipo' => $cancha->tipo_cancha,
-                    'turno' => $turno ? [
-                        'id' => $turno->id,
-                        'usuario' => [
-                            'usuario_id' => $turno->persona->usuario?->id ?? null,
-                            'nombre' => $turno->persona->name,
-                            'dni' => $turno->persona->dni,
-                            'telefono' => $turno->persona->telefono,
-                        ],
-                        'monto_total' => $turno->monto_total,
-                        'monto_seña' => $turno->monto_seña,
-                        'estado' => $turno->estado,
-                        'tipo' => $turno->tipo,
-                    ] : null,
-                ];
+                    $grid[$hora][$cancha->nro] = [
+                        'cancha' => $cancha->nro,
+                        'deporte' => $cancha->deporte,
+                        'tipo' => $cancha->tipo_cancha,
+                        'turno' => $turno ? [
+                            'id' => $turno->id,
+                            'usuario' => [
+                                'usuario_id' => $turno->persona->usuario?->id ?? null,
+                                'nombre' => $turno->persona->name,
+                                'dni' => $turno->persona->dni,
+                                'telefono' => $turno->persona->telefono,
+                            ],
+                            'monto_total' => $turno->monto_total,
+                            'monto_seña' => $turno->monto_seña,
+                            'estado' => $turno->estado,
+                            'tipo' => $turno->tipo,
+                        ] : null,
+                    ];
+                }
             }
         }
 
