@@ -24,6 +24,7 @@ use App\Models\CuentaCorriente;
 use App\Models\Transaccion;
 use function Symfony\Component\Clock\now;
 use App\Services\Implementation\AuditoriaService;
+use App\Notifications\ReservaNotification;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -238,6 +239,11 @@ class TurnoService implements TurnoServiceInterface
                 // Actualizar el saldo de la cuenta corriente
                 $cuentaCorriente->saldo += $montoTransaccion;
                 $cuentaCorriente->save();
+            }
+
+            $admin = User::where('email', 'marianosalas24@gmail.com')->first();
+            if ($admin) {
+                $admin->notify(new ReservaNotification($turno, 'nueva'));
             }
             
             DB::commit();
