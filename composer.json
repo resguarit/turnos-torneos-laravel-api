@@ -11,6 +11,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.16",
         "laravel/tinker": "^2.9",
+        "mercadopago/dx-php": "^3.3",
         "nesbot/carbon": "*",
         "predis/predis": "^2.3"
     },
