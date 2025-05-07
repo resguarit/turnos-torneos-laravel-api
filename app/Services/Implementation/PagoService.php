@@ -82,7 +82,7 @@ class PagoService
 
     public function registrarPagoPorFecha($fechaId, $metodoPagoId)
     {
-        $fecha = \App\Models\Fecha::with('zona.equipos', 'zona.torneo')->findOrFail($fechaId);
+        $fecha = \App\Models\Fecha::with('zona.torneo')->findOrFail($fechaId);
 
         if (!$fecha->zona || !$fecha->zona->torneo) {
             return [
@@ -92,88 +92,85 @@ class PagoService
         }
 
         $torneo = $fecha->zona->torneo;
-        $equipos = $fecha->zona->equipos;
 
-        $pagos = [];
-
-        foreach ($equipos as $equipo) {
-            // Buscar capitán del equipo
-            $capitan = $equipo->jugadores()->wherePivot('capitan', true)->first();
-            if (!$capitan) {
-                $pagos[] = [
-                    'equipo_id' => $equipo->id,
-                    'equipo' => $equipo->nombre,
-                    'status' => 'error',
-                    'message' => 'No se encontró capitán para este equipo'
-                ];
-                continue;
-            }
-
-            // Buscar persona y cuenta corriente
-            $persona = \App\Models\Persona::where('dni', $capitan->dni)->first();
-            if (!$persona) {
-                $pagos[] = [
-                    'equipo_id' => $equipo->id,
-                    'equipo' => $equipo->nombre,
-                    'status' => 'error',
-                    'message' => 'No se encontró persona para el capitán'
-                ];
-                continue;
-            }
-            $cuentaCorriente = \App\Models\CuentaCorriente::firstOrCreate(
-                ['persona_id' => $persona->id],
-                ['saldo' => 0]
-            );
-
-            // Buscar la primera caja abierta
-            $caja = \App\Models\Caja::where('activa', 1)->orderBy('id')->first();
-            if (!$caja) {
-                $pagos[] = [
-                    'equipo_id' => $equipo->id,
-                    'equipo' => $equipo->nombre,
-                    'status' => 'error',
-                    'message' => 'Error al registrar el pago',
-                    'error' => 'No hay una caja abierta disponible'
-                ];
-                continue;
-            }
-
-            // Registrar el pago (transacción)
-            try {
-                $monto = $torneo->precio_por_fecha;
-                $transaccion = \App\Models\Transaccion::create([
-                    'cuenta_corriente_id' => $cuentaCorriente->id,
-                    'caja_id' => $caja->id,
-                    'metodo_pago_id' => $metodoPagoId,
-                    'monto' => $monto,
-                    'tipo' => 'fecha',
-                    'descripcion' => "Pago de fecha '{$fecha->nombre}' del torneo {$torneo->nombre} ({$torneo->id})"
-                ]);
-                $cuentaCorriente->saldo += $monto;
-                $cuentaCorriente->save();
-
-                $pagos[] = [
-                    'equipo_id' => $equipo->id,
-                    'equipo' => $equipo->nombre,
-                    'status' => 'ok',
-                    'transaccion' => $transaccion,
-                    'nuevo_saldo' => $cuentaCorriente->saldo
-                ];
-            } catch (\Exception $e) {
-                $pagos[] = [
-                    'equipo_id' => $equipo->id,
-                    'equipo' => $equipo->nombre,
-                    'status' => 'error',
-                    'message' => $e->getMessage()
-                ];
-            }
+        // Buscar la primera caja abierta
+        $caja = \App\Models\Caja::where('activa', 1)->orderBy('id')->first();
+        if (!$caja) {
+            return [
+                'message' => 'Error al registrar el pago',
+                'error' => 'No hay una caja abierta disponible',
+                'status' => 400
+            ];
         }
 
-        return [
-            'message' => 'Pagos de fecha procesados',
-            'pagos' => $pagos,
-            'status' => 200
-        ];
+        // Buscar el capitán del equipo asociado a la fecha
+        $equipo = $fecha->zona->equipos->first(); // Asume que hay un equipo asociado a la zona
+        if (!$equipo) {
+            return [
+                'message' => 'No se encontró un equipo asociado a la zona de la fecha',
+                'status' => 400
+            ];
+        }
+
+        $capitan = $equipo->jugadores()->wherePivot('capitan', true)->first();
+        if (!$capitan) {
+            return [
+                'message' => 'No se encontró un capitán para el equipo',
+                'status' => 400
+            ];
+        }
+
+        // Buscar la persona asociada al capitán
+        $persona = \App\Models\Persona::where('dni', $capitan->dni)->first();
+        if (!$persona) {
+            return [
+                'message' => 'No se encontró una persona asociada al capitán',
+                'status' => 400
+            ];
+        }
+
+        // Buscar la cuenta corriente asociada a la persona
+        $cuentaCorriente = \App\Models\CuentaCorriente::where('persona_id', $persona->id)->first();
+        if (!$cuentaCorriente) {
+            return [
+                'message' => 'No se encontró una cuenta corriente asociada a la persona',
+                'status' => 400
+            ];
+        }
+
+        // Registrar el pago en la cuenta corriente del capitán
+        DB::beginTransaction();
+        try {
+            $monto = $torneo->precio_por_fecha;
+
+            // Crear la transacción asociada a la cuenta corriente del capitán
+            $transaccion = \App\Models\Transaccion::create([
+                'cuenta_corriente_id' => $cuentaCorriente->id,
+                'caja_id' => $caja->id,
+                'metodo_pago_id' => $metodoPagoId,
+                'monto' => $monto,
+                'tipo' => 'fecha',
+                'descripcion' => "Pago de fecha '{$fecha->nombre}' del torneo {$torneo->nombre} ({$torneo->id})"
+            ]);
+            
+            $cuentaCorriente->save();
+
+            DB::commit();
+
+            return [
+                'message' => 'Pago de fecha registrado correctamente',
+                'transaccion' => $transaccion,
+                'nuevo_saldo' => $cuentaCorriente->saldo,
+                'status' => 201
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'message' => 'Error al registrar el pago de fecha',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ];
+        }
     }
 
     public function obtenerPagoInscripcion($equipoId, $torneoId)

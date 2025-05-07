@@ -4,12 +4,16 @@
 namespace App\Services\Implementation;
 
 use App\Models\Jugador;
-use App\Models\Equipo;
 use App\Services\Interface\JugadorServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Enums\FechaEstado;
+use App\Models\CuentaCorriente;
+use App\Models\Equipo;
+use App\Models\Zona;
+use App\Models\Persona;
+
 
 class JugadorService implements JugadorServiceInterface
 {
@@ -56,17 +60,25 @@ class JugadorService implements JugadorServiceInterface
 
                 // Si es capitán, crear persona y cuenta corriente si no existen
                 if ($equipo['capitan']) {
-                    $persona = \App\Models\Persona::firstOrCreate(
+                    $persona = Persona::firstOrCreate(
                         ['dni' => $jugador->dni],
                         [
                             'name' => $jugador->nombre . ' ' . $jugador->apellido,
                             'telefono' => $jugador->telefono,
                         ]
                     );
-                    \App\Models\CuentaCorriente::firstOrCreate(
+                    $equipoModel = Equipo::find($equipo['id']);
+                    $torneo = $equipoModel->zonas->first()->torneo ?? null; // Asume que el equipo pertenece a una zona y torneo
+                    $precioInscripcion = $torneo ? $torneo->precio_inscripcion : 0;
+
+                    // Crear la cuenta corriente con saldo inicial negativo
+                    $cuentaCorriente = CuentaCorriente::firstOrCreate(
                         ['persona_id' => $persona->id],
-                        ['saldo' => 0]
+                        ['saldo' => 0] 
                     );
+                    
+                    $cuentaCorriente->saldo -= $precioInscripcion;
+                    $cuentaCorriente->save();
                 }
             }
             $jugador->equipos()->attach($equiposPivot);
@@ -263,14 +275,14 @@ class JugadorService implements JugadorServiceInterface
         }
 
         // Obtener el torneo de la zona
-        $zona = \App\Models\Zona::with('torneo')->find($zonaId);
+        $zona = Zona::with('torneo')->find($zonaId);
         if (!$zona || !$zona->torneo) {
             return response()->json([], 200);
         }
         $torneoId = $zona->torneo->id;
 
         // Obtener equipos de ese torneo
-        $equiposTorneoIds = \App\Models\Equipo::whereHas('zonas', function($q) use ($torneoId) {
+        $equiposTorneoIds = Equipo::whereHas('zonas', function($q) use ($torneoId) {
             $q->where('torneo_id', $torneoId);
         })->pluck('id');
 
@@ -309,7 +321,7 @@ class JugadorService implements JugadorServiceInterface
 
     public function getInfoJugadorByDni($dni)
 {
-    $jugador = \App\Models\Jugador::where('dni', $dni)
+    $jugador = Jugador::where('dni', $dni)
         ->with([
             'equipos.zonas.torneo',
             'equipos.zonas.fechas.partidos.equipoLocal',
