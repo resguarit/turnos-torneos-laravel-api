@@ -80,4 +80,21 @@ class JugadorController extends Controller
     {
         return app(\App\Services\Implementation\JugadorService::class)->getInfoJugadorByDni($dni);
     }
+
+    public function getEquipoJugadorId($equipoId, $jugadorId)
+    {
+        $equipoJugadorId = $this->jugadorService->getEquipoJugadorId($equipoId, $jugadorId);
+
+        if (!$equipoJugadorId) {
+            return response()->json([
+                'message' => 'No se encontró la relación entre el equipo y el jugador',
+                'status' => 404
+            ], 404);
+        }
+
+        return response()->json([
+            'equipo_jugador_id' => $equipoJugadorId,
+            'status' => 200
+        ], 200);
+    }
 }

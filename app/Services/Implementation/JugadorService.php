@@ -387,4 +387,13 @@ class JugadorService implements JugadorServiceInterface
         'equipos' => $equipos
     ]);
 }
+
+public function getEquipoJugadorId($equipoId, $jugadorId)
+{
+    return DB::table('equipo_jugador')
+        ->where('equipo_id', $equipoId)
+        ->where('jugador_id', $jugadorId)
+        ->value('id'); // Devuelve solo el ID
+}
+
 }
