@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('estado')->default('Pendiente');
             $table->string('tipo')->default('unico');
             $table->timestamps();
-            $table->unique(['cancha_id', 'horario_id', 'fecha_turno', 'estado']);
         });
     }
 

@@ -25,6 +25,10 @@ use App\Models\Transaccion;
 use function Symfony\Component\Clock\now;
 use App\Services\Implementation\AuditoriaService;
 use App\Notifications\ReservaNotification;
+use App\Mail\ReservaConfirmada;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -34,7 +38,7 @@ class TurnoService implements TurnoServiceInterface
             'fecha' => 'date|nullable',
             'fecha_inicio' => 'date|nullable',
             'fecha_fin' => 'date|nullable|required_with:fecha_inicio|after_or_equal:fecha_inicio',
-            'searchType' => 'string|nullable|in:name,email,dni,telefono',
+            'searchType' => 'string|nullable|in:name,email,dni,telefono,id',
             'searchTerm' => 'string|nullable',
         ]);
 
@@ -48,6 +52,10 @@ class TurnoService implements TurnoServiceInterface
 
         $fechaHoy = Carbon::today();
         $query = Turno::query();
+
+        if ($request->has('searchType') && $request->has('searchTerm') && $request->searchType === 'id') {
+            $query->where('turnos.id', $request->searchTerm);
+        }
 
         if ($request->has('fecha')) {
             $query->whereDate('fecha_turno', $request->fecha);
@@ -70,7 +78,7 @@ class TurnoService implements TurnoServiceInterface
                 $query->whereHas('persona.usuario', function ($q) use ($searchTerm) {
                     $q->where('email', 'like', "%{$searchTerm}%");
                 });
-            } else {
+            } else if ($searchType !== 'id') {
                 $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
                     $q->where($searchType, 'like', "%{$searchTerm}%");
                 });
@@ -241,10 +249,11 @@ class TurnoService implements TurnoServiceInterface
                 $cuentaCorriente->save();
             }
 
-            $admin = User::where('email', 'marianosalas24@gmail.com')->first();
-            if ($admin) {
-                $admin->notify(new ReservaNotification($turno, 'nueva'));
+            if ($persona->usuario) {
+                $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion'));
             }
+
+            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion'));
             
             DB::commit();
             
@@ -782,7 +791,7 @@ class TurnoService implements TurnoServiceInterface
     {
         $user = Auth::user();
 
-        $turno = Turno::with(['horario', 'persona', 'persona.cuentaCorriente'])->find($id);
+        $turno = Turno::with(['horario', 'persona', 'persona.cuentaCorriente', 'cancha'])->find($id);
 
         if (!$turno) {
             return response()->json([
@@ -895,6 +904,13 @@ class TurnoService implements TurnoServiceInterface
                 $turno->toArray(), 
                 null
             );
+
+            $persona = Persona::find($turno->persona_id);
+            if ($persona->usuario) {
+                $persona->usuario->notify(new ReservaNotification($turno, 'cancelacion'));
+            }
+
+            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.cancelacion'));
 
             DB::commit();
 

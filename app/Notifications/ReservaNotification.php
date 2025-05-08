@@ -6,20 +6,22 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Mail\ReservaConfirmada;
+use App\Mail\ReservaCancelada;
+use App\Models\Turno;
 
-class ReservaNotification extends Notification
+class ReservaNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    protected $reserva;
+    protected $turno;
     protected $tipo;
-
     /**
      * Create a new notification instance.
      */
-    public function __construct($reserva, $tipo)
+    public function __construct($turno, $tipo)
     {
-        $this->reserva = $reserva;
+        $this->turno = $turno;
         $this->tipo = $tipo;
     }
 
@@ -38,14 +40,26 @@ class ReservaNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)   
-            ->subject($this->tipo === 'nueva' ? '📅 Nueva reserva' : '❌ Reserva cancelada')
-            ->line($this->tipo === 'nueva' ? 'Se ha registrado una nueva reserva.' : 'Una reserva ha sido cancelada.')
-            ->line('Detalles:')
-            ->line('ID: ' . $this->reserva->id)
-            ->line('Cliente: ' . $this->reserva->cliente->nombre)
-            ->action('Ver en el sistema', url('http://localhost:5173/editar-turno/' . $this->reserva->id))
-            ->line('¡Gracias por usar nuestro sistema!');
+        switch ($this->tipo) {
+            case 'confirmacion':
+                return (new MailMessage)
+                    ->subject('Reserva Confirmada (' . $this->turno->id . ')')
+                    ->view('emails.turnos.confirmation', ['turno' => $this->turno]);
+            case 'cancelacion':
+                return (new MailMessage)
+                    ->subject('Reserva Cancelada (' . $this->turno->id . ')')
+                    ->view('emails.turnos.cancelation', ['turno' => $this->turno]);
+            case 'admin.confirmacion':
+                return (new MailMessage)
+                    ->subject('Reserva Confirmada (' . $this->turno->id . ')')
+                    ->view('emails.turnos.admin.confirmation', ['turno' => $this->turno]);
+            case 'admin.cancelacion':
+                return (new MailMessage)
+                    ->subject('Reserva Cancelada (' . $this->turno->id . ')')
+                    ->view('emails.turnos.admin.cancelation', ['turno' => $this->turno]);
+            default:
+                throw new \InvalidArgumentException('Tipo de notificación no válido: ' . $this->tipo);
+        }
     }
     
     /**
