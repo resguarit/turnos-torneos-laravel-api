@@ -53,6 +53,9 @@ class AuthService implements AuthServiceInterface
     public function register(array $data)
     {
         DB::beginTransaction();
+
+        // Limpiar el DNI de puntos y espacios
+        $data['dni'] = str_replace(['.', ' '], '', $data['dni']);
         
         try {
             // Buscar si ya existe una persona con el mismo DNI

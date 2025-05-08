@@ -24,6 +24,11 @@ use App\Models\CuentaCorriente;
 use App\Models\Transaccion;
 use function Symfony\Component\Clock\now;
 use App\Services\Implementation\AuditoriaService;
+use App\Notifications\ReservaNotification;
+use App\Mail\ReservaConfirmada;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -33,7 +38,7 @@ class TurnoService implements TurnoServiceInterface
             'fecha' => 'date|nullable',
             'fecha_inicio' => 'date|nullable',
             'fecha_fin' => 'date|nullable|required_with:fecha_inicio|after_or_equal:fecha_inicio',
-            'searchType' => 'string|nullable|in:name,email,dni,telefono',
+            'searchType' => 'string|nullable|in:name,email,dni,telefono,id',
             'searchTerm' => 'string|nullable',
         ]);
 
@@ -47,6 +52,10 @@ class TurnoService implements TurnoServiceInterface
 
         $fechaHoy = Carbon::today();
         $query = Turno::query();
+
+        if ($request->has('searchType') && $request->has('searchTerm') && $request->searchType === 'id') {
+            $query->where('turnos.id', $request->searchTerm);
+        }
 
         if ($request->has('fecha')) {
             $query->whereDate('fecha_turno', $request->fecha);
@@ -69,7 +78,7 @@ class TurnoService implements TurnoServiceInterface
                 $query->whereHas('persona.usuario', function ($q) use ($searchTerm) {
                     $q->where('email', 'like', "%{$searchTerm}%");
                 });
-            } else {
+            } else if ($searchType !== 'id') {
                 $query->whereHas('persona', function ($q) use ($searchType, $searchTerm) {
                     $q->where($searchType, 'like', "%{$searchTerm}%");
                 });
@@ -239,6 +248,12 @@ class TurnoService implements TurnoServiceInterface
                 $cuentaCorriente->saldo += $montoTransaccion;
                 $cuentaCorriente->save();
             }
+
+            if ($persona->usuario) {
+                $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion'));
+            }
+
+            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion'));
             
             DB::commit();
             
@@ -601,7 +616,7 @@ class TurnoService implements TurnoServiceInterface
     public function showTurno($id)
     {
         try {
-            $turno = Turno::with(['cancha', 'horario'])->findOrFail($id);
+            $turno = Turno::with(['cancha.deporte', 'horario'])->findOrFail($id);
 
             $data = [
             'turno' => new TurnoResource($turno),
@@ -625,6 +640,7 @@ class TurnoService implements TurnoServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
+            'deporte_id' => 'required|exists:deportes,id'
         ]);
 
         if ($validator->fails()) {
@@ -637,18 +653,31 @@ class TurnoService implements TurnoServiceInterface
 
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
         $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
+        $deporteId = $request->deporte_id;
 
-        $horarios = Horario::where('activo', true)
-                            ->where('dia', $diaSemana)
-                            ->orderBy('hora_inicio', 'asc')
-                            ->get();
+        // Consulta base de horarios - filtrar siempre por deporte
+        $horariosQuery = Horario::where('activo', true)
+                                ->where('dia', $diaSemana)
+                                ->where('deporte_id', $deporteId)
+                                ->orderBy('hora_inicio', 'asc');
+        
+        $horarios = $horariosQuery->get();
 
-        $canchas = Cancha::where('activa', true)->get();
+        // Consulta base de canchas - filtrar siempre por deporte
+        $canchasQuery = Cancha::where('activa', true)
+                              ->where('deporte_id', $deporteId);
+        
+        $canchas = $canchasQuery->get();
 
-        $turnos = Turno::whereDate('fecha_turno', $fecha)
+        // Consulta base de turnos - filtrar siempre por deporte a través de las canchas
+        $turnosQuery = Turno::whereDate('fecha_turno', $fecha)
                             ->with(['persona', 'horario', 'cancha'])
                             ->where('estado', '!=', 'Cancelado')
-                            ->get();
+                            ->whereHas('cancha', function($query) use ($deporteId) {
+                                $query->where('deporte_id', $deporteId);
+                            });
+        
+        $turnos = $turnosQuery->get();
 
         $grid = [];
 
@@ -658,27 +687,31 @@ class TurnoService implements TurnoServiceInterface
             $grid[$hora] = [];
 
             foreach ($canchas as $cancha) {
-                $turno = $turnos->first(function ($t) use ($horario, $cancha) {
-                    return $t->horario_id == $horario->id && $t->cancha_id == $cancha->id;
-                });
+                // Solo incluir canchas que coincidan con el deporte del horario
+                if ($cancha->deporte_id == $horario->deporte_id) {
+                    $turno = $turnos->first(function ($t) use ($horario, $cancha) {
+                        return $t->horario_id == $horario->id && $t->cancha_id == $cancha->id;
+                    });
 
-                $grid[$hora][$cancha->nro] = [
-                    'cancha' => $cancha->nro,
-                    'tipo' => $cancha->tipo_cancha,
-                    'turno' => $turno ? [
-                        'id' => $turno->id,
-                        'usuario' => [
-                            'usuario_id' => $turno->persona->usuario?->id ?? null,
-                            'nombre' => $turno->persona->name,
-                            'dni' => $turno->persona->dni,
-                            'telefono' => $turno->persona->telefono,
-                        ],
-                        'monto_total' => $turno->monto_total,
-                        'monto_seña' => $turno->monto_seña,
-                        'estado' => $turno->estado,
-                        'tipo' => $turno->tipo,
-                    ] : null,
-                ];
+                    $grid[$hora][$cancha->nro] = [
+                        'cancha' => $cancha->nro,
+                        'deporte' => $cancha->deporte,
+                        'tipo' => $cancha->tipo_cancha,
+                        'turno' => $turno ? [
+                            'id' => $turno->id,
+                            'usuario' => [
+                                'usuario_id' => $turno->persona->usuario?->id ?? null,
+                                'nombre' => $turno->persona->name,
+                                'dni' => $turno->persona->dni,
+                                'telefono' => $turno->persona->telefono,
+                            ],
+                            'monto_total' => $turno->monto_total,
+                            'monto_seña' => $turno->monto_seña,
+                            'estado' => $turno->estado,
+                            'tipo' => $turno->tipo,
+                        ] : null,
+                    ];
+                }
             }
         }
 
@@ -758,7 +791,7 @@ class TurnoService implements TurnoServiceInterface
     {
         $user = Auth::user();
 
-        $turno = Turno::with(['horario', 'persona', 'persona.cuentaCorriente'])->find($id);
+        $turno = Turno::with(['horario', 'persona', 'persona.cuentaCorriente', 'cancha'])->find($id);
 
         if (!$turno) {
             return response()->json([
@@ -871,6 +904,13 @@ class TurnoService implements TurnoServiceInterface
                 $turno->toArray(), 
                 null
             );
+
+            $persona = Persona::find($turno->persona_id);
+            if ($persona->usuario) {
+                $persona->usuario->notify(new ReservaNotification($turno, 'cancelacion'));
+            }
+
+            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.cancelacion'));
 
             DB::commit();
 

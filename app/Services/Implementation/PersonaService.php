@@ -32,6 +32,8 @@ class PersonaService implements PersonaServiceInterface
             ];
         }
 
+        $request->dni = str_replace(['.', ' '], '', $request->dni);
+
         try {
             DB::beginTransaction();
     
