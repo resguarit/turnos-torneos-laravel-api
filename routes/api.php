@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\TransaccionesController;
 use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\Api\CajaController;
 use App\Http\Controllers\Api\TransaccionController;
+use App\Http\Controllers\Api\SancionController;
 
 use App\Http\Controllers\Api\AuditoriaController;
 use App\Http\Controllers\Api\PagoController;
@@ -204,6 +205,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('pago/inscripcion/{equipoId}/{torneoId}/{metodoPagoId}', [PagoController::class, 'registrarPagoInscripcion']);
     Route::post('pago/fecha/{fechaId}/{metodoPagoId}', [PagoController::class, 'registrarPagoPorFecha']);
 
+    Route::post('/sanciones', [SancionController::class, 'store']);
+    Route::get('/sanciones/{id}', [SancionController::class, 'show']);
+    Route::delete('/sanciones/{id}', [SancionController::class, 'destroy']);
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
