@@ -38,4 +38,11 @@ class SancionController extends Controller
         $result = $this->sancionService->getSancionesPorZona($zonaId);
         return response()->json($result, $result['status']);
     }
+
+    public function updateSancion(Request $request, $id)
+    {
+        $result = $this->sancionService->updateSancion($request->all(), $id);
+        return response()->json($result, $result['status']);
+    }
+
 }

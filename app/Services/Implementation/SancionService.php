@@ -77,6 +77,53 @@ class SancionService
         ];
     }
 
+    public function updateSancion($id, array $data)
+    {
+        $sancion = Sancion::find($id);
+
+        if (!$sancion) {
+            return [
+                'message' => 'Sanción no encontrada',
+                'status' => 404
+            ];
+        }
+
+        $validator = Validator::make($data, [
+            'equipo_jugador_id' => 'sometimes|exists:equipo_jugador,id',
+            'motivo' => 'sometimes|string|max:255',
+            'tipo_sancion' => 'sometimes|in:expulsión,advertencia,suspensión,multa',
+            'cantidad_fechas' => 'nullable|integer|min:1',
+            'fecha_inicio' => 'nullable|exists:fechas,id',
+            'fecha_fin' => 'nullable|exists:fechas,id|after_or_equal:fecha_inicio',
+            'partido_id' => 'nullable|exists:partidos,id',
+            'estado' => 'sometimes|in:activa,cumplida,apelada,anulada',
+        ]);
+
+        if ($validator->fails()) {
+            return [
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ];
+        }
+
+        try {
+            $sancion->update($data);
+
+            return [
+                'message' => 'Sanción actualizada correctamente',
+                'sancion' => $sancion,
+                'status' => 200
+            ];
+        } catch (\Exception $e) {
+            return [
+                'message' => 'Error al actualizar la sanción',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ];
+        }
+    }
+
     public function deleteSancion($id)
     {
         $sancion = Sancion::find($id);

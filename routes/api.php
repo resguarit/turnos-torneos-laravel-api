@@ -209,7 +209,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/sanciones', [SancionController::class, 'store']);
     Route::get('/sanciones/{id}', [SancionController::class, 'show']);
     Route::delete('/sanciones/{id}', [SancionController::class, 'destroy']);
-    Route::get('/zonas/{zonaId}/sanciones', [SancionController::class, 'getSancionesPorZona']);
+    Route::put('/sanciones/{id}', [SancionController::class, 'updateSancion']);
+    
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
@@ -251,3 +252,5 @@ Route::get('/zonas/{zonaId}/estadisticas-grupos', [ZonaController::class, 'obten
 Route::get('/zonas/{zonaId}/estadisticas-liga', [ZonaController::class, 'obtenerEstadisticasLiga']);
 Route::get('/zonas/{zonaId}/estadisticas/jugadores', [EstadisticaController::class, 'getJugadoresStatsByZona']);
 Route::get('/zonas/{id}', [ZonaController::class, 'show']);
+
+Route::get('/zonas/{zonaId}/sanciones', [SancionController::class, 'getSancionesPorZona']);
