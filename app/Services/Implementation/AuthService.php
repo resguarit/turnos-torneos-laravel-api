@@ -96,7 +96,7 @@ class AuthService implements AuthServiceInterface
             ]);
 
             $token = VerifyEmailController::generateVerificationToken($data['email']);
-            $confirmationLink = 'http://localhost:5173/verify-email?email=' . $data['email'] . '&token=' . $token;
+            $confirmationLink = env('APP_URL_FRONT') . '/verify-email?email=' . $data['email'] . '&token=' . $token;
             $user->notify(new ConfirmEmailNotification($user, $confirmationLink));
             
             DB::commit();

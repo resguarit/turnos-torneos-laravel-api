@@ -53,6 +53,18 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+    'url_front' => env('APP_URL_FRONT', 'http://localhost:5173'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mercado Pago
+    |--------------------------------------------------------------------------
+    |
+    | This value is used to configure the Mercado Pago API.
+    |
+    */
+
+    'mercadopago_access_token' => env('MERCADOPAGO_ACCESS_TOKEN'),
 
     /*
     |--------------------------------------------------------------------------

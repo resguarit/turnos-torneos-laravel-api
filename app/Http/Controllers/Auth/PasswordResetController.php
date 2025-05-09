@@ -42,7 +42,7 @@ class PasswordResetController extends Controller
             ['token' => $token, 'created_at' => Carbon::now()]
         );
 
-        $resetLink = 'http://localhost:5173/reset-password?email=' . urlencode($request->email) . '&token=' . $token;
+        $resetLink = config('app.url_front') . '/reset-password?email=' . urlencode($request->email) . '&token=' . $token;
 
         $user->notify(new ResetPasswordNotification($user, $resetLink));
 
