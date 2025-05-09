@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
 use Illuminate\Support\Facades\DB;
 use App\Models\CuentaCorriente;
-
+use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Notifications\ConfirmEmailNotification;
 class AuthService implements AuthServiceInterface
 {
     public function login(array $credentials)
@@ -53,6 +54,9 @@ class AuthService implements AuthServiceInterface
     public function register(array $data)
     {
         DB::beginTransaction();
+
+        // Limpiar el DNI de puntos y espacios
+        $data['dni'] = str_replace(['.', ' '], '', $data['dni']);
         
         try {
             // Buscar si ya existe una persona con el mismo DNI
@@ -90,6 +94,10 @@ class AuthService implements AuthServiceInterface
                 'rol' => 'cliente',
                 'persona_id' => $persona->id
             ]);
+
+            $token = VerifyEmailController::generateVerificationToken($data['email']);
+            $confirmationLink = env('APP_URL_FRONT') . '/verify-email?email=' . $data['email'] . '&token=' . $token;
+            $user->notify(new ConfirmEmailNotification($user, $confirmationLink));
             
             DB::commit();
             

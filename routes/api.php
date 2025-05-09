@@ -26,9 +26,15 @@ use App\Http\Controllers\Api\TransaccionesController;
 use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\Api\CajaController;
 use App\Http\Controllers\Api\TransaccionController;
+use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+Route::post('/verify-email', [VerifyEmailController::class, 'verifyEmail']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     
@@ -192,4 +198,9 @@ Route::get('/deportes/{id}', [DeporteController::class, 'show']);
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::post('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
+
+Route::get('/test-email', function () {
+    Mail::raw('Funciona !', fn($m) => $m->to('marianosalas24@gmail.com')->subject('Test de email'));
+    return response()->json(['message' => 'Email enviado correctamente']);
+});
 
