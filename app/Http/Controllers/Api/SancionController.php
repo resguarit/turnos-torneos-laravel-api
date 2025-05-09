@@ -32,4 +32,10 @@ class SancionController extends Controller
         $result = $this->sancionService->deleteSancion($id);
         return response()->json($result, $result['status']);
     }
+
+    public function getSancionesPorZona($zonaId)
+    {
+        $result = $this->sancionService->getSancionesPorZona($zonaId);
+        return response()->json($result, $result['status']);
+    }
 }

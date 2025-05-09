@@ -209,6 +209,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/sanciones', [SancionController::class, 'store']);
     Route::get('/sanciones/{id}', [SancionController::class, 'show']);
     Route::delete('/sanciones/{id}', [SancionController::class, 'destroy']);
+    Route::get('/zonas/{zonaId}/sanciones', [SancionController::class, 'getSancionesPorZona']);
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
