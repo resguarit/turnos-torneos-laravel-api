@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
 use Illuminate\Support\Facades\DB;
 use App\Models\CuentaCorriente;
-
+use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Notifications\ConfirmEmailNotification;
 class AuthService implements AuthServiceInterface
 {
     public function login(array $credentials)
@@ -93,6 +94,10 @@ class AuthService implements AuthServiceInterface
                 'rol' => 'cliente',
                 'persona_id' => $persona->id
             ]);
+
+            $token = VerifyEmailController::generateVerificationToken($data['email']);
+            $confirmationLink = 'http://localhost:5173/verify-email?email=' . $data['email'] . '&token=' . $token;
+            $user->notify(new ConfirmEmailNotification($user, $confirmationLink));
             
             DB::commit();
             

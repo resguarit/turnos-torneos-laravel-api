@@ -26,7 +26,7 @@
                             
                             <!-- Detalles sin formato de tabla especial -->
                             <div style="background-color: #f9f9f9; padding: 15px; margin: 15px 0; border-left: 3px solid #999999;">
-                                <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ $turno->fecha_turno }}</p>
+                                <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ $turno->fecha_turno->format('d/m/Y') }}</p>
                                 <p style="margin: 5px 0;"><strong>Horario:</strong> {{ $turno->horario->hora_inicio }} - {{ $turno->horario->hora_fin }}</p>
                                 <p style="margin: 5px 0;"><strong>Cancha:</strong> nro {{ $turno->cancha->nro }} {{ $turno->cancha->tipo_cancha }}</p>
                                 <p style="margin: 5px 0;"><strong>Estado:</strong> {{ $turno->estado }}</p>
@@ -37,7 +37,7 @@
                             
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
-                                <a href="https://rgturnos.com.ar/user-profile" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver mis turnos</a>
+                                <a href="http://localhost:5173/user-profile" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver mis turnos</a>
                             </p>
                             
                             <p>Gracias por confiar en nosotros.<br>
