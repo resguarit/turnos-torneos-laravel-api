@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Zona;
 use App\Models\Equipo;
 use App\Models\Jugador;
+use Illuminate\Http\Request;
 
 class SancionService
 {
@@ -77,7 +78,7 @@ class SancionService
         ];
     }
 
-    public function updateSancion($id, array $data)
+    public function updateSancion($data, $id)
     {
         $sancion = Sancion::find($id);
 
@@ -94,7 +95,7 @@ class SancionService
             'tipo_sancion' => 'sometimes|in:expulsión,advertencia,suspensión,multa',
             'cantidad_fechas' => 'nullable|integer|min:1',
             'fecha_inicio' => 'nullable|exists:fechas,id',
-            'fecha_fin' => 'nullable|exists:fechas,id|after_or_equal:fecha_inicio',
+            'fecha_fin' => 'nullable|exists:fechas,id',
             'partido_id' => 'nullable|exists:partidos,id',
             'estado' => 'sometimes|in:activa,cumplida,apelada,anulada',
         ]);
@@ -107,21 +108,13 @@ class SancionService
             ];
         }
 
-        try {
-            $sancion->update($data);
+        $sancion->update($data);
 
-            return [
-                'message' => 'Sanción actualizada correctamente',
-                'sancion' => $sancion,
-                'status' => 200
-            ];
-        } catch (\Exception $e) {
-            return [
-                'message' => 'Error al actualizar la sanción',
-                'error' => $e->getMessage(),
-                'status' => 500
-            ];
-        }
+        return [
+            'message' => 'Sanción actualizada correctamente',
+            'sancion' => $sancion,
+            'status' => 200
+        ];
     }
 
     public function deleteSancion($id)
