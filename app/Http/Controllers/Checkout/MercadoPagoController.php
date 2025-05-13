@@ -37,9 +37,9 @@ class MercadoPagoController extends Controller
             ],
             'external_reference' => $turno->id,
             'back_urls' => [
-                'success' => config('app.url_front') . "/turno/success/". $turno->id,
-                'pending' => config('app.url_front') . "/turno/pending/". $turno->id,
-                'failure' => config('app.url_front') . "/turno/failure/". $turno->id,
+                'success' => config('app.url_front') . "/checkout/success/". $turno->id,
+                'pending' => config('app.url_front') . "/checkout/pending/". $turno->id,
+                'failure' => config('app.url_front') . "/checkout/failure/". $turno->id,
             ],
             'auto_return' => 'approved',
             'payment_methods' => [
