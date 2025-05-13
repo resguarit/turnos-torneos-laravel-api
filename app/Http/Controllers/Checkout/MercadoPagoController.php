@@ -7,11 +7,14 @@ use Illuminate\Http\Request;
 use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\MercadoPagoConfig;
 use App\Models\Turno;
+use Exception;
+use Carbon\Carbon;
 
 class MercadoPagoController extends Controller
 {
     public function __construct()
-    {   
+    {
+        MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
     }
 
     public function createPreference(Request $request)
@@ -21,13 +24,14 @@ class MercadoPagoController extends Controller
             $client = new PreferenceClient();
 
         $turno = Turno::where('id', $request->turno_id)->first();
+        $unit_price = floatval($turno->monto_seña);
 
         $preference = $client->create([
             'items' => [
                 [
                     'title' => 'Seña para turno #' . $turno->id,
                     'quantity' => 1,
-                    'unit_price' => $turno->monto_seña,
+                    'unit_price' => $unit_price,
                     'currency_id' => 'ARS',
                 ]
             ],
@@ -47,6 +51,9 @@ class MercadoPagoController extends Controller
                 'installments' => 1,
             ],
             'redirect_mode' => 'modal',
+            'expires' => true,
+            'expiration_date_from' => Carbon::now('America/Argentina/Buenos_Aires')->format('Y-m-d\TH:i:s.000P'),
+            'expiration_date_to' => Carbon::now('America/Argentina/Buenos_Aires')->addMinutes(30)->format('Y-m-d\TH:i:s.000P'),
         ]);
 
         return response()->json([
@@ -54,12 +61,11 @@ class MercadoPagoController extends Controller
                 'preference' => $preference,
                 'id' => $preference->id,
             ]);
-        } catch (MPApiException $e) {
+        } catch (Exception $e) {
             // Log detallado del error
             \Log::error('MP API Error', [
                 'status' => $e->getApiResponse()->getStatusCode(),
                 'response' => $e->getApiResponse()->getContent(),
-                'headers' => $e->getApiResponse()->getHeaders()
             ]);
             
             return response()->json([

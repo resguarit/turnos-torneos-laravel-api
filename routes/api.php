@@ -30,12 +30,13 @@ use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Checkout\MercadoPagoController;
-
+use App\Http\Controllers\Webhook\MercadoPagoWebhook;
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 Route::post('/verify-email', [VerifyEmailController::class, 'verifyEmail']);
+Route::post('/mercadopago/webhook', [MercadoPagoWebhook::class, 'handleWebhook']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
 
