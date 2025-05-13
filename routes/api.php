@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\TransaccionController;
 use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Checkout\MercadoPagoController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -37,6 +38,8 @@ Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']
 Route::post('/verify-email', [VerifyEmailController::class, 'verifyEmail']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
+
+    Route::post('/mercadopago/create-preference', [MercadoPagoController::class, 'createPreference']);
     
     Route::get('/canchas', [CanchaController::class, 'index']);
 

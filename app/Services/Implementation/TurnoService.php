@@ -270,7 +270,7 @@ class TurnoService implements TurnoServiceInterface
 
         return response()->json([
             'message' => 'Turno creado correctamente',
-            'turno' => $turno,
+            'turno' => $turno->fresh(['persona', 'horario', 'cancha']),
             'status' => 201
         ], 201);
             
