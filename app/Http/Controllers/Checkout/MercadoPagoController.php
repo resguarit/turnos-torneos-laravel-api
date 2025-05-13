@@ -11,14 +11,14 @@ use App\Models\Turno;
 class MercadoPagoController extends Controller
 {
     public function __construct()
-    {
-        MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
-        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+    {   
     }
 
     public function createPreference(Request $request)
     {
-        $client = new PreferenceClient();
+        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+        try {
+            $client = new PreferenceClient();
 
         $turno = Turno::where('id', $request->turno_id)->first();
 
@@ -50,9 +50,22 @@ class MercadoPagoController extends Controller
         ]);
 
         return response()->json([
-            'status' => 'success',
-            'preference' => $preference,
-            'id' => $preference->id,
-        ]);
+                'status' => 'success',
+                'preference' => $preference,
+                'id' => $preference->id,
+            ]);
+        } catch (MPApiException $e) {
+            // Log detallado del error
+            \Log::error('MP API Error', [
+                'status' => $e->getApiResponse()->getStatusCode(),
+                'response' => $e->getApiResponse()->getContent(),
+                'headers' => $e->getApiResponse()->getHeaders()
+            ]);
+            
+            return response()->json([
+                'error' => 'Error en MercadoPago',
+                'details' => $e->getApiResponse()->getContent()
+            ], 500);
+        }
     }
 }
