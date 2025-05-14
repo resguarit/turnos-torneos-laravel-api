@@ -41,6 +41,8 @@ Route::post('/mercadopago/webhook', [MercadoPagoWebhook::class, 'handleWebhook']
 Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/mercadopago/create-preference', [MercadoPagoController::class, 'createPreference']);
+    Route::post('/mercadopago/verify-payment', [MercadoPagoController::class, 'verifyPaymentStatus']);
+    
     
     Route::get('/canchas', [CanchaController::class, 'index']);
 
