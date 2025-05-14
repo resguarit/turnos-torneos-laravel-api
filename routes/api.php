@@ -94,8 +94,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/auditorias', [AuditoriaController::class, 'index']);
 
-    Route::get('/deportes', [DeporteController::class, 'index']);
-    Route::get('/deportes/{id}', [DeporteController::class, 'show']);
     Route::post('/deportes', [DeporteController::class, 'store']);
     Route::put('/deportes/{id}', [DeporteController::class, 'update']);
     Route::delete('/deportes/{id}', [DeporteController::class, 'destroy']);
@@ -234,6 +232,9 @@ Route::get('/horarios/{id}', [HorarioController::class, 'show']);
 Route::get('/horarios', [HorarioController::class, 'index']);
 Route::get('/horarios-dia', [HorarioController::class, 'getHorariosPorDiaSemana']);
 Route::get('/canchas/{id}', [CanchaController::class, 'show']);
+
+Route::get('/deportes', [DeporteController::class, 'index']);
+Route::get('/deportes/{id}', [DeporteController::class, 'show']);
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::post('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);

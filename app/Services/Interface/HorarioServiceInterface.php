@@ -13,6 +13,6 @@ interface HorarioServiceInterface
     public function getHorariosPorDiaSemana(Request $request);
     public function deshabilitarFranjaHoraria(Request $request);
     public function habilitarFranjaHoraria(Request $request);
-    public function showFranjasHorariasNoDisponibles();
-    public function getHorariosExtremosActivos();
+    public function showFranjasHorariasNoDisponibles(Request $request);
+    public function getHorariosExtremosActivos(Request $request);
 }

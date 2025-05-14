@@ -10,6 +10,7 @@ use App\Services\Interface\CanchaServiceInterface;
 use App\Services\Implementation\AuditoriaService;
 use Illuminate\Validation\Rule;
 use App\Models\Deporte;
+use Illuminate\Validation\Rule;
 
 class CanchaService implements CanchaServiceInterface
 {
@@ -56,11 +57,11 @@ class CanchaService implements CanchaServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'nro' => [
-                'required',
+                'required', 
                 'max:255',
-                Rule::unique('canchas')->whereNull('deleted_at') 
+                Rule::unique('canchas')->whereNull('deleted_at')
             ],
-            'tipo_cancha' => 'required|max:200',
+            'deporte_id' => 'required|exists:deportes,id',
             'precio_por_hora' => 'required|numeric',
             'seña' => 'required|numeric',
             'activa' => 'required|boolean',

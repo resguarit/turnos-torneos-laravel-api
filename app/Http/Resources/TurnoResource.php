@@ -32,6 +32,11 @@ class TurnoResource extends JsonResource
             'cancha' => [
                 'nro' => $this->cancha->nro,
                 'tipo_cancha' => $this->cancha->tipo_cancha,
+                'deporte' => $this->cancha->deporte ? [
+                    'id' => $this->cancha->deporte->id,
+                    'nombre' => $this->cancha->deporte->nombre,
+                    'jugadores_por_equipo' => $this->cancha->deporte->jugadores_por_equipo,
+                ] : null,
             ],
             'motivo_cancelacion' => $this->when($this->estado === TurnoEstado::CANCELADO, function () {
                 return $this->motivo_cancelacion ? $this->motivo_cancelacion->motivo : null;

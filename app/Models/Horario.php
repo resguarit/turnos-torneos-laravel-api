@@ -18,9 +18,15 @@ class Horario extends Model
         'hora_inicio', 
         'hora_fin', 
         'activo',
-        'dia'
+        'dia',
+        'deporte_id'
     ];
 
     protected $hidden = ['created_at', 'updated_at'];
+
+    public function deporte()
+    {
+        return $this->belongsTo(Deporte::class);
+    }
 
 }

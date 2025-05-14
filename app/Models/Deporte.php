@@ -10,14 +10,20 @@ class Deporte extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre', 'jugadores_por_equipo'];
+    protected $fillable = ['nombre', 'jugadores_por_equipo', 'duracion_turno'];
 
     public function torneos()
     {
         return $this->hasMany(Torneo::class);
     }
+
     public function canchas()
     {
         return $this->hasMany(Cancha::class);
+    }
+
+    public function horarios()
+    {
+        return $this->hasMany(Horario::class);
     }
 }

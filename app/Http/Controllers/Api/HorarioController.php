@@ -64,19 +64,19 @@ class HorarioController extends Controller
         return $this->horarioService->habilitarFranjaHoraria($request);
     }
 
-    public function showFranjasHorariasNoDisponibles()
+    public function showFranjasHorariasNoDisponibles(Request $request)
     {
         $user = Auth::user();
         abort_unless($user->tokenCan('horariosNoDisponible:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
         
-        return $this->horarioService->showFranjasHorariasNoDisponibles();
+        return $this->horarioService->showFranjasHorariasNoDisponibles($request);
     }
 
-    public function getHorariosExtremosActivos()
+    public function getHorariosExtremosActivos(Request $request)
     {
         $user = Auth::user();
         abort_unless($user->tokenCan('horarios:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
         
-        return $this->horarioService->getHorariosExtremosActivos();
+        return $this->horarioService->getHorariosExtremosActivos($request);
     }
 }

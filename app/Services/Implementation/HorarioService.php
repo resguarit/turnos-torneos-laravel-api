@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use App\Services\Implementation\AuditoriaService;
+use App\Models\Deporte;use App\Services\Implementation\AuditoriaService;
 
 class HorarioService implements HorarioServiceInterface
 {
@@ -47,6 +47,7 @@ class HorarioService implements HorarioServiceInterface
             'hora_fin' => 'required|date_format:H:i|after:hora_inicio|unique:horarios,hora_fin',
             'dia' => 'required|in:l,m,x,j,v,s,d',
             'activo' => 'required|boolean',
+            'deporte_id' => 'required|exists:deportes,id',
         ]);
 
         if ($validator->fails()) {
@@ -62,6 +63,7 @@ class HorarioService implements HorarioServiceInterface
             'hora_fin' => $request->hora_fin,
             'dia' => $request->dia,
             'activo' => $request->activo,
+            'deporte_id' => $request->deporte_id,
         ]);
 
         if (!$horario) {
@@ -120,6 +122,7 @@ class HorarioService implements HorarioServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'fecha' => 'required|date_format:Y-m-d',
+            'deporte_id' => 'required|exists:deportes,id',
         ]);
 
         if ($validator->fails()) {
@@ -135,6 +138,7 @@ class HorarioService implements HorarioServiceInterface
 
         $horarios = Horario::where('dia', $diaSemana)
             ->where('activo', true)
+            ->where('deporte_id', $request->deporte_id)
             ->get();
 
         return response()->json([
@@ -164,6 +168,7 @@ class HorarioService implements HorarioServiceInterface
             'dia' => 'required|string|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
             'hora_inicio' => 'required|date_format:H:i',
             'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
+            'deporte_id' => 'required|exists:deportes,id',
         ]);
 
         if ($validator->fails()) {
@@ -180,6 +185,7 @@ class HorarioService implements HorarioServiceInterface
             $horarios = Horario::where('dia', $request->dia)
                 ->whereTime('hora_inicio', '>=', $request->hora_inicio)
                 ->whereTime('hora_fin', '<=', $request->hora_fin)
+                ->where('deporte_id', $request->deporte_id)
                 ->get();
 
             if ($horarios->isEmpty()) {
@@ -229,6 +235,7 @@ class HorarioService implements HorarioServiceInterface
             'dia' => 'required|string|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
             'hora_inicio' => 'required|date_format:H:i',
             'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
+            'deporte_id' => 'required|exists:deportes,id',
         ]);
 
         if ($validator->fails()) {
@@ -245,6 +252,7 @@ class HorarioService implements HorarioServiceInterface
             $horarios = Horario::where('dia', $request->dia)
                 ->whereTime('hora_inicio', '>=', $request->hora_inicio)
                 ->whereTime('hora_fin', '<=', $request->hora_fin)
+                ->where('deporte_id', $request->deporte_id)
                 ->get();
 
             if ($horarios->isEmpty()) {
@@ -288,9 +296,21 @@ class HorarioService implements HorarioServiceInterface
         }
     }
 
-    public function showFranjasHorariasNoDisponibles()
+    public function showFranjasHorariasNoDisponibles(Request $request)
     {
-        $inactivos = Horario::where('activo', false)->get();
+        $validator = Validator::make($request->all(), [
+            'deporte_id' => 'required|exists:deportes,id',
+        ]);
+        
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 422
+            ], 422);
+        }
+
+        $inactivos = Horario::where('activo', false)->where('deporte_id', $request->deporte_id)->get();
         $agrupadosPorDia = $inactivos->groupBy('dia');
 
         $result = $agrupadosPorDia->map(function ($itemsInactivos, $dia) {
@@ -322,13 +342,26 @@ class HorarioService implements HorarioServiceInterface
         ], 200);
     }
 
-    public function getHorariosExtremosActivos()
+    public function getHorariosExtremosActivos(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'deporte_id' => 'required|exists:deportes,id',
+        ]);
+        
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 422
+            ], 422);
+        }
+
         $dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
         
-        $result = collect($dias)->map(function($dia) {
+        $result = collect($dias)->map(function($dia) use ($request) {
             $horariosActivos = Horario::where('dia', $dia)
                 ->where('activo', true)
+                ->where('deporte_id', $request->deporte_id)
                 ->get();
     
             if ($horariosActivos->isNotEmpty()) {
@@ -343,6 +376,7 @@ class HorarioService implements HorarioServiceInterface
             $ultimosHorarios = Horario::where('dia', $dia)
                 ->orderBy('updated_at', 'desc')
                 ->orderBy('hora_inicio', 'asc')
+                ->where('deporte_id', $request->deporte_id)
                 ->get()
                 ->groupBy('updated_at')
                 ->first();
