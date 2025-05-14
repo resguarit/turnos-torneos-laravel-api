@@ -671,7 +671,8 @@ class TurnoService implements TurnoServiceInterface
 
         // Consulta base de turnos - filtrar siempre por deporte a través de las canchas
         $turnosQuery = Turno::whereDate('fecha_turno', $fecha)
-                            ->with(['persona', 'horario', 'cancha'])
+                            ->with(['persona', 'horario', 'cancha', 'partido.equipoLocal', 'partido.equipoVisitante', 'partido.fecha.zona.torneo'
+                            ])
                             ->where('estado', '!=', 'Cancelado')
                             ->whereHas('cancha', function($query) use ($deporteId) {
                                 $query->where('deporte_id', $deporteId);
@@ -693,23 +694,54 @@ class TurnoService implements TurnoServiceInterface
                         return $t->horario_id == $horario->id && $t->cancha_id == $cancha->id;
                     });
 
+                    $turnoData = [];
+
+                    if ($turno) {
+                        if ($turno->tipo === 'torneo' && $turno->partido) {
+                            $partido = $turno->partido;
+                            // Usar la relación, no el atributo
+                            $fechaPartido = $partido->getRelation('fecha') ?? null;
+                            $zona = $fechaPartido && $fechaPartido->getRelation('zona') ? $fechaPartido->zona : null;
+                            $torneo = $zona && $zona->getRelation('torneo') ? $zona->torneo : null;
+
+                            $turnoData = [
+                                'id' => $turno->id,
+                                'tipo' => $turno->tipo,
+                                'estado' => $turno->estado,
+                                'partido' => [
+                                    'id' => $partido->id,
+                                    'fecha' => $fechaPartido ? $fechaPartido->nombre : null,
+                                    'zona' => $zona ? $zona->nombre : null,
+                                    'torneo' => $torneo ? $torneo->nombre : null,
+                                    'equipos' => [
+                                        'local' => $partido->equipoLocal->nombre ?? null,
+                                        'visitante' => $partido->equipoVisitante->nombre ?? null,
+                                    ],
+                                ],
+                            ];
+                        } else {
+                            // Turno normal
+                            $turnoData = [
+                                'id' => $turno->id,
+                                'usuario' => [
+                                    'usuario_id' => $turno->persona->usuario?->id ?? null,
+                                    'nombre' => $turno->persona->name,
+                                    'dni' => $turno->persona->dni,
+                                    'telefono' => $turno->persona->telefono,
+                                ],
+                                'monto_total' => $turno->monto_total,
+                                'monto_seña' => $turno->monto_seña,
+                                'estado' => $turno->estado,
+                                'tipo' => $turno->tipo,
+                            ];
+                        }
+                    }
+
                     $grid[$hora][$cancha->nro] = [
                         'cancha' => $cancha->nro,
                         'deporte' => $cancha->deporte,
                         'tipo' => $cancha->tipo_cancha,
-                        'turno' => $turno ? [
-                            'id' => $turno->id,
-                            'usuario' => [
-                                'usuario_id' => $turno->persona->usuario?->id ?? null,
-                                'nombre' => $turno->persona->name,
-                                'dni' => $turno->persona->dni,
-                                'telefono' => $turno->persona->telefono,
-                            ],
-                            'monto_total' => $turno->monto_total,
-                            'monto_seña' => $turno->monto_seña,
-                            'estado' => $turno->estado,
-                            'tipo' => $turno->tipo,
-                        ] : null,
+                        'turno' => $turno ? $turnoData : null,
                     ];
                 }
             }

@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use App\Models\Deporte;use App\Services\Implementation\AuditoriaService;
+use App\Models\Deporte;
+use App\Services\Implementation\AuditoriaService;
 
 class HorarioService implements HorarioServiceInterface
 {

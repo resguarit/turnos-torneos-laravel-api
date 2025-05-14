@@ -10,7 +10,6 @@ use App\Services\Interface\CanchaServiceInterface;
 use App\Services\Implementation\AuditoriaService;
 use Illuminate\Validation\Rule;
 use App\Models\Deporte;
-use Illuminate\Validation\Rule;
 
 class CanchaService implements CanchaServiceInterface
 {
