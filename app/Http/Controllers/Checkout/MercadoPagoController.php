@@ -115,13 +115,15 @@ class MercadoPagoController extends Controller
             ], 400);
         }
 
-        //$estado = $data['status'];
-        //$monto = $data['transaction_amount'];
+        $turno = Turno::with(['cancha', 'horario', 'persona'])
+            ->where('id', $turnoId)
+            ->first();
+
+        $estado = $data['status'];
 
         return response()->json([
-            'turnoId' => $turnoId,
-            'paymentId' => $paymentId,
-            'paymentData' => $data,
+            'turno' => $turno,
+            'estado' => $estado,
         ]);
 
     }
