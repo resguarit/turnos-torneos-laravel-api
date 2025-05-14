@@ -119,7 +119,6 @@ class MercadoPagoController extends Controller
         //$monto = $data['transaction_amount'];
 
         return response()->json([
-            'payment' => $payment,
             'turnoId' => $turnoId,
             'paymentId' => $paymentId,
             'paymentData' => $data,
