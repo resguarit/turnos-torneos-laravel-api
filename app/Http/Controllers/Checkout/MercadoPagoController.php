@@ -9,7 +9,11 @@ use MercadoPago\MercadoPagoConfig;
 use App\Models\Turno;
 use Exception;
 use Carbon\Carbon;
-
+use MercadoPago\Client\Payment\PaymentClient;
+use MercadoPago\Client\Payment\Search\MPSearchRequest;
+use Illuminate\Support\Facades\Http;
+use App\Enums\TurnoEstado;
+use Illuminate\Support\Facades\Validator;   
 class MercadoPagoController extends Controller
 {
     public function __construct()
@@ -73,5 +77,53 @@ class MercadoPagoController extends Controller
                 'details' => $e->getApiResponse()->getContent()
             ], 500);
         }
+    }
+
+    public function verifyPaymentStatus(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'external_reference' => 'required|exists:turnos,id',
+            'payment_id' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Datos inválidos',
+                'details' => $validator->errors()
+            ], 422);
+        }
+
+        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+        $accessToken = config('app.mercadopago_access_token');
+
+        $turnoId = $request->external_reference;
+        $paymentId = $request->payment_id;
+        
+        $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/v1/payments/{$paymentId}");
+
+        if ($response->failed()) {
+            return response()->json([
+                'error' => 'Error al verificar el estado del pago',
+            ], 500);
+        }
+
+        $data = $response->json();
+
+        if ($data['external_reference'] != $turnoId) {
+            return response()->json([
+                'error' => 'El pago no pertenece al turno especificado',
+            ], 400);
+        }
+
+        //$estado = $data['status'];
+        //$monto = $data['transaction_amount'];
+
+        return response()->json([
+            'payment' => $payment,
+            'turnoId' => $turnoId,
+            'paymentId' => $paymentId,
+            'paymentData' => $data,
+        ]);
+
     }
 }
