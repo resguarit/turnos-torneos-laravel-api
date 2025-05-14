@@ -28,6 +28,7 @@ class EstadisticaService implements EstadisticaServiceInterface
         $validator = Validator::make($request->all(), [
             'partido_id' => 'required|exists:partidos,id',
             'jugador_id' => 'required|exists:jugadores,id',
+            'nro_camiseta' => 'required|integer|min:1', // Assuming jersey numbers are between 1 and 99
             'goles' => 'required|integer|min:0',
             'amarillas' => 'required|integer|min:0|max:2', // Assuming max 2 yellows
             'rojas' => 'required|integer|min:0|max:1',     // Assuming max 1 red
@@ -64,6 +65,7 @@ class EstadisticaService implements EstadisticaServiceInterface
         $validator = Validator::make($request->all(), [
             'partido_id' => 'sometimes|required|exists:partidos,id',
             'jugador_id' => 'sometimes|required|exists:jugadores,id',
+            'nro_camiseta' => 'sometimes|required|integer|min:1',
             'goles' => 'sometimes|required|integer|min:0',
             'amarillas' => 'sometimes|required|integer|min:0|max:2',
             'rojas' => 'sometimes|required|integer|min:0|max:1',
@@ -144,6 +146,7 @@ class EstadisticaService implements EstadisticaServiceInterface
         $validator = Validator::make($request->all(), [
             'estadisticas' => 'required|array',
             'estadisticas.*.jugador_id' => 'required|exists:jugadores,id',
+            'estadisticas.*.nro_camiseta' => 'required|integer|min:1',
             'estadisticas.*.goles' => 'required|integer|min:0',
             'estadisticas.*.amarillas' => 'required|integer|min:0|max:2',
             'estadisticas.*.rojas' => 'required|integer|min:0|max:1',
@@ -174,6 +177,7 @@ class EstadisticaService implements EstadisticaServiceInterface
                         'jugador_id' => $data['jugador_id']
                     ],
                     [
+                        'nro_camiseta' => $data['nro_camiseta'],
                         'goles' => $data['goles'],
                         'amarillas' => $data['amarillas'],
                         'rojas' => $data['rojas'],

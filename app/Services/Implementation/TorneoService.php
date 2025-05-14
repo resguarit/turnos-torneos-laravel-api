@@ -11,9 +11,14 @@ use Illuminate\Support\Facades\Validator;
 class TorneoService implements TorneoServiceInterface
 {
     public function getAll()
-    {
-        return Torneo::with('deporte')->get();
-    }
+{
+    return Torneo::with([
+        'deporte',
+        'zonas.equipos',
+        'zonas.fechas.partidos',
+        'zonas.grupos.equipos',
+    ])->get();
+}
 
     public function getById($id)
     {
