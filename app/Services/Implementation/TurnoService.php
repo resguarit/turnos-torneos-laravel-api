@@ -655,54 +655,87 @@ class TurnoService implements TurnoServiceInterface
         $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
         $deporteId = $request->deporte_id;
 
-        // Consulta base de horarios - filtrar siempre por deporte
-        $horariosQuery = Horario::where('activo', true)
-                                ->where('dia', $diaSemana)
-                                ->where('deporte_id', $deporteId)
-                                ->orderBy('hora_inicio', 'asc');
-        
-        $horarios = $horariosQuery->get();
 
-        // Consulta base de canchas - filtrar siempre por deporte
-        $canchasQuery = Cancha::where('activa', true)
-                              ->where('deporte_id', $deporteId);
-        
-        $canchas = $canchasQuery->get();
+        $horarios = Horario::where('activo', true)
+            ->where('dia', $diaSemana)
+            ->where('deporte_id', $deporteId)
+            ->orderBy('hora_inicio', 'asc')
+            ->get();
 
-        // Consulta base de turnos - filtrar siempre por deporte a través de las canchas
-        $turnosQuery = Turno::whereDate('fecha_turno', $fecha)
-                            ->with(['persona', 'horario', 'cancha', 'partido.equipoLocal', 'partido.equipoVisitante', 'partido.fecha.zona.torneo'
-                            ])
-                            ->where('estado', '!=', 'Cancelado')
-                            ->whereHas('cancha', function($query) use ($deporteId) {
-                                $query->where('deporte_id', $deporteId);
-                            });
-        
-        $turnos = $turnosQuery->get();
+
+        $canchas = Cancha::where('activa', true)
+            ->where('deporte_id', $deporteId)
+            ->get();
+
+        $turnos = Turno::whereDate('fecha_turno', $fecha)
+            ->with([
+                'persona',
+                'horario',
+                'cancha',
+                'partido.fecha.zona.torneo',
+                'partido.equipoLocal',
+                'partido.equipoVisitante'
+            ])
+            ->where('estado', '!=', 'Cancelado')
+            ->whereHas('cancha', function($query) use ($deporteId) {
+                $query->where('deporte_id', $deporteId);
+            })
+            ->get();
+
 
         $grid = [];
 
         foreach ($horarios as $horario) {
             $hora = Carbon::createFromFormat('H:i:s', $horario->hora_inicio)->format('H');
             $hora = (int) $hora;
+
+
             $grid[$hora] = [];
 
             foreach ($canchas as $cancha) {
-                // Solo incluir canchas que coincidan con el deporte del horario
                 if ($cancha->deporte_id == $horario->deporte_id) {
-                    $turno = $turnos->first(function ($t) use ($horario, $cancha) {
-                        return $t->horario_id == $horario->id && $t->cancha_id == $cancha->id;
-                    });
+                    $turno = $turnos->first(function ($t) use ($horario, $cancha, $fecha) {
+                         $match = $t->horario_id == $horario->id
+                        && $t->cancha_id == $cancha->id;
 
-                    $turnoData = [];
+                    if ($match) {
+                        \Log::debug('Turno MATCH', [
+                            'turno_id' => $t->id,
+                            'horario_id' => $t->horario_id,
+                            'cancha_id' => $t->cancha_id,
+                            'fecha_turno' => $t->fecha_turno
+                        ]); // 👀
+                    }
+                    return $match;
+                });
+
+
+                    $turnoData = null;
 
                     if ($turno) {
                         if ($turno->tipo === 'torneo' && $turno->partido) {
-                            $partido = $turno->partido;
-                            // Usar la relación, no el atributo
-                            $fechaPartido = $partido->getRelation('fecha') ?? null;
-                            $zona = $fechaPartido && $fechaPartido->getRelation('zona') ? $fechaPartido->zona : null;
-                            $torneo = $zona && $zona->getRelation('torneo') ? $zona->torneo : null;
+                            $partido = $turno->partido; 
+                            $fechaModel = $partido->getRelationValue('fecha');
+
+                            $fechaNombre = null;
+                            $zonaNombre = null;
+                            $torneoNombre = null;
+
+                            if ($fechaModel instanceof \App\Models\Fecha) {
+                                $fechaNombre = $fechaModel->nombre;
+                                $zonaModel = $fechaModel->zona; 
+                                if ($zonaModel instanceof \App\Models\Zona) {
+                                    $zonaNombre = $zonaModel->nombre;
+                                    $torneoModel = $zonaModel->torneo; 
+                                    if ($torneoModel instanceof \App\Models\Torneo) {
+                                        $torneoNombre = $torneoModel->nombre;
+                                    }
+                                }
+                            } else {
+                                if ($partido && $fechaModel !== null) {
+                                     \Log::warning("TurnoService: For partido ID {$partido->id}, 'fecha' relation was not a Fecha model instance. Type: " . gettype($fechaModel));
+                                }
+                            }
 
                             $turnoData = [
                                 'id' => $turno->id,
@@ -710,9 +743,9 @@ class TurnoService implements TurnoServiceInterface
                                 'estado' => $turno->estado,
                                 'partido' => [
                                     'id' => $partido->id,
-                                    'fecha' => $fechaPartido ? $fechaPartido->nombre : null,
-                                    'zona' => $zona ? $zona->nombre : null,
-                                    'torneo' => $torneo ? $torneo->nombre : null,
+                                    'fecha' => $fechaNombre,
+                                    'zona' => $zonaNombre,
+                                    'torneo' => $torneoNombre,
                                     'equipos' => [
                                         'local' => $partido->equipoLocal->nombre ?? null,
                                         'visitante' => $partido->equipoVisitante->nombre ?? null,
@@ -720,7 +753,6 @@ class TurnoService implements TurnoServiceInterface
                                 ],
                             ];
                         } else {
-                            // Turno normal
                             $turnoData = [
                                 'id' => $turno->id,
                                 'usuario' => [
@@ -741,7 +773,7 @@ class TurnoService implements TurnoServiceInterface
                         'cancha' => $cancha->nro,
                         'deporte' => $cancha->deporte,
                         'tipo' => $cancha->tipo_cancha,
-                        'turno' => $turno ? $turnoData : null,
+                        'turno' => $turnoData,
                     ];
                 }
             }

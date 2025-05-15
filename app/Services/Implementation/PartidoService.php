@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Validator;
 use App\Enums\PartidoEstado;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use App\Models\Zona;
+use App\Services\Implementation\TurnoService;
+
 
 class PartidoService implements PartidoServiceInterface
 {
@@ -184,9 +187,19 @@ class PartidoService implements PartidoServiceInterface
         $partidosALaVez = $request->partidos_a_la_vez;
         $horarioInicio = Carbon::createFromFormat('H:i', $request->horario_inicio);
 
+        // Obtener la zona y el deporte_id del torneo asociado
+        $zona = Zona::with('torneo')->find($zonaId);
+        if (!$zona || !$zona->torneo) {
+            return response()->json([
+                'message' => 'Zona o torneo no encontrado',
+                'status' => 404
+            ], 404);
+        }
+        $deporteId = $zona->torneo->deporte_id;
+
         // Obtener las fechas de la zona
         $fechas = Fecha::where('zona_id', $zonaId)->with(['partidos' => function ($query) {
-            $query->whereNull('horario_id')->whereNull('cancha_id'); // Filtrar partidos sin horario ni cancha
+            $query->whereNull('horario_id')->whereNull('cancha_id');
         }])->get();
 
         if ($fechas->isEmpty()) {
@@ -197,17 +210,16 @@ class PartidoService implements PartidoServiceInterface
         }
 
         foreach ($fechas as $fecha) {
-            $fecha->fecha_inicio = Carbon::parse($fecha->fecha_inicio); // Convertir a Carbon
+            $fecha->fecha_inicio = Carbon::parse($fecha->fecha_inicio);
             $partidos = $fecha->partidos;
 
             if ($partidos->isEmpty()) {
-                continue; // Si no hay partidos en la fecha, pasar a la siguiente
+                continue;
             }
 
             $horarioActual = $horarioInicio->copy();
 
             foreach ($partidos->chunk($partidosALaVez) as $partidosGrupo) {
-                // Verificar disponibilidad de canchas para el horario y la fecha
                 $diaSemana = $this->getNombreDiaSemana($fecha->fecha_inicio->dayOfWeek);
 
                 $horario = Horario::where('hora_inicio', $horarioActual->format('H:i'))
@@ -215,39 +227,36 @@ class PartidoService implements PartidoServiceInterface
                     ->first();
 
                 if (!$horario) {
-                    // Si no se encuentra el horario, continuar con el siguiente grupo
                     continue;
                 }
 
+                // PASAR deporte_id en el request a disponibilidad
                 $canchasDisponiblesResponse = $this->disponibilidadService->getCanchasPorHorarioFecha(new Request([
                     'fecha' => $fecha->fecha_inicio->format('Y-m-d'),
-                    'horario_id' => $horario->id
+                    'horario_id' => $horario->id,
+                    'deporte_id' => $deporteId
                 ]));
 
                 $canchasDisponibles = json_decode(json_encode($canchasDisponiblesResponse->getData()), true);
 
                 if (empty($canchasDisponibles['canchas'])) {
-                    // Si no hay canchas disponibles, continuar con el siguiente grupo
                     continue;
                 }
 
-                // Iterar sobre los partidos y asignar canchas secuencialmente
                 $canchas = $canchasDisponibles['canchas'];
                 foreach ($partidosGrupo as $index => $partido) {
                     if (isset($canchas[$index])) {
                         $partido->horario_id = $horario->id;
-                        $partido->cancha_id = $canchas[$index]['id']; // Asignar una cancha diferente
+                        $partido->cancha_id = $canchas[$index]['id'];
                         $partido->save();
                     } else {
-                        // Si no hay más canchas disponibles, dejar el partido sin asignar
                         $partido->horario_id = $horario->id;
                         $partido->cancha_id = null;
                         $partido->save();
                     }
-                    app(\App\Services\Implementation\TurnoService::class)->crearTurnoTorneo($partido);
+                    app(TurnoService::class)->crearTurnoTorneo($partido);
                 }
 
-                // Incrementar el horario para el siguiente grupo de partidos
                 $horarioActual->addHour();
             }
         }
