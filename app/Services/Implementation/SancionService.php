@@ -9,6 +9,7 @@ use App\Models\Zona;
 use App\Models\Equipo;
 use App\Models\Jugador;
 use Illuminate\Http\Request;
+use App\Enums\EstadoSancion;
 
 class SancionService
 {
@@ -178,4 +179,24 @@ class SancionService
             'status' => 200
         ];
     }
+
+    public function actualizarSancionesPorFechaFin($fechaId)
+    {
+        $sanciones = Sancion::where('fecha_fin', $fechaId)
+            ->where('estado', '!=', EstadoSancion::CUMPLIDA->value)
+            ->get();
+
+        foreach ($sanciones as $sancion) {
+            $sancion->estado = EstadoSancion::CUMPLIDA->value;
+            $sancion->save();
+            \Log::info('Sanción actualizada: ' . $sancion->id);
+        }
+
+        return [
+            'message' => 'Sanciones actualizadas correctamente',
+            'sanciones_actualizadas' => $sanciones->count(),
+            'status' => 200
+        ];
+    }
+
 }

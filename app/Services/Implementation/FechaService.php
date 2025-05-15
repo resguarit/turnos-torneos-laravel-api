@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use App\Enums\FechaEstado;
 use Illuminate\Support\Facades\DB;
-use App\Services\Implementation\TurnoService; // Importa el servicio
+use App\Services\Implementation\TurnoService; 
+use App\Services\Implementation\SancionService;
 
 class FechaService implements FechaServiceInterface
 {
@@ -85,7 +86,13 @@ class FechaService implements FechaServiceInterface
             ], 400);
         }
 
+        $estadoModificadoAFinalizada = $request->has('estado') && $request->estado === FechaEstado::FINALIZADA->value && $fecha->estado !== FechaEstado::FINALIZADA->value;
+
         $fecha->update($request->all());
+
+        if ($estadoModificadoAFinalizada) {
+        app(SancionService::class)->actualizarSancionesPorFechaFin($fecha->id);
+        }
 
         return response()->json([
             'message' => 'Fecha actualizada correctamente',
