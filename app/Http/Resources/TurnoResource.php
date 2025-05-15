@@ -73,6 +73,16 @@ class TurnoResource extends JsonResource
                         ] : null,
                     ] : null,
                 ] : null,
+                'equipos' => [
+                    'local' => $this->partido->equipoLocal ? [
+                        'id' => $this->partido->equipoLocal->id,
+                        'nombre' => $this->partido->equipoLocal->nombre,
+                    ] : null,
+                    'visitante' => $this->partido->equipoVisitante ? [
+                        'id' => $this->partido->equipoVisitante->id,
+                        'nombre' => $this->partido->equipoVisitante->nombre,
+                    ] : null,
+                ],
             ];
         }
 
