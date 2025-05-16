@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Http;
 use App\Enums\TurnoEstado;
 use Illuminate\Support\Facades\Validator;   
 use App\Models\Persona;
-
+use Illuminate\Support\Facades\DB;
 class MercadoPagoController extends Controller
 {
     public function __construct()
@@ -164,24 +164,40 @@ class MercadoPagoController extends Controller
             ], 400);
         }
 
-        $turno = Turno::where('id', $request->external_reference)->first();
+        DB::beginTransaction();
 
-        if ($turno->estado == TurnoEstado::PENDIENTE) {
-            $turno->estado = TurnoEstado::CANCELADO;
-            $turno->save();
-            $persona = Persona::where('id', $turno->persona_id)->first();
-            $persona->saldo += $turno->monto_total;
-            $persona->save();
+        try {
+
+            $turno = Turno::where('id', $request->external_reference)->first();
+
+            if ($turno->estado == TurnoEstado::PENDIENTE) {
+                $turno->estado = TurnoEstado::CANCELADO;
+                $turno->save();
+                $persona = Persona::where('id', $turno->persona_id)->first();
+                $persona->cuentaCorriente->saldo += $turno->monto_total;
+                $persona->cuentaCorriente->save();
+
+                DB::commit();
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Turno cancelado',
+                ], 200);
+            }
+
+            DB::commit();
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Turno cancelado',
+                'message' => 'Turno ya cancelado',
             ], 200);
-        }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Turno ya cancelado',
-        ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Error al verificar el estado del pago',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
     }
 }
