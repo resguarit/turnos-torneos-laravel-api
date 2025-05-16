@@ -49,6 +49,8 @@ use App\Services\Interface\TransaccionServiceInterface;
 use App\Services\Implementation\TransaccionService;
 use App\Services\Interface\CajaServiceInterface;
 use App\Services\Implementation\CajaService;
+use App\Services\Interface\PaymentServiceInterface;
+use App\Services\Implementation\PaymentService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -80,6 +82,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CuentaCorrienteServiceInterface::class, CuentaCorrienteService::class);
         $this->app->bind(TransaccionServiceInterface::class, TransaccionService::class);
         $this->app->bind(CajaServiceInterface::class, CajaService::class);
+        $this->app->bind(PaymentServiceInterface::class, PaymentService::class);
     }
 
     /**

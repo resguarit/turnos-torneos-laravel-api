@@ -65,7 +65,7 @@ return [
     */
 
     'mercadopago_access_token' => env('MERCADOPAGO_ACCESS_TOKEN'),
-
+    'mercadopago_webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

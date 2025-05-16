@@ -54,7 +54,7 @@ class BloqueoTemporalService implements BloqueoTemporalServiceInterface
             'horario_id' => $request->horario_id,
             'cancha_id' => $request->cancha_id,
             'fecha' => $request->fecha,
-        ], 180);    
+        ], 600);    
 
         return response()->json([
             'message' => 'Bloqueo temporal creado con éxito.',

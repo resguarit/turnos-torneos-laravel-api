@@ -36,6 +36,12 @@ return new class extends Migration
             'descripcion' => 'Pago por transferencia bancaria',
             'activo' => true,
         ]);
+
+        MetodoPago::create([
+            'nombre' => 'mercadopago',
+            'descripcion' => 'Pago con Mercado Pago',
+            'activo' => true,
+        ]);
     }
 
     /**
