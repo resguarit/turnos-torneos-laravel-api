@@ -170,8 +170,8 @@ class MercadoPagoController extends Controller
             $turno->estado = TurnoEstado::CANCELADO;
             $turno->save();
             $persona = Persona::where('id', $turno->persona_id)->first();
-            $persona->saldo += $turno->monto_total;
-            $persona->save();
+            $persona->cuentaCorriente->saldo += $turno->monto_total;
+            $persona->cuentaCorriente->save();
 
             return response()->json([
                 'status' => 'success',
