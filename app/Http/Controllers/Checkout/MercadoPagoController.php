@@ -14,6 +14,8 @@ use MercadoPago\Client\Payment\Search\MPSearchRequest;
 use Illuminate\Support\Facades\Http;
 use App\Enums\TurnoEstado;
 use Illuminate\Support\Facades\Validator;   
+use App\Models\Persona;
+
 class MercadoPagoController extends Controller
 {
     public function __construct()
@@ -55,6 +57,7 @@ class MercadoPagoController extends Controller
                 'installments' => 1,
             ],
             'redirect_mode' => 'modal',
+            'binary_mode' => true,
             'expires' => true,
             'expiration_date_from' => Carbon::now('America/Argentina/Buenos_Aires')->format('Y-m-d\TH:i:s.000P'),
             'expiration_date_to' => Carbon::now('America/Argentina/Buenos_Aires')->addMinutes(30)->format('Y-m-d\TH:i:s.000P'),
@@ -99,17 +102,25 @@ class MercadoPagoController extends Controller
         $turnoId = $request->external_reference;
         $paymentId = $request->payment_id;
         
-        $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/v1/payments/{$paymentId}");
+        //$response = Http::withToken($accessToken)->get("https://api.mercadopago.com/v1/payments/{$paymentId}");
 
-        if ($response->failed()) {
+        $client = new PaymentClient();
+        try {
+            $payment = $client->get($paymentId);
+        } catch (MPApiException $e) {
             return response()->json([
                 'error' => 'Error al verificar el estado del pago',
+                'details' => $e->getApiResponse()->getContent(),
+                'status' => $e->getApiResponse()->getStatusCode(),
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al verificar el estado del pago',
+                'details' => $e->getMessage(),
             ], 500);
         }
 
-        $data = $response->json();
-
-        if ($data['external_reference'] != $turnoId) {
+        if ($payment->external_reference != $turnoId) {
             return response()->json([
                 'error' => 'El pago no pertenece al turno especificado',
             ], 400);
@@ -119,12 +130,58 @@ class MercadoPagoController extends Controller
             ->where('id', $turnoId)
             ->first();
 
-        $estado = $data['status'];
+        $estado = $payment->status;
 
         return response()->json([
             'turno' => $turno,
             'estado' => $estado,
         ]);
 
+    }
+
+    public function verifyPaymentStatusByPreference(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'preference_id' => 'required|string',
+            'external_reference' => 'required|exists:turnos,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Datos inválidos',
+                'details' => $validator->errors()
+            ], 422);
+        }
+
+        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+
+        $client = new PreferenceClient();
+        $preference = $client->get($request->preference_id);
+
+        if ($preference->external_reference != $request->external_reference) {
+            return response()->json([
+                'error' => 'El pago no pertenece al turno especificado',
+            ], 400);
+        }
+
+        $turno = Turno::where('id', $request->external_reference)->first();
+
+        if ($turno->estado == TurnoEstado::PENDIENTE) {
+            $turno->estado = TurnoEstado::CANCELADO;
+            $turno->save();
+            $persona = Persona::where('id', $turno->persona_id)->first();
+            $persona->saldo += $turno->monto_total;
+            $persona->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Turno cancelado',
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Turno ya cancelado',
+        ], 200);
     }
 }
