@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\SancionController;
 
 use App\Http\Controllers\Api\AuditoriaController;
 use App\Http\Controllers\Api\PagoController;
+use App\Http\Controllers\Api\EventoController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -208,7 +209,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/sanciones/{id}', [SancionController::class, 'show']);
     Route::delete('/sanciones/{id}', [SancionController::class, 'destroy']);
     Route::put('/sanciones/{id}', [SancionController::class, 'updateSancion']);
-    
+
+    Route::get('eventos', [EventoController::class, 'index']);
+    Route::get('eventos/{id}', [EventoController::class, 'show']);
+    Route::post('eventos', [EventoController::class, 'store']);
+    Route::put('eventos/{id}', [EventoController::class, 'update']);
+    Route::delete('eventos/{id}', [EventoController::class, 'destroy']);
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
