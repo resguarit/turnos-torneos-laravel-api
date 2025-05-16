@@ -146,7 +146,7 @@ class TurnoService implements TurnoServiceInterface
         }
 
         $monto_total = $cancha->precio_por_hora;        
-        $monto_seña = $cancha->seña; // Ensure this is not null
+        $monto_seña = $cancha->seña;
 
         if (is_null($monto_seña)) {
             return response()->json([
@@ -240,7 +240,7 @@ class TurnoService implements TurnoServiceInterface
                     'cuenta_corriente_id' => $cuentaCorriente->id,
                     'turno_id' => $turno->id,
                     'monto' => $montoTransaccion,
-                    'tipo' => 'turno',
+                    'tipo' => 'saldo',
                     'descripcion' => $descripcion
                 ]);
                 
@@ -249,15 +249,12 @@ class TurnoService implements TurnoServiceInterface
                 $cuentaCorriente->save();
             }
 
-            if ($persona->usuario) {
-                $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion'));
-            }
-
-            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion'));
+            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.pending'));
             
             DB::commit();
             
-            Cache::forget($clave);
+            // Comentamos esta linea para que no se borre el bloqueo temporal -> lo vamos a borrar cuando se haga el pago
+            //Cache::forget($clave);
 
             // Registrar auditoría
             AuditoriaService::registrar(
@@ -873,6 +870,7 @@ class TurnoService implements TurnoServiceInterface
                     
                 Transaccion::create([
                     'cuenta_corriente_id' => $cuentaCorriente->id,
+                    'turno_id' => $turno->id,
                     'persona_id' => $turno->persona_id,
                     'monto' => $montoRealDevolver, // Monto positivo por ser devolución
                     'tipo' => 'devolucion',
@@ -1031,7 +1029,7 @@ class TurnoService implements TurnoServiceInterface
                 $transaccion = Transaccion::create([
                     'cuenta_corriente_id' => $cuentaCorriente->id,
                     'monto' => $montoTransaccion,
-                    'tipo' => 'turno',
+                    'tipo' => 'saldo',
                     'descripcion' => $descripcion
                 ]);
                 

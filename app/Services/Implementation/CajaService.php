@@ -120,6 +120,13 @@ class CajaService implements CajaServiceInterface
                 'metodo_pago_id' => $metodoPagoEfectivo->id
             ]);
 
+            $transaccionesPendientes = Transaccion::where('tipo', 'turno')->whereNull('caja_id')->get();
+            
+            foreach ($transaccionesPendientes as $transaccion) {
+                $transaccion->caja_id = $caja->id;
+                $transaccion->save();
+            }
+
             DB::commit();
 
             return response()->json([
