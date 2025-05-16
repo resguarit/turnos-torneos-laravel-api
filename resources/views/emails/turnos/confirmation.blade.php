@@ -30,6 +30,8 @@
                                 <p style="margin: 5px 0;"><strong>Horario:</strong> {{ $turno->horario->hora_inicio }} - {{ $turno->horario->hora_fin }}</p>
                                 <p style="margin: 5px 0;"><strong>Cancha:</strong> nro {{ $turno->cancha->nro }} {{ $turno->cancha->tipo_cancha }}</p>
                                 <p style="margin: 5px 0;"><strong>Estado:</strong> {{ $turno->estado }}</p>
+                                <p style="margin: 5px 0;"><strong>Monto Seña:</strong> ${{ $turno->monto_seña }}</p>
+                                <p style="margin: 5px 0;"><strong>Monto Total:</strong> ${{ $turno->monto_total }}</p>
                                 <p style="margin: 5px 0;"><strong>Nº Confirmación:</strong> {{ $turno->id }}</p>
                             </div>
                             

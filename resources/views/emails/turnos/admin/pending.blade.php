@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reserva Confirmada</title>
+    <title>Nueva Reserva Pendiente de Pago</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333333;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -13,7 +13,7 @@
                     <!-- Encabezado simple -->
                     <tr>
                         <td style="padding: 15px 20px; background-color: #f5f5f5; border-bottom: 1px solid #dddddd;">
-                            <h2 style="margin: 0; font-size: 18px;">Reserva Confirmada</h2>
+                            <h2 style="margin: 0; font-size: 18px;">Nueva Reserva Registrada</h2>
                         </td>
                     </tr>
                     
@@ -22,7 +22,7 @@
                         <td style="padding: 20px;">
                             <p>Hola, Administrador</p>
                             
-                            <p>Se ha registrado un pago de la seña <span style="font-weight: bold; color: #008000">(${{ $turno->monto_seña }})</span> de la reserva <span style="font-weight: bold;">#{{ $turno->id }}</span>. Aquí están los detalles:</p>
+                            <p>Se ha registrado una nueva reserva en el sistema. Aquí están los detalles:</p>
                             
                             <!-- Detalles sin formato de tabla especial -->
                             <div style="background-color: #f9f9f9; padding: 15px; margin: 15px 0; border-left: 3px solid #999999;">

@@ -9,7 +9,7 @@ use Illuminate\Notifications\Notification;
 use App\Mail\ReservaConfirmada;
 use App\Mail\ReservaCancelada;
 use App\Models\Turno;
-
+use App\Models\User;
 class ReservaNotification extends Notification implements ShouldQueue
 {
     use Queueable;
@@ -57,6 +57,10 @@ class ReservaNotification extends Notification implements ShouldQueue
                 return (new MailMessage)
                     ->subject('Reserva Cancelada (' . $this->turno->id . ')')
                     ->view('emails.turnos.admin.cancelation', ['turno' => $this->turno]);
+            case 'admin.pending':
+                return (new MailMessage)
+                    ->subject('Reserva Pendiente (' . $this->turno->id . ')')
+                    ->view('emails.turnos.admin.pending', ['turno' => $this->turno]);
             default:
                 throw new \InvalidArgumentException('Tipo de notificación no válido: ' . $this->tipo);
         }
