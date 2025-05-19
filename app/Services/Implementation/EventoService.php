@@ -25,8 +25,9 @@ class EventoService implements EventoServiceInterface
             'descripcion' => 'required|string|max:255',
             'fecha' => 'required|date',
             'persona_id' => 'required|exists:personas,id',
-            'horario_id' => 'required', // Puede ser array o int
-            'cancha_id' => 'required',  // Puede ser array o int
+            'combinaciones' => 'required|array',
+            'combinaciones.*.horario_id' => 'required|exists:horarios,id',
+            'combinaciones.*.cancha_id' => 'required|exists:canchas,id',
         ]);
 
         if ($validator->fails()) {
@@ -39,20 +40,13 @@ class EventoService implements EventoServiceInterface
 
         $evento = Evento::create($request->only(['nombre', 'descripcion', 'fecha', 'persona_id']));
 
-        // Normalizar a array
-        $horarios = is_array($request->horario_id) ? $request->horario_id : [$request->horario_id];
-        $canchas = is_array($request->cancha_id) ? $request->cancha_id : [$request->cancha_id];
-
-        foreach ($horarios as $horarioId) {
-            foreach ($canchas as $canchaId) {
-                \App\Models\EventoHorarioCancha::create([
-                    'evento_id' => $evento->id,
-                    'horario_id' => $horarioId,
-                    'cancha_id' => $canchaId,
-                    // Si necesitas un estado por defecto:
-                    // 'estado' => EventoEstado::PENDIENTE->value,
-                ]);
-            }
+        foreach ($request->combinaciones as $combinacion) {
+            \App\Models\EventoHorarioCancha::create([
+                'evento_id' => $evento->id,
+                'horario_id' => $combinacion['horario_id'],
+                'cancha_id' => $combinacion['cancha_id'],
+                // Agrega otros campos necesarios como 'estado'
+            ]);
         }
 
         return response()->json([
