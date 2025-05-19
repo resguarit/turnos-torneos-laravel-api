@@ -24,4 +24,9 @@ class Evento extends Model
     {
         return $this->belongsTo(Persona::class, 'persona_id');
     }
+    
+    public function combinaciones()
+    {
+        return $this->hasMany(\App\Models\EventoHorarioCancha::class, 'evento_id');
+    }
 }

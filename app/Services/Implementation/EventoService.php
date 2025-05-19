@@ -12,7 +12,7 @@ use App\Enums\EventoEstado;
 class EventoService implements EventoServiceInterface
 {
     public function getAll(){
-        return Evento::with('persona')->get();
+        return Evento::with(['persona', 'combinaciones.horario', 'combinaciones.cancha'])->get();
     }
 
     public function getById($id){
