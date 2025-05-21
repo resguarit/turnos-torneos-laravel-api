@@ -42,4 +42,11 @@ class PagoController extends Controller
             $this->pagoService->obtenerPagoPorFecha($equipoId, $zonaId)
         );
     }
+
+    public function registrarPagoEvento($id, $metodoPagoId)
+    {
+        return response()->json(
+            $this->pagoService->registrarPagoEvento($id, $metodoPagoId)
+        );
+    }
 }

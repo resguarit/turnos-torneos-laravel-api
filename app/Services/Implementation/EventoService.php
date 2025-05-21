@@ -24,6 +24,7 @@ class EventoService implements EventoServiceInterface
             'nombre' => 'required|string|max:255',
             'descripcion' => 'required|string|max:255',
             'fecha' => 'required|date',
+            'monto' => 'required|numeric',
             'persona_id' => 'required|exists:personas,id',
             'combinaciones' => 'required|array',
             'combinaciones.*.horario_id' => 'required|exists:horarios,id',
@@ -49,6 +50,15 @@ class EventoService implements EventoServiceInterface
             ]);
         }
 
+        $cuentaCorriente = CuentaCorriente::firstOrCreate(
+                        ['persona_id' => $persona->id],
+                        ['saldo' => 0] 
+                    );
+        
+        $cuentaCorriente->saldo -= $evento->monto;
+
+        $cuentaCorriente->save();
+
         return response()->json([
             'message' => 'Evento creado correctamente',
             'evento' => $evento,
@@ -60,6 +70,7 @@ class EventoService implements EventoServiceInterface
         $validator = Validator::make($request->all(), [
             'nombre' => 'sometimes|string|max:255',
             'descripcion' => 'sometimes|string|max:255',
+            'monto' => 'sometimes|numeric',
             'fecha' => 'sometimes|date',
             'persona_id' => 'sometimes|exists:personas,id',
         ]);
@@ -135,6 +146,7 @@ class EventoService implements EventoServiceInterface
                     'descripcion' => $evento->descripcion,
                     'estado' => $evento->estado,
                     'fecha' => $evento->fecha,
+                    'monto' => $evento->monto,
                     'persona' => $evento->persona,
                     'horario' => [
                         'id' => $horario->id,
@@ -143,7 +155,7 @@ class EventoService implements EventoServiceInterface
                         'dia' => $horario->dia,
                     ],
                     'canchas' => $canchas,
-                    'estado_combinacion' => $estados, // Puede ser un array de estados
+                    'estado_combinacion' => $estados, 
                 ];
             }
         }

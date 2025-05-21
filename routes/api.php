@@ -204,6 +204,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('pago/inscripcion/{equipoId}/{torneoId}/{metodoPagoId}', [PagoController::class, 'registrarPagoInscripcion']);
     Route::post('pago/fecha/{fechaId}/{metodoPagoId}', [PagoController::class, 'registrarPagoPorFecha']);
+    Route::post('pago/evento/{id}/{metodoPagoId}', [PagoController::class, 'registrarPagoEvento']);
 
     Route::post('/sanciones', [SancionController::class, 'store']);
     Route::get('/sanciones/{id}', [SancionController::class, 'show']);

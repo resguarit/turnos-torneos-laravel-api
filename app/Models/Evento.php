@@ -17,6 +17,7 @@ class Evento extends Model
         'nombre',
         'descripcion',
         'fecha',
+        'monto',
         'persona_id',
     ];
 
