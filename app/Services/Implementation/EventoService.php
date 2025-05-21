@@ -126,10 +126,14 @@ class EventoService implements EventoServiceInterface
                     ];
                 })->unique('id')->values();
 
+                // Si hay más de una combinación para el mismo horario, puede haber más de un estado
+                $estados = $combinaciones->pluck('estado')->unique()->values();
+
                 $result[] = [
                     'evento_id' => $evento->id,
                     'nombre' => $evento->nombre,
                     'descripcion' => $evento->descripcion,
+                    'estado' => $evento->estado,
                     'fecha' => $evento->fecha,
                     'persona' => $evento->persona,
                     'horario' => [
@@ -139,6 +143,7 @@ class EventoService implements EventoServiceInterface
                         'dia' => $horario->dia,
                     ],
                     'canchas' => $canchas,
+                    'estado_combinacion' => $estados, // Puede ser un array de estados
                 ];
             }
         }
