@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Deporte;
+use App\Models\BloqueoDisponibilidadTurno;
+
 class DisponibilidadService implements DisponibilidadServiceInterface
 {
     public function getHorariosNoDisponibles()
@@ -102,6 +104,14 @@ class DisponibilidadService implements DisponibilidadServiceInterface
             })
             ->get();
 
+        // --- BLOQUEOS DE DISPONIBILIDAD ---
+        $bloqueos = BloqueoDisponibilidadTurno::where('fecha', $fecha->format('Y-m-d'))
+            ->whereIn('cancha_id', $canchasIds)
+            ->whereIn('horario_id', $horarios->pluck('id')->toArray())
+            ->get();
+        $bloqueosPorHorario = $bloqueos->groupBy('horario_id');
+        $bloqueosPorCancha = $bloqueos->groupBy('cancha_id');
+
         // Agrupar por horario_id para contar reservas por horario
         $reservasPorHorario = $reservas->groupBy('horario_id');
         $eventosPorHorario = $eventosReservados->groupBy('horario_id');
@@ -113,9 +123,10 @@ class DisponibilidadService implements DisponibilidadServiceInterface
             // Contar reservas para este horario específico
             $reservasCount = isset($reservasPorHorario[$horario->id]) ? count($reservasPorHorario[$horario->id]) : 0;
             $eventosCount = isset($eventosPorHorario[$horario->id]) ? count($eventosPorHorario[$horario->id]) : 0;
-            $totalOcupadas = $reservasCount + $eventosCount;
+            $bloqueosCount = isset($bloqueosPorHorario[$horario->id]) ? count($bloqueosPorHorario[$horario->id]) : 0;
+            $totalOcupadas = $reservasCount + $eventosCount + $bloqueosCount;
 
-            // Un horario no está disponible si todas las canchas están reservadas por turnos o eventos
+            // Un horario no está disponible si todas las canchas están reservadas, bloqueadas o con eventos
             $disponible = $totalOcupadas < $canchasCount;
 
             if (!$disponible) {
@@ -261,16 +272,27 @@ class DisponibilidadService implements DisponibilidadServiceInterface
         })
         ->get();
 
+        // --- AGREGADO: Verificar bloqueos de disponibilidad en horarios solapados ---
+        $bloqueosSolapados = BloqueoDisponibilidadTurno::where('fecha', $fecha->format('Y-m-d'))
+            ->whereIn('cancha_id', $canchasIds)
+            ->whereIn('horario_id', $horariosSolapados)
+            ->get();
+        $bloqueosPorCanchaSolapados = $bloqueosSolapados->groupBy('cancha_id');
+
         // Agrupar reservas por cancha_id para facilitar la verificación
         $reservasPorCancha = $turnos->groupBy('cancha_id');
         // Agrupar eventos reservados por cancha_id
         $eventosPorCancha = $eventosReservados->groupBy('cancha_id');
 
+        $bloqueosPorCancha = $bloqueosSolapados->groupBy('cancha_id');
+
         $result = [];
 
         foreach ($canchas as $cancha) {
-            // Una cancha está disponible si no tiene reservas en ningún horario solapado
-            $disponible = !isset($reservasPorCancha[$cancha->id]) && !isset($eventosPorCancha[$cancha->id]);
+            // Una cancha está disponible si no tiene reservas, ni eventos, ni bloqueos en ningún horario solapado
+            $disponible = !isset($reservasPorCancha[$cancha->id])
+                && !isset($eventosPorCancha[$cancha->id])
+                && !isset($bloqueosPorCanchaSolapados[$cancha->id]);
 
             $result[] = [
                 'id' => $cancha->id,
