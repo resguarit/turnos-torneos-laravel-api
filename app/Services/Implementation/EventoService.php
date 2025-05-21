@@ -7,6 +7,10 @@ use App\Models\Evento;
 use Illuminate\Support\Facades\Validator;
 use App\Services\Interface\EventoServiceInterface;
 use App\Enums\EventoEstado;
+use App\Models\CuentaCorriente;
+use App\Models\Transaccion;
+use App\Models\Persona;
+
 
 
 class EventoService implements EventoServiceInterface
@@ -162,6 +166,50 @@ class EventoService implements EventoServiceInterface
 
         return response()->json([
             'eventos_turnos' => $result,
+            'status' => 200
+        ], 200);
+    }
+
+    public function obtenerEstadoPago($id){
+        $evento = Evento::where('id', $id)->with('persona')->first();
+        if (!$evento) {
+            return response()->json([
+                'message' => 'Evento no encontrado',
+                'status' => 404
+            ], 404);
+        }
+
+        $estadoPago=false;
+
+        $persona = Persona::where('id', $evento->persona_id)->first();
+        if (!$persona) {
+            return response()->json([
+                'message' => 'Persona no encontrada',
+                'status' => 404
+            ], 404);
+        }
+        
+        $cuentacorriente = CuentaCorriente::where('persona_id', $evento->persona->id)->first();
+
+        if (!$cuentacorriente) {
+            return response()->json([
+                'message' => 'Cuenta corriente no encontrada',
+                'status' => 404
+            ], 404);
+        }
+
+        $transaccion = Transaccion::where('cuenta_corriente_id', $cuentacorriente->id)
+            ->where('evento_id', $evento->id)
+            ->first();
+            
+        if (!$transaccion) {
+            $estadoPago = false;
+        } else {
+            $estadoPago = true;
+        }
+
+        return response()->json([
+            'estado_pago' => $estadoPago,
             'status' => 200
         ], 200);
     }
