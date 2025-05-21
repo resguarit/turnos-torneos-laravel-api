@@ -13,5 +13,8 @@ interface PartidoServiceInterface
     public function update(Request $request, $id);
     public function delete($id);
     public function getByFecha($fechaId);
-    public function getByEquipo($equipoId);
+    public function getByEquipo($equipoId, $zonaId);
+    public function getByEquipoAndZona($equipoId, $zonaId);
+    public function getByZona($zonaId);
+    public function asignarHoraYCanchaPorZona(Request $request, $zonaId);
 }

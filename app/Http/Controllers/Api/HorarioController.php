@@ -19,9 +19,6 @@ class HorarioController extends Controller
 
     public function index()
     {
-        $user = Auth::user();
-        abort_unless($user->tokenCan('horarios:show') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-        
         return $this->horarioService->getHorarios();
     }
 
@@ -48,9 +45,6 @@ class HorarioController extends Controller
 
     public function getHorariosPorDiaSemana(Request $request)
     {
-        $user = Auth::user();
-        abort_unless($user->tokenCan('horarios:fecha') || $user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-        
         return $this->horarioService->getHorariosPorDiaSemana($request);
     }
 

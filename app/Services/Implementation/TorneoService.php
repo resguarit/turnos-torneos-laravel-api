@@ -11,9 +11,14 @@ use Illuminate\Support\Facades\Validator;
 class TorneoService implements TorneoServiceInterface
 {
     public function getAll()
-    {
-        return Torneo::with('deporte')->get();
-    }
+{
+    return Torneo::with([
+        'deporte',
+        'zonas.equipos',
+        'zonas.fechas.partidos',
+        'zonas.grupos.equipos',
+    ])->get();
+}
 
     public function getById($id)
     {
@@ -26,6 +31,8 @@ class TorneoService implements TorneoServiceInterface
             'nombre' => 'required|string|max:255',
             'año' => 'required|integer',
             'deporte_id' => 'required|exists:deportes,id',
+            'precio_inscripcion' => 'required|numeric|min:0',
+            'precio_por_fecha' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -57,9 +64,11 @@ class TorneoService implements TorneoServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
-            'año' => 'required|integer',
-            'deporte_id' => 'required|exists:deportes,id',
+            'nombre' => 'sometimes|string|max:255',
+            'año' => 'sometimes|integer',
+            'deporte_id' => 'sometimes|exists:deportes,id',
+            'precio_inscripcion' => 'sometimes|numeric|min:0',
+            'precio_por_fecha' => 'sometimes|numeric|min:0',
         ]);
 
         if ($validator->fails()) {

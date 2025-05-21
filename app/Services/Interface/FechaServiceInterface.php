@@ -13,4 +13,6 @@ interface FechaServiceInterface
     public function update(Request $request, $id);
     public function delete($id);
     public function getByZona($zonaId);
+    public function verificarEstadoFecha($fechaId);
+    public function deleteMultiple(array $fechaIds);
 }

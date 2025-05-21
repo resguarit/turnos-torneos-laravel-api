@@ -10,14 +10,14 @@ return new class extends Migration
     {
         Schema::create('auditorias', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('usuario_id')->constrained('users');
-            $table->string('accion'); // crear, modificar, eliminar
+            $table->foreignId('usuario_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('accion'); // crear, modificar, eliminar, login, etc.
             $table->string('entidad'); // turnos, canchas, horarios, etc.
             $table->unsignedBigInteger('entidad_id')->nullable(); // ID del recurso afectado
-            $table->json('datos_antiguos')->nullable();
-            $table->json('datos_nuevos')->nullable();
+            $table->longText('datos_antiguos')->nullable();
+            $table->longText('datos_nuevos')->nullable();
             $table->string('ip')->nullable();
-            $table->string('user_agent')->nullable();
+            $table->text('user_agent')->nullable();
             $table->timestamp('fecha_accion');
             $table->timestamps();
         });
@@ -28,3 +28,4 @@ return new class extends Migration
         Schema::dropIfExists('auditorias');
     }
 };
+

@@ -9,7 +9,7 @@ class Estadistica extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['goles', 'asistencias', 'rojas', 'amarillas', 'partido_id', 'jugador_id'];
+    protected $fillable = ['nro_camiseta', 'goles', 'asistencias', 'rojas', 'amarillas', 'partido_id', 'jugador_id'];
 
     public function partido()
     {

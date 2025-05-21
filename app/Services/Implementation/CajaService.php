@@ -55,7 +55,7 @@ class CajaService implements CajaServiceInterface
         $transacciones = $caja->transacciones->map(function ($transaccion) {
             return [
                 'id' => $transaccion->id,
-                'tipo' => $transaccion->monto > 0 ? 'deposito' : 'retiro',
+                'tipo' => (($transaccion->monto > 0) || $transaccion->tipo === 'inscripcion' || $transaccion->tipo === 'fecha') ? 'deposito' : 'retiro',
                 'monto' => abs($transaccion->monto),
                 'descripcion' => $transaccion->descripcion,
                 'metodo_pago' => strtolower($transaccion->metodoPago->nombre),

@@ -8,11 +8,19 @@ use App\Models\Auditoria;
 use Illuminate\Support\Facades\Hash;
 use App\Services\Interface\AuthServiceInterface;
 use Illuminate\Support\Facades\DB;
+use App\Services\Interface\AuditoriaServiceInterface;
 use App\Models\CuentaCorriente;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Notifications\ConfirmEmailNotification;
 class AuthService implements AuthServiceInterface
 {
+    protected $auditoriaService;
+    
+    public function __construct(AuditoriaServiceInterface $auditoriaService)
+    {
+        $this->auditoriaService = $auditoriaService;
+    }
+    
     public function login(array $credentials)
     {
         if (isset($credentials['dni'])) {
@@ -31,22 +39,12 @@ class AuthService implements AuthServiceInterface
         $abilities = $user->getAbilities();
         $token = $user->createToken('login', $abilities);
 
-        // Registrar en auditorías
-        Auditoria::create([
-            'usuario_id' => $user->id,
-            'accion' => 'login',
-            'entidad' => 'User',
-            'entidad_id' => $user->id,
-            'ip' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-            'fecha_accion' => now()
-        ]);
-
         return [
             'token' => $token->plainTextToken,
             'user_id' => $user->id,
             'rol' => $user->rol,
             'username' => $user->persona->name ?? 'Usuario', // Asegurándonos de tener un valor predeterminado si es null
+            'dni' => $user->dni,
             'status' => 200
         ];
     }
@@ -115,10 +113,33 @@ class AuthService implements AuthServiceInterface
                 'status' => 500
             ];
         }
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'dni' => $data['dni'],
+            'telefono' => $data['telefono'],
+            'password' => Hash::make($data['password']),
+            'rol' => 'cliente'
+        ]);
+
+        return [
+            'message' => 'Usuario registrado exitosamente',
+            'user' => $user,
+            'status' => 201
+        ];
     }
 
     public function logout($user)
     {
+        $this->auditoriaService->registrar(
+            'logout',
+            'users',
+            $user->id,
+            null,
+            ['ip' => request()->ip(), 'user_agent' => request()->userAgent()],
+            $user->id
+        );
+        
         $user->currentAccessToken()->delete();
         
         return [

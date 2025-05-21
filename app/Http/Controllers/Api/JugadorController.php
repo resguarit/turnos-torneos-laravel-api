@@ -54,8 +54,47 @@ class JugadorController extends Controller
         return response()->json($this->jugadorService->getByEquipo($equipoId), 200);
     }
 
+    public function getByZona($zonaId)
+    {
+        return response()->json($this->jugadorService->getByZona($zonaId), 200);
+    }
+
     public function createMultiple(Request $request)
     {
         return $this->jugadorService->createMultiple($request);
+    }
+
+    public function searchByDni(Request $request) 
+    {
+        return $this->jugadorService->searchByDni($request);
+    }
+
+    public function asociarJugadorAEquipo(Request $request)
+    {
+        $jugadorId = $request->input('jugador_id');
+        $equipoId = $request->input('equipo_id');
+        return $this->jugadorService->asociarJugadorAEquipo($jugadorId, $equipoId);
+    }
+
+    public function infoPorDni($dni)
+    {
+        return app(\App\Services\Implementation\JugadorService::class)->getInfoJugadorByDni($dni);
+    }
+
+    public function getEquipoJugadorId($equipoId, $jugadorId)
+    {
+        $equipoJugadorId = $this->jugadorService->getEquipoJugadorId($equipoId, $jugadorId);
+
+        if (!$equipoJugadorId) {
+            return response()->json([
+                'message' => 'No se encontró la relación entre el equipo y el jugador',
+                'status' => 404
+            ], 404);
+        }
+
+        return response()->json([
+            'equipo_jugador_id' => $equipoJugadorId,
+            'status' => 200
+        ], 200);
     }
 }

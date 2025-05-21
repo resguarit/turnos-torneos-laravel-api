@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Services\Interface\CanchaServiceInterface;
 use App\Services\Implementation\AuditoriaService;
-use App\Models\Deporte;
 use Illuminate\Validation\Rule;
+use App\Models\Deporte;
 
 class CanchaService implements CanchaServiceInterface
 {
@@ -29,7 +29,7 @@ class CanchaService implements CanchaServiceInterface
             'id' => 'required|integer|exists:canchas,id'
         ]);
 
-        if($validator->fails()){
+        if ($validator->fails()) {
             return response()->json([
                 'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
@@ -64,12 +64,13 @@ class CanchaService implements CanchaServiceInterface
             'precio_por_hora' => 'required|numeric',
             'seña' => 'required|numeric',
             'activa' => 'required|boolean',
-            'descripcion' => 'nullable|string'
+            'descripcion' => 'nullable|string',
+            'deporte_id' => 'required|exists:deportes,id'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Error en la validacion',
+                'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 400
             ], 400);
@@ -85,8 +86,19 @@ class CanchaService implements CanchaServiceInterface
             'precio_por_hora' => $request->precio_por_hora,
             'seña' => $request->seña,
             'activa' => $request->activa,
-            'descripcion' => $request->descripcion
+            'descripcion' => $request->descripcion,
+            'deporte_id' => $request->deporte_id
         ]);
+
+
+        // Registrar auditoría
+        AuditoriaService::registrar(
+            'crear',
+            'canchas',
+            $cancha->id,
+            null,
+            $cancha->toArray()
+        );
 
         return response()->json([
             'message' => 'Cancha creada correctamente',
@@ -112,7 +124,8 @@ class CanchaService implements CanchaServiceInterface
             'precio_por_hora' => 'sometimes|numeric',
             'seña' => 'sometimes|numeric',
             'activa' => 'sometimes|boolean',
-            'descripcion' => 'nullable|string'
+            'descripcion' => 'nullable|string',
+            'deporte_id' => 'sometimes|exists:deportes,id'
         ]);
 
         if ($validator->fails()) {
@@ -124,38 +137,42 @@ class CanchaService implements CanchaServiceInterface
         }
 
         $datosAnteriores = $cancha->toArray();
-        
-        if($request->has('nro')){
+
+        if ($request->has('nro')) {
             $cancha->nro = $request->nro;
         }
 
-        if($request->has('tipo_cancha')){
+        if ($request->has('tipo_cancha')) {
             $cancha->tipo_cancha = $request->tipo_cancha;
         }
 
-        if($request->has('precio_por_hora')){
+        if ($request->has('precio_por_hora')) {
             $cancha->precio_por_hora = $request->precio_por_hora;
         }
 
-        if($request->has('seña')){
+        if ($request->has('seña')) {
             $cancha->seña = $request->seña;
         }
 
-        if($request->has('activa')){
+        if ($request->has('activa')) {
             $cancha->activa = $request->activa;
         }
 
-        if($request->has('descripcion')){
+        if ($request->has('descripcion')) {
             $cancha->descripcion = $request->descripcion;
+        }
+
+        if($request->has('deporte_id')){
+            $cancha->deporte_id = $request->deporte_id;
         }
 
         $cancha->save();
 
         AuditoriaService::registrar(
-            'modificar', 
-            'canchas', 
-            $cancha->id, 
-            $datosAnteriores, 
+            'modificar',
+            'canchas',
+            $cancha->id,
+            $datosAnteriores,
             $cancha->fresh()->toArray()
         );
 
@@ -171,14 +188,14 @@ class CanchaService implements CanchaServiceInterface
         try {
             $cancha = Cancha::findOrFail($id);
             $datosAnteriores = $cancha->toArray();
-            
+
             $cancha->delete();
 
             AuditoriaService::registrar(
-                'eliminar', 
-                'canchas', 
-                $id, 
-                $datosAnteriores, 
+                'eliminar',
+                'canchas',
+                $id,
+                $datosAnteriores,
                 null
             );
 
@@ -186,7 +203,6 @@ class CanchaService implements CanchaServiceInterface
                 'message' => 'Cancha eliminada correctamente',
                 'status' => 200
             ], 200);
-
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'message' => 'Cancha no encontrada',

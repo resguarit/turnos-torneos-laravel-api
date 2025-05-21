@@ -5,11 +5,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes; // Add this import
 use App\Enums\ZonaFormato;
 
 class Zona extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = ['nombre', 'formato', 'año', 'torneo_id'];
 
@@ -24,7 +26,7 @@ class Zona extends Model
 
     public function equipos()
     {
-        return $this->hasMany(Equipo::class);
+        return $this->belongsToMany(Equipo::class, 'equipo_zona');
     }
 
     public function grupos()

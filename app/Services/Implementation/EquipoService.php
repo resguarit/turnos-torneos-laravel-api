@@ -12,12 +12,14 @@ class EquipoService implements EquipoServiceInterface
 {
     public function getAll()
     {
-        return Equipo::with('jugadores')->get();
+        // Eager load 'jugadores' and 'zonas'
+        return Equipo::with('jugadores', 'zonas')->get();
     }
 
     public function getById($id)
     {
-        return Equipo::with('jugadores')->find($id);
+        // Eager load 'jugadores' and 'zonas'
+        return Equipo::with('jugadores', 'zonas')->find($id);
     }
 
     public function create(Request $request)
@@ -27,17 +29,14 @@ class EquipoService implements EquipoServiceInterface
                 'required',
                 'string',
                 'max:255',
-                function ($attribute, $value, $fail) use ($request) {
-                    $exists = Equipo::where('nombre', $value)
-                        ->where('zona_id', $request->input('zona_id'))
-                        ->exists();
-                    if ($exists) {
-                        $fail('El nombre del equipo ya existe en esta zona.');
-                    }
-                },
+                // Consider if uniqueness needs to be global or per tournament/zone
+                // For global uniqueness:
+                'unique:equipos,nombre',
+                // For uniqueness within a specific context, validation needs adjustment
+                // or handled differently (e.g., checking before creation based on context).
             ],
             'escudo' => 'nullable|string',
-            'zona_id' => 'required|exists:zonas,id',
+            // zona_id is no longer directly handled here for creation
         ]);
 
         if ($validator->fails()) {
@@ -48,7 +47,12 @@ class EquipoService implements EquipoServiceInterface
             ], 400);
         }
 
-        $equipo = Equipo::create($request->all());
+        $equipo = Equipo::create([
+            'nombre' => $request->nombre,
+            'escudo' => $request->escudo
+        ]);
+
+        // Association with zona is typically handled in ZonaService or when adding teams to a zone
 
         return response()->json([
             'message' => 'Equipo creado correctamente',
@@ -60,31 +64,19 @@ class EquipoService implements EquipoServiceInterface
     public function update(Request $request, $id)
     {
         $equipo = Equipo::find($id);
-
         if (!$equipo) {
-            return response()->json([
-                'message' => 'Equipo no encontrado',
-                'status' => 404
-            ], 404);
+            return response()->json(['message' => 'Equipo no encontrado', 'status' => 404], 404);
         }
 
         $validator = Validator::make($request->all(), [
             'nombre' => [
+                'sometimes',
                 'required',
                 'string',
                 'max:255',
-                function ($attribute, $value, $fail) use ($request, $id) {
-                    $exists = Equipo::where('nombre', $value)
-                        ->where('zona_id', $request->input('zona_id'))
-                        ->where('id', '!=', $id)
-                        ->exists();
-                    if ($exists) {
-                        $fail('El nombre del equipo ya existe en esta zona.');
-                    }
-                },
+                'unique:equipos,nombre,' . $id, // Unique check excluding self
             ],
             'escudo' => 'nullable|string',
-            'zona_id' => 'required|exists:zonas,id',
         ]);
 
         if ($validator->fails()) {
@@ -95,7 +87,7 @@ class EquipoService implements EquipoServiceInterface
             ], 400);
         }
 
-        $equipo->update($request->all());
+        $equipo->update($request->only(['nombre', 'escudo']));
 
         return response()->json([
             'message' => 'Equipo actualizado correctamente',
@@ -115,6 +107,9 @@ class EquipoService implements EquipoServiceInterface
             ], 404);
         }
 
+        // Detach relationships (optional, cascade might handle)
+        $equipo->zonas()->detach();
+        $equipo->jugadores()->detach(); // Detach players
         $equipo->delete();
 
         return response()->json([
@@ -125,6 +120,15 @@ class EquipoService implements EquipoServiceInterface
 
     public function getByZona($zonaId)
     {
-        return Equipo::where('zona_id', $zonaId)->with('jugadores')->get();
+        return Equipo::whereHas('zonas', function ($query) use ($zonaId) {
+            $query->where('zonas.id', $zonaId);
+        })->with('jugadores')->get(); // Load players for teams in the zone
+    }
+
+    public function getExcludeZona($zonaId)
+    {
+        return Equipo::whereDoesntHave('zonas', function ($query) use ($zonaId) {
+            $query->where('zonas.id', $zonaId);
+        })->with('jugadores')->get(); // Load players
     }
 }

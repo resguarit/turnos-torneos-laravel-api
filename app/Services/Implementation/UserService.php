@@ -22,7 +22,6 @@ class UserService implements UserServiceInterface
         
 
         if (!$persona) {
-            // Si no existe, crear una nueva persona
             $persona = Persona::create([
                 'name' => $data['name'],
                 'dni' => $data['dni'],
@@ -123,6 +122,7 @@ class UserService implements UserServiceInterface
             'user_id' => $user->id,
             'rol' => $user->rol,
             'username' => $user->persona->name,
+            'dni' => $user->dni,
         ];
     }
 
@@ -261,9 +261,13 @@ class UserService implements UserServiceInterface
     {
         $user = User::with('persona')->find($id);
 
+        $datosAnteriores = [
+            'user' => $user->toArray(),
+        ];
+
         if (!$user) {
             return [
-                'message' => 'Usuario no encontrado',
+                'message' => 'Usuario o Persona no encontrado',
                 'status' => 404
             ];
         }
@@ -312,29 +316,13 @@ class UserService implements UserServiceInterface
 
         return [
             'message' => 'Usuario actualizado correctamente',
+            'user' => $user,
             'status' => 200
         ];
     }
 
     public function index(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'limit' => 'integer|min:1',
-            'sortBy' => 'string|in:name,email,created_at,dni,telefono',
-            'order' => 'string|in:asc,desc',
-            'page' => 'integer|min:1',
-            'searchType' => 'string|nullable|in:name,email,dni,telefono',
-            'searchTerm' => 'string|nullable',
-        ]);
-
-        if ($validator->fails()) {
-            return [
-                'message' => 'Error en la validación',
-                'errors' => $validator->errors(),
-                'status' => 422
-            ];
-        }
-
         $perPage = $request->query('limit', 10);
         $sortBy = $request->query('sortBy', 'created_at');
         $order = $request->query('order', 'desc');

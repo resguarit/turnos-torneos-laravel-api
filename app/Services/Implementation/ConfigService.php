@@ -33,6 +33,14 @@ class ConfigService implements ConfigServiceInterface
         $duracionTurno = $deporte->duracion_turno;
 
         foreach ($dias as $dia => $horas) {
+            $resumen['dias_afectados'][] = $dia;
+
+            $diaResumen = [
+                'horarios_creados' => 0,
+                'horarios_modificados' => 0,
+                'horarios_deshabilitados' => 0,
+            ];
+
             if (is_null($horas['hora_apertura']) && is_null($horas['hora_cierre'])) {
                 Horario::where('dia', $dia)
                 ->where('deporte_id', $deporte->id)
@@ -55,10 +63,21 @@ class ConfigService implements ConfigServiceInterface
                     $this->actualizarHorariosExistentes($horariosExistentes, $horaApertura, $horaCierre, $dia, $deporte->id, $deporte->duracion_turno);
                 }
             }
+
+            // Registrar una sola auditoría por día
+            $id = $id ?? null; // Si no está definido, asignar null
+            AuditoriaService::registrar(
+                'configurar',
+                'horarios',
+                $id, // Aquí está el problema
+                null,
+                ['dia' => $dia, 'resumen' => $diaResumen]
+            );
         }
 
         return response()->json([
             'message' => 'Horarios configurados correctamente',
+            'resumen' => $resumen,
             'status' => 201
         ], 201);
     }
