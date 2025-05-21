@@ -95,6 +95,7 @@ class ConfigService implements ConfigServiceInterface
             //    $horaActual->subMinutes(30);
             //}
         }
+        
     }
 
     private function actualizarHorariosExistentes($horariosExistentes, Carbon $horaApertura, Carbon $horaCierre, string $dia, int $deporteId, int $duracionTurno)

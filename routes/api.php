@@ -31,6 +31,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Checkout\MercadoPagoController;
 use App\Http\Controllers\Webhook\MercadoPagoWebhook;
+use App\Http\Controllers\Api\BloqueoDisponibilidadController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -60,6 +61,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/dashboard/horas-pico', [DashboardController::class, 'horasPico']);
     Route::get('/dashboard/reservas-por-mes', [DashboardController::class, 'reservasPorMes']);
 
+    Route::post('/bloquear-disponibilidad', [BloqueoDisponibilidadController::class, 'bloquearDisponibilidad']);
+    Route::post('/desbloquear-disponibilidad', [BloqueoDisponibilidadController::class, 'desbloquearDisponibilidad']);
+    Route::get('/bloqueados', [BloqueoDisponibilidadController::class, 'getAll']);
+    Route::delete('/bloqueados/{id}', [BloqueoDisponibilidadController::class, 'destroy']);
+
     Route::get('/turnos', [TurnoController::class, 'index']);
     Route::get('/turnos-all', [TurnoController::class, 'getAll']);
     Route::get('turnos/user/{id?}', [TurnoController::class, 'getTurnosByUser']);
@@ -76,7 +82,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
     Route::post('/turnos/cancelarbloqueo', [BloqueoTemporalController::class, 'cancelarBloqueo']);
-    
+     
     Route::get('/horarios', [HorarioController::class, 'index']);
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);

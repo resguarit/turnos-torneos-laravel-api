@@ -51,6 +51,8 @@ use App\Services\Interface\CajaServiceInterface;
 use App\Services\Implementation\CajaService;
 use App\Services\Interface\PaymentServiceInterface;
 use App\Services\Implementation\PaymentService;
+use App\Services\Interface\BloqueoDisponibilidadServiceInterface;
+use App\Services\Implementation\BloqueoDisponibilidadService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -83,6 +85,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TransaccionServiceInterface::class, TransaccionService::class);
         $this->app->bind(CajaServiceInterface::class, CajaService::class);
         $this->app->bind(PaymentServiceInterface::class, PaymentService::class);
+        $this->app->bind(BloqueoDisponibilidadServiceInterface::class, BloqueoDisponibilidadService::class);
     }
 
     /**
