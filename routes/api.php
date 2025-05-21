@@ -215,6 +215,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('eventos', [EventoController::class, 'store']);
     Route::put('eventos/{id}', [EventoController::class, 'update']);
     Route::delete('eventos/{id}', [EventoController::class, 'destroy']);
+    Route::get('eventosComoTurnos', [EventoController::class, 'eventosComoTurnos']);
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);

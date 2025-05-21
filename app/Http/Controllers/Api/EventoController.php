@@ -49,4 +49,9 @@ class EventoController extends Controller
     {
         return $this->eventoService->delete($id);
     }
+
+    public function eventosComoTurnos()
+    {
+        return $this->eventoService->getEventosComoTurnos();
+    }
 }

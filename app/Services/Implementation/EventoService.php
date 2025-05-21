@@ -105,4 +105,47 @@ class EventoService implements EventoServiceInterface
             'status' => 200
         ], 200);
     }
+
+    public function getEventosComoTurnos()
+    {
+        $eventos = Evento::with(['persona', 'combinaciones.horario', 'combinaciones.cancha'])->get();
+
+        $result = [];
+
+        foreach ($eventos as $evento) {
+            // Agrupar combinaciones por horario_id
+            $combinacionesPorHorario = $evento->combinaciones->groupBy('horario_id');
+            foreach ($combinacionesPorHorario as $horarioId => $combinaciones) {
+                $horario = $combinaciones->first()->horario;
+                $canchas = $combinaciones->map(function($comb) {
+                    return [
+                        'id' => $comb->cancha->id,
+                        'nro' => $comb->cancha->nro,
+                        'tipo' => $comb->cancha->tipo_cancha,
+                        'descripcion' => $comb->cancha->descripcion,
+                    ];
+                })->unique('id')->values();
+
+                $result[] = [
+                    'evento_id' => $evento->id,
+                    'nombre' => $evento->nombre,
+                    'descripcion' => $evento->descripcion,
+                    'fecha' => $evento->fecha,
+                    'persona' => $evento->persona,
+                    'horario' => [
+                        'id' => $horario->id,
+                        'hora_inicio' => $horario->hora_inicio,
+                        'hora_fin' => $horario->hora_fin,
+                        'dia' => $horario->dia,
+                    ],
+                    'canchas' => $canchas,
+                ];
+            }
+        }
+
+        return response()->json([
+            'eventos_turnos' => $result,
+            'status' => 200
+        ], 200);
+    }
 }
