@@ -54,4 +54,9 @@ class EventoController extends Controller
     {
         return $this->eventoService->getEventosComoTurnos();
     }
+
+    public function obtenerEstadopago($id)
+    {
+        return $this->eventoService->obtenerEstadopago($id);
+    }
 }
