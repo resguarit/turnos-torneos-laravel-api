@@ -16,7 +16,7 @@ use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use App\Models\Zona;
 use App\Services\Implementation\TurnoService;
-
+use Illuminate\Support\Facades\Log;
 
 class PartidoService implements PartidoServiceInterface
 {
@@ -219,41 +219,44 @@ class PartidoService implements PartidoServiceInterface
 
             $horarioActual = $horarioInicio->copy();
 
-            foreach ($partidos->chunk($partidosALaVez) as $partidosGrupo) {
-                $diaSemana = $this->getNombreDiaSemana($fecha->fecha_inicio->dayOfWeek);
+            $disSemana = $this->getNombreDiaSemana($fecha->fecha_inicio->dayOfWeek);
 
-                $horario = Horario::where('hora_inicio', $horarioActual->format('H:i'))
-                    ->where('dia', $diaSemana)
+            foreach ($partidos->chunk($partidosALaVez) as $partidosGrupo) {
+                
+                $horarioObjeto = Horario::where('hora_inicio', $horarioActual->format('H:i'))
+                    ->where('dia', $disSemana)
+                    ->where('deporte_id', $deporteId)
                     ->first();
 
-                if (!$horario) {
+                if (!$horarioObjeto) {
+                    $horarioActual->addHour();
                     continue;
                 }
 
                 // PASAR deporte_id en el request a disponibilidad
                 $canchasDisponiblesResponse = $this->disponibilidadService->getCanchasPorHorarioFecha(new Request([
                     'fecha' => $fecha->fecha_inicio->format('Y-m-d'),
-                    'horario_id' => $horario->id,
+                    'horario_id' => $horarioObjeto->id,
                     'deporte_id' => $deporteId
                 ]));
 
-                $canchasDisponibles = json_decode(json_encode($canchasDisponiblesResponse->getData()), true);
+                $canchasDisponiblesData = json_decode(json_encode($canchasDisponiblesResponse->getData()), true);
+                $canchasParaEsteHorario = $canchasDisponiblesData['canchas'] ?? [];
 
-                if (empty($canchasDisponibles['canchas'])) {
-                    continue;
-                }
-
-                $canchas = $canchasDisponibles['canchas'];
+                $cantidadCanchasDisponibles = count($canchasParaEsteHorario);
+                
                 foreach ($partidosGrupo as $index => $partido) {
-                    if (isset($canchas[$index])) {
-                        $partido->horario_id = $horario->id;
-                        $partido->cancha_id = $canchas[$index]['id'];
-                        $partido->save();
+                    $partido->horario_id = $horarioObjeto->id;
+                    
+                    if ($cantidadCanchasDisponibles > 0) {
+                        $indiceCanchaAUsar = $index % $cantidadCanchasDisponibles;
+                        $partido->cancha_id = $canchasParaEsteHorario[$indiceCanchaAUsar]['id'];
                     } else {
-                        $partido->horario_id = $horario->id;
                         $partido->cancha_id = null;
-                        $partido->save();
                     }
+                    
+                    $partido->save();
+
                     app(TurnoService::class)->crearTurnoTorneo($partido);
                 }
 
