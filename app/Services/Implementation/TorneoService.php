@@ -66,6 +66,7 @@ class TorneoService implements TorneoServiceInterface
         $validator = Validator::make($request->all(), [
             'nombre' => 'sometimes|string|max:255',
             'año' => 'sometimes|integer',
+            'activo' => 'sometimes|boolean',
             'deporte_id' => 'sometimes|exists:deportes,id',
             'precio_inscripcion' => 'sometimes|numeric|min:0',
             'precio_por_fecha' => 'sometimes|numeric|min:0',

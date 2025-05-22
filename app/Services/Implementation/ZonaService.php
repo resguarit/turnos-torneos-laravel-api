@@ -68,10 +68,11 @@ class ZonaService implements ZonaServiceInterface
         }
 
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
-            'formato' => ['required', 'string', Rule::in(ZonaFormato::values())],
-            'año' => 'required|integer',
-            'torneo_id' => 'required|exists:torneos,id',
+            'nombre' => 'sometimes|string|max:255',
+            'formato' => ['sometimes', 'string', Rule::in(ZonaFormato::values())],
+            'año' => 'sometimes|integer',
+            'activo' => 'sometime|integer',
+            'torneo_id' => 'sometimes|exists:torneos,id',
         ]);
 
         if ($validator->fails()) {
