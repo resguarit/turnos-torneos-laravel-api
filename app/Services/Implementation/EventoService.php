@@ -213,4 +213,39 @@ class EventoService implements EventoServiceInterface
             'status' => 200
         ], 200);
     }
+
+    public function obtenerEstadosPagoEventos()
+    {
+        $eventos = Evento::with('persona')->get();
+        $result = [];
+
+        foreach ($eventos as $evento) {
+            $estadoPago = false;
+
+            $cuentacorriente = CuentaCorriente::where('persona_id', $evento->persona_id)->first();
+
+            if ($cuentacorriente) {
+                $transaccion = Transaccion::where('cuenta_corriente_id', $cuentacorriente->id)
+                    ->where('evento_id', $evento->id)
+                    ->first();
+
+                if ($transaccion) {
+                    $estadoPago = true;
+                }
+            }
+
+            $result[] = [
+                'evento_id' => $evento->id,
+                'nombre' => $evento->nombre,
+                'fecha' => $evento->fecha,
+                'persona' => $evento->persona,
+                'estado_pago' => $estadoPago
+            ];
+        }
+
+        return response()->json([
+            'eventos' => $result,
+            'status' => 200
+        ], 200);
+    }
 }
