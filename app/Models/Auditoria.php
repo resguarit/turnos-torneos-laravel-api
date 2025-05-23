@@ -22,8 +22,6 @@ class Auditoria extends Model
     ];
 
     protected $casts = [
-        'datos_antiguos' => 'array',
-        'datos_nuevos' => 'array',
         'fecha_accion' => 'datetime'
     ];
 

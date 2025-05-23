@@ -197,6 +197,19 @@ class CuentaCorrienteService implements CuentaCorrienteServiceInterface
             $persona->cuentaCorriente->saldo += $monto;
             $persona->cuentaCorriente->save();
 
+            AuditoriaService::registrar(
+                $request->monto > 0 ? 'ingreso' : 'egreso', 
+                'cuentas_corrientes',
+                $persona->cuentaCorriente->id,
+                null,
+                [
+                    'monto' => $request->monto,
+                    'tipo' => $request->tipo,
+                    'descripcion' => $request->descripcion,
+                    'saldo_actual' => $persona->cuentaCorriente->saldo
+                ]
+            );
+
             DB::commit();
 
             return [

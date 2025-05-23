@@ -38,4 +38,5 @@ class Cancha extends Model
     {
         return $this->hasMany(BloqueoTemporal::class, 'cancha_id');
     }
+
 }

@@ -4,12 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Enums\PartidoEstado;
 
 class Partido extends Model
 {
     use HasFactory;
 
     protected $fillable = ['fecha', 'horario_id', 'cancha_id', 'estado', 'marcador_local', 'marcador_visitante', 'ganador_id', 'fecha_id', 'equipo_local_id', 'equipo_visitante_id'];
+
+    protected $casts = [
+        'estado' => PartidoEstado::class,
+    ];
 
     public function fecha()
     {

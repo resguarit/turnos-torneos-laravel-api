@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\Interface\AuditoriaServiceInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class AuditoriaController extends Controller
 {
@@ -18,18 +17,15 @@ class AuditoriaController extends Controller
     
     public function index(Request $request)
     {
-        $user = Auth::user();
-        abort_unless($user->rol === 'admin', 403, 'No tienes permisos para realizar esta acción');
-
-        $filtros = $request->only([
-            'entidad',
-            'accion',
-            'fecha_desde',
-            'fecha_hasta',
-            'usuario_id'
-        ]);
+        $filtros = [
+            'tipo' => $request->get('tipo'),
+            'usuario' => $request->get('usuario'),
+            'fecha_inicio' => $request->get('fecha_inicio'),
+            'fecha_fin' => $request->get('fecha_fin'),
+        ];
         
-        $perPage = $request->query('per_page', 15);
+        $perPage = $request->get('per_page', 15);
+        
         $auditorias = $this->auditoriaService->obtenerAuditorias($filtros, $perPage);
         
         return response()->json([

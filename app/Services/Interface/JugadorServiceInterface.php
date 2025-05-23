@@ -14,4 +14,5 @@ interface JugadorServiceInterface
     public function delete($id);
     public function getByEquipo($equipoId);
     public function createMultiple(Request $request);
+    public function searchByDni(Request $request);
 }

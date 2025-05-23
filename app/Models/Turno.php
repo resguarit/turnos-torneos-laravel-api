@@ -15,7 +15,7 @@ class Turno extends Model
 
     protected $table = 'turnos';
 
-    protected $fillable = ['fecha_turno', 'fecha_reserva', 'horario_id', 'cancha_id', 'persona_id', 'monto_total', 'monto_seña', 'estado', 'tipo'];
+    protected $fillable = ['fecha_turno', 'fecha_reserva', 'horario_id', 'cancha_id', 'persona_id', 'monto_total', 'monto_seña', 'estado', 'tipo', 'partido_id'];
 
     protected $hidden = ['created_at', 'updated_at'];
 
@@ -55,5 +55,10 @@ class Turno extends Model
 
     public function motivo_cancelacion(){
         return $this->hasOne(TurnoCancelacion::class, 'turno_id')->latest();
+    }
+
+    public function partido()
+    {
+        return $this->belongsTo(\App\Models\Partido::class, 'partido_id');
     }
 }

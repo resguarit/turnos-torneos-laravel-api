@@ -14,8 +14,8 @@ interface AuditoriaServiceInterface
      * @param array|null $datos_nuevos Datos nuevos después de la modificación
      * @return void
      */
-    public static function registrar(string $accion, string $entidad, ?int $entidad_id = null, ?array $datos_antiguos = null, ?array $datos_nuevos = null);
-    
+    public static function registrar(string $accion, string $tabla, ?int $id, ?array $datos_anteriores, ?array $datos_nuevos);
+ 
     /**
      * Obtiene las auditorías filtradas según los criterios especificados
      *

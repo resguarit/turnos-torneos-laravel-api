@@ -1,11 +1,11 @@
 <?php
-// app/Http/Controllers/Api/FechaController.php
 
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Interface\FechaServiceInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class FechaController extends Controller
 {
@@ -53,5 +53,32 @@ class FechaController extends Controller
     public function getByZona($zonaId)
     {
         return response()->json($this->fechaService->getByZona($zonaId), 200);
+    }
+
+    public function postergarFechas($fechaId)
+    {
+        return $this->fechaService->postergarFechas($fechaId);
+    }
+    public function verificarEstadoFecha($fechaId)
+    {
+        return $this->fechaService->verificarEstadoFecha($fechaId);
+    }
+
+    public function destroyMultiple(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'fecha_ids' => 'required|array',
+            'fecha_ids.*' => 'required|integer|exists:fechas,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        return $this->fechaService->deleteMultiple($request->fecha_ids);
     }
 }

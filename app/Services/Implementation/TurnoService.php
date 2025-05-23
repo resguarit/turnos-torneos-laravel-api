@@ -15,8 +15,10 @@ use App\Models\Horario;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\TurnoCancelacion;
 use App\Services\Interface\TurnoServiceInterface;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use App\Enums\TurnoEstado;
+use App\Services\Interface\AuditoriaServiceInterface; // Importar la interfaz del servicio de auditoría
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use App\Models\Persona;
 use App\Models\User;
@@ -32,8 +34,15 @@ use Illuminate\Support\Facades\Notification;
 
 class TurnoService implements TurnoServiceInterface
 {
-    public function getTurnos(Request $request)
+    protected $auditoriaService;
+
+    public function __construct(AuditoriaServiceInterface $auditoriaService)
     {
+        $this->auditoriaService = $auditoriaService;
+    }
+
+    public function getTurnos(Request $request)
+    {       
         $validator = Validator::make($request->all(), [
             'fecha' => 'date|nullable',
             'fecha_inicio' => 'date|nullable',
@@ -85,7 +94,12 @@ class TurnoService implements TurnoServiceInterface
             }
         }
 
-        $turnos = $query->with(['persona', 'cancha', 'horario'])
+        $turnos = $query->with([
+            'persona',
+            'cancha',
+            'horario',
+            'partido.fecha.zona.torneo' // <-- agrega esto
+        ])
         ->join('horarios', 'turnos.horario_id', '=', 'horarios.id')
         ->orderBy('horarios.hora_inicio', 'asc')
         ->select('turnos.*')
@@ -218,7 +232,7 @@ class TurnoService implements TurnoServiceInterface
             ], 500);
         }
 
-            // Registrar transacción en cuenta corriente según el estado
+            //Registrar transacción en cuenta corriente según el estado
             if ($request->estado != 'Pagado') {
                 // Buscar o crear la cuenta corriente de la persona
                 $cuentaCorriente = CuentaCorriente::firstOrCreate(
@@ -391,15 +405,16 @@ class TurnoService implements TurnoServiceInterface
     public function updateTurno(Request $request, $id)
     {
         $user = Auth::user();
-
-        $turno = Turno::with(['horario','cancha'])->find($id);
-
+    
+        $turno = Turno::with(['horario', 'cancha'])->find($id);
+        $fecha = Carbon::now(); // Usar Carbon en lugar de DatePoint
+        $fecha->subDays(7);
+    
         if (!$turno) {
-            $data = [
+            return response()->json([
                 'message' => 'No hay turno encontrado',
                 'status' => 404
-            ];
-            return response()->json($data, 404);
+            ], 404);
         }
 
         if($turno->fecha_turno < Carbon::now()->subDays(3)->startOfDay()) {
@@ -408,7 +423,7 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 400
             ], 400);
         }
-
+    
         // Validar los datos de entrada
         $validator = Validator::make($request->all(), [
             'fecha_turno' => 'sometimes|date',
@@ -416,18 +431,17 @@ class TurnoService implements TurnoServiceInterface
             'cancha_id' => 'sometimes|required_with:fecha_turno|exists:canchas,id',
             'estado' => ['sometimes', Rule::enum(TurnoEstado::class)],
             'motivo' => 'nullable|string|max:255'
-        ]); 
-
+        ]);
+    
         // Manejar errores de validación
         if ($validator->fails()) {
-            $data = [
-                'message' => 'Error en la validacion',
+            return response()->json([
+                'message' => 'Error en la validación',
                 'errors' => $validator->errors(),
                 'status' => 400
-            ];
-            return response()->json($data, 400);
+            ], 400);
         }
-
+    
         $datosAnteriores = [
             'fecha_turno' => $turno->fecha_turno->format('Y-m-d'),
             'horario_id' => $turno->horario_id,
@@ -436,11 +450,11 @@ class TurnoService implements TurnoServiceInterface
             'monto_sena' => $turno->monto_seña,
             'estado' => $turno->estado
         ];
-
+    
         DB::beginTransaction();
-
+    
         try {
-            if($request->has('fecha_turno') || $request->has('horario_id') || $request->has('cancha_id')) {
+            if ($request->has('fecha_turno') || $request->has('horario_id') || $request->has('cancha_id')) {
                 $fecha_comparar = $request->fecha_turno ?? $turno->fecha_turno;
                 $horario_comparar = $request->horario_id ?? $turno->horario_id;
                 $cancha_comparar = $request->cancha_id ?? $turno->cancha_id;
@@ -451,26 +465,26 @@ class TurnoService implements TurnoServiceInterface
                     ->where('id', '!=', $id)
                     ->where('estado', '!=', 'Cancelado')
                     ->first();
-
+    
                 $clave = "bloqueo:{$fecha_comparar}:{$horario_comparar}:{$cancha_comparar}";
                 $bloqueo = Cache::has($clave);
-
+    
                 if ($bloqueo) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'El Turno esta bloqueado temporalmente.',
+                        'message' => 'El Turno está bloqueado temporalmente.',
                         'status' => 409
                     ], 409);
                 }
     
-                if($turnoExistente) {
+                if ($turnoExistente) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'El turno ya esta reservado',
+                        'message' => 'El turno ya está reservado',
                         'status' => 409
                     ], 409);
                 }
-
+    
                 if ($request->has('cancha_id') && $request->cancha_id != $turno->cancha_id) {
                     $nuevaCancha = Cancha::findOrFail($request->cancha_id);
                     $precioDistinto = $nuevaCancha->precio_por_hora != $turno->monto_total;
@@ -492,21 +506,29 @@ class TurnoService implements TurnoServiceInterface
                         }
                     }
                 }
-
             }
-
+    
             // Obtener datos anteriores para auditoría
             $datosAnteriores = $turno->toArray();
-
+    
             $turno->fill($request->only([
                 'fecha_turno',
                 'horario_id',
                 'cancha_id',
                 'estado'
             ]));
-
+    
             $turno->save();
-
+    
+            // Registrar auditoría
+            AuditoriaService::registrar(
+                'modificar',
+                'turnos',
+                $id,
+                $datosAnteriores,
+                $turno->fresh()->toArray()
+            );
+    
             $datosNuevos = [
                 'fecha_turno' => $turno->fecha_turno->format('Y-m-d'),
                 'horario_id' => $turno->horario_id,
@@ -515,7 +537,7 @@ class TurnoService implements TurnoServiceInterface
                 'monto_sena' => $turno->monto_seña,
                 'estado' => $turno->estado
             ];
-
+    
             if ($datosAnteriores != $datosNuevos) {
                 TurnoModificacion::create([
                     'turno_id' => $turno->id,
@@ -525,24 +547,19 @@ class TurnoService implements TurnoServiceInterface
                     'motivo' => json_encode($request->motivo ?? "No especificado"),
                     'fecha_modificacion' => now()
                 ]);
+
+                // Registrar auditoría
+                $this->auditoriaService->registrar(
+                    'modificar',
+                    'turnos',
+                    $turno->id,
+                    $datosAnteriores,
+                    $datosNuevos
+                );
             }
-
-            $accion = 'modificar';
-            // Comprueba si el estado anterior no era cancelado y el nuevo estado es cancelado
-            if ($datosAnteriores['estado'] !== TurnoEstado::CANCELADO && $turno->estado === TurnoEstado::CANCELADO) {
-                $accion = 'cancelar';
-            }
-
-            AuditoriaService::registrar(
-                $accion, 
-                'turnos', 
-                $id, 
-                $datosAnteriores, 
-                $turno->fresh()->toArray()
-            );
-
+    
             DB::commit();
-
+    
             return response()->json([
                 'message' => 'Turno actualizado correctamente',
                 'turno' => new TurnoResource($turno->fresh(['horario', 'cancha'])),
@@ -557,7 +574,6 @@ class TurnoService implements TurnoServiceInterface
             ], 500);
         }
     }
-
     public function deleteTurno($id)
     {
         try {
@@ -565,13 +581,13 @@ class TurnoService implements TurnoServiceInterface
             $datosAnteriores = $turno->toArray();
             
             $turno->delete();
-            
+
             // Registrar auditoría
-            AuditoriaService::registrar(
-                'eliminar', 
-                'turnos', 
-                $id, 
-                $datosAnteriores, 
+            $this->auditoriaService->registrar(
+                'eliminar',
+                'turnos',
+                $turno->id,
+                $datosAnteriores,
                 null
             );
 
@@ -652,61 +668,125 @@ class TurnoService implements TurnoServiceInterface
         $diaSemana = $this->getNombreDiaSemana($fecha->dayOfWeek);
         $deporteId = $request->deporte_id;
 
-        // Consulta base de horarios - filtrar siempre por deporte
-        $horariosQuery = Horario::where('activo', true)
-                                ->where('dia', $diaSemana)
-                                ->where('deporte_id', $deporteId)
-                                ->orderBy('hora_inicio', 'asc');
-        
-        $horarios = $horariosQuery->get();
 
-        // Consulta base de canchas - filtrar siempre por deporte
-        $canchasQuery = Cancha::where('activa', true)
-                              ->where('deporte_id', $deporteId);
-        
-        $canchas = $canchasQuery->get();
+        $horarios = Horario::where('activo', true)
+            ->where('dia', $diaSemana)
+            ->where('deporte_id', $deporteId)
+            ->orderBy('hora_inicio', 'asc')
+            ->get();
 
-        // Consulta base de turnos - filtrar siempre por deporte a través de las canchas
-        $turnosQuery = Turno::whereDate('fecha_turno', $fecha)
-                            ->with(['persona', 'horario', 'cancha'])
-                            ->where('estado', '!=', 'Cancelado')
-                            ->whereHas('cancha', function($query) use ($deporteId) {
-                                $query->where('deporte_id', $deporteId);
-                            });
-        
-        $turnos = $turnosQuery->get();
+
+        $canchas = Cancha::where('activa', true)
+            ->where('deporte_id', $deporteId)
+            ->get();
+
+        $turnos = Turno::whereDate('fecha_turno', $fecha)
+            ->with([
+                'persona',
+                'horario',
+                'cancha',
+                'partido.fecha.zona.torneo',
+                'partido.equipoLocal',
+                'partido.equipoVisitante'
+            ])
+            ->where('estado', '!=', 'Cancelado')
+            ->whereHas('cancha', function($query) use ($deporteId) {
+                $query->where('deporte_id', $deporteId);
+            })
+            ->get();
+
 
         $grid = [];
 
         foreach ($horarios as $horario) {
             $hora = Carbon::createFromFormat('H:i:s', $horario->hora_inicio)->format('H');
             $hora = (int) $hora;
+
+
             $grid[$hora] = [];
 
             foreach ($canchas as $cancha) {
-                // Solo incluir canchas que coincidan con el deporte del horario
                 if ($cancha->deporte_id == $horario->deporte_id) {
-                    $turno = $turnos->first(function ($t) use ($horario, $cancha) {
-                        return $t->horario_id == $horario->id && $t->cancha_id == $cancha->id;
-                    });
+                    $turno = $turnos->first(function ($t) use ($horario, $cancha, $fecha) {
+                         $match = $t->horario_id == $horario->id
+                        && $t->cancha_id == $cancha->id;
+
+                    if ($match) {
+                        \Log::debug('Turno MATCH', [
+                            'turno_id' => $t->id,
+                            'horario_id' => $t->horario_id,
+                            'cancha_id' => $t->cancha_id,
+                            'fecha_turno' => $t->fecha_turno
+                        ]); // 👀
+                    }
+                    return $match;
+                });
+
+
+                    $turnoData = null;
+
+                    if ($turno) {
+                        if ($turno->tipo === 'torneo' && $turno->partido) {
+                            $partido = $turno->partido; 
+                            $fechaModel = $partido->getRelationValue('fecha');
+
+                            $fechaNombre = null;
+                            $zonaNombre = null;
+                            $torneoNombre = null;
+
+                            if ($fechaModel instanceof \App\Models\Fecha) {
+                                $fechaNombre = $fechaModel->nombre;
+                                $zonaModel = $fechaModel->zona; 
+                                if ($zonaModel instanceof \App\Models\Zona) {
+                                    $zonaNombre = $zonaModel->nombre;
+                                    $torneoModel = $zonaModel->torneo; 
+                                    if ($torneoModel instanceof \App\Models\Torneo) {
+                                        $torneoNombre = $torneoModel->nombre;
+                                    }
+                                }
+                            } else {
+                                if ($partido && $fechaModel !== null) {
+                                     \Log::warning("TurnoService: For partido ID {$partido->id}, 'fecha' relation was not a Fecha model instance. Type: " . gettype($fechaModel));
+                                }
+                            }
+
+                            $turnoData = [
+                                'id' => $turno->id,
+                                'tipo' => $turno->tipo,
+                                'estado' => $turno->estado,
+                                'partido' => [
+                                    'id' => $partido->id,
+                                    'fecha' => $fechaNombre,
+                                    'zona' => $zonaNombre,
+                                    'torneo' => $torneoNombre,
+                                    'equipos' => [
+                                        'local' => $partido->equipoLocal->nombre ?? null,
+                                        'visitante' => $partido->equipoVisitante->nombre ?? null,
+                                    ],
+                                ],
+                            ];
+                        } else {
+                            $turnoData = [
+                                'id' => $turno->id,
+                                'usuario' => [
+                                    'usuario_id' => $turno->persona->usuario?->id ?? null,
+                                    'nombre' => $turno->persona->name,
+                                    'dni' => $turno->persona->dni,
+                                    'telefono' => $turno->persona->telefono,
+                                ],
+                                'monto_total' => $turno->monto_total,
+                                'monto_seña' => $turno->monto_seña,
+                                'estado' => $turno->estado,
+                                'tipo' => $turno->tipo,
+                            ];
+                        }
+                    }
 
                     $grid[$hora][$cancha->nro] = [
                         'cancha' => $cancha->nro,
                         'deporte' => $cancha->deporte,
                         'tipo' => $cancha->tipo_cancha,
-                        'turno' => $turno ? [
-                            'id' => $turno->id,
-                            'usuario' => [
-                                'usuario_id' => $turno->persona->usuario?->id ?? null,
-                                'nombre' => $turno->persona->name,
-                                'dni' => $turno->persona->dni,
-                                'telefono' => $turno->persona->telefono,
-                            ],
-                            'monto_total' => $turno->monto_total,
-                            'monto_seña' => $turno->monto_seña,
-                            'estado' => $turno->estado,
-                            'tipo' => $turno->tipo,
-                        ] : null,
+                        'turno' => $turnoData,
                     ];
                 }
             }
@@ -894,14 +974,6 @@ class TurnoService implements TurnoServiceInterface
                 'fecha_cancelacion' => now(),
             ]);
 
-            // Registrar auditoría
-            AuditoriaService::registrar(
-                'cancelar', 
-                'turnos', 
-                $turno->id, 
-                $turno->toArray(), 
-                null
-            );
 
             $persona = Persona::find($turno->persona_id);
             if ($persona->usuario) {
@@ -1053,5 +1125,39 @@ class TurnoService implements TurnoServiceInterface
                 'status' => 500
             ], 500);
         }
+    }
+
+    public function crearTurnoTorneo($partido)
+    {
+        // Verifica que el partido tenga fecha, horario y cancha asignados
+        if (!$partido->fecha || !$partido->horario_id || !$partido->cancha_id) {
+            return;
+        }
+
+        // Verifica si ya existe un turno de tipo Torneo para ese partido/cancha/horario/fecha
+        $existe = \App\Models\Turno::where('fecha_turno', $partido->fecha)
+            ->where('horario_id', $partido->horario_id)
+            ->where('cancha_id', $partido->cancha_id)
+            ->where('tipo', 'torneo')
+            ->where('partido_id', $partido->id)
+            ->first();
+
+        if ($existe) {
+            return; // Ya existe, no crear duplicado
+        }
+
+        // Crea el turno de tipo Torneo
+        \App\Models\Turno::create([
+            'fecha_turno' => $partido->fecha,
+            'fecha_reserva' => now(),
+            'horario_id' => $partido->horario_id,
+            'cancha_id' => $partido->cancha_id,
+            'persona_id' => null, // O el organizador si corresponde
+            'monto_total' => 0,
+            'monto_seña' => 0,
+            'estado' => \App\Enums\TurnoEstado::PAGADO, // O el estado que corresponda
+            'tipo' => 'torneo',
+            'partido_id' => $partido->id
+        ]);
     }
 }

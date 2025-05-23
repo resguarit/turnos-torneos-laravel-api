@@ -10,7 +10,6 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\TurnoController;
-use App\Http\Controllers\Api\AuditoriaController;
 use App\Http\Controllers\Api\DeporteController;
 use App\Http\Controllers\Api\TorneoController;
 use App\Http\Controllers\Api\EquipoController;
@@ -26,11 +25,17 @@ use App\Http\Controllers\Api\TransaccionesController;
 use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\Api\CajaController;
 use App\Http\Controllers\Api\TransaccionController;
+use App\Http\Controllers\Api\SancionController;
+
+use App\Http\Controllers\Api\AuditoriaController;
+use App\Http\Controllers\Api\PagoController;
+use App\Http\Controllers\Api\EventoController;
 use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Checkout\MercadoPagoController;
 use App\Http\Controllers\Webhook\MercadoPagoWebhook;
+use App\Http\Controllers\Api\BloqueoDisponibilidadController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -60,6 +65,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/dashboard/horas-pico', [DashboardController::class, 'horasPico']);
     Route::get('/dashboard/reservas-por-mes', [DashboardController::class, 'reservasPorMes']);
 
+    Route::post('/bloquear-disponibilidad', [BloqueoDisponibilidadController::class, 'bloquearDisponibilidad']);
+    Route::post('/desbloquear-disponibilidad', [BloqueoDisponibilidadController::class, 'desbloquearDisponibilidad']);
+    Route::get('/bloqueados', [BloqueoDisponibilidadController::class, 'getAll']);
+    Route::delete('/bloqueados/{id}', [BloqueoDisponibilidadController::class, 'destroy']);
+
     Route::get('/turnos', [TurnoController::class, 'index']);
     Route::get('/turnos-all', [TurnoController::class, 'getAll']);
     Route::get('turnos/user/{id?}', [TurnoController::class, 'getTurnosByUser']);
@@ -76,8 +86,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/turnos/bloqueotemporal', [BloqueoTemporalController::class, 'bloquearHorario']);
     Route::post('/turnos/cancelarbloqueo', [BloqueoTemporalController::class, 'cancelarBloqueo']);
-    
+     
     Route::get('/horarios', [HorarioController::class, 'index']);
+    Route::get('/turnos/listarbloqueos', [BloqueoTemporalController::class, 'listarBloqueos']);
+
+
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
     Route::get('/horarios-extremos-activos', [HorarioController::class, 'getHorariosExtremosActivos']);
@@ -106,7 +119,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/deportes/{id}', [DeporteController::class, 'update']);
     Route::delete('/deportes/{id}', [DeporteController::class, 'destroy']);
 
-    Route::get('/torneos', [TorneoController::class, 'index']);
     Route::get('/torneos/{id}', [TorneoController::class, 'show']);
     Route::post('/torneos', [TorneoController::class, 'store']);
     Route::put('/torneos/{id}', [TorneoController::class, 'update']);
@@ -118,37 +130,55 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/equipos/{id}', [EquipoController::class, 'update']);
     Route::delete('/equipos/{id}', [EquipoController::class, 'destroy']);
     Route::get('/zonas/{zonaId}/equipos', [EquipoController::class, 'getByZona']);
+    Route::get('/equipos/exclude-zona/{zonaId}', [EquipoController::class, 'getExcludeZona']);
+
 
     Route::get('/jugadores', [JugadorController::class, 'index']);
     Route::get('/jugadores/{id}', [JugadorController::class, 'show']);
     Route::post('/jugadores', [JugadorController::class, 'store']);
     Route::put('/jugadores/{id}', [JugadorController::class, 'update']);
     Route::delete('/jugadores/{id}', [JugadorController::class, 'destroy']);
+    Route::get('/jugadores/search/dni', [JugadorController::class, 'searchByDni']);
+    Route::post('/jugadores/asociar-a-equipo', [JugadorController::class, 'asociarJugadorAEquipo']);
     Route::get('/equipos/{equipoId}/jugadores', [JugadorController::class, 'getByEquipo']);
     Route::post('/equipos/{equipoId}/jugadores/multiple', [JugadorController::class, 'createMultiple']);
+    Route::get('/jugadores/info-por-dni/{dni}', [JugadorController::class, 'infoPorDni']);
+    Route::get('/equipos/{equipoId}/jugadores/{jugadorId}/equipo-jugador-id', [JugadorController::class, 'getEquipoJugadorId']);
 
-    Route::get('/zonas', [ZonaController::class, 'index']);
-    Route::get('/zonas/{id}', [ZonaController::class, 'show']);
-    Route::post('/zonas', [ZonaController::class, 'store']);
-    Route::put('/zonas/{id}', [ZonaController::class, 'update']);
-    Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
-    Route::get('/torneos/{torneoId}/zonas', [ZonaController::class, 'getByTorneo']);
-    Route::post('/zonas/{zonaId}/fechas', [ZonaController::class, 'createFechas']);
+    Route::prefix('zonas')->group(function () {
+        Route::get('/', [ZonaController::class, 'index']);
+
+        Route::post('/', [ZonaController::class, 'store']);
+        Route::put('/{id}', [ZonaController::class, 'update']);
+        Route::delete('/{id}', [ZonaController::class, 'destroy']);
+        Route::get('/torneo/{torneoId}', [ZonaController::class, 'getByTorneo']);
+        Route::post('/{zonaId}/fechas', [ZonaController::class, 'createFechas']);
+        Route::post('/{zonaId}/grupos-aleatorios', [ZonaController::class, 'crearGruposAleatoriamente']);
+        Route::post('/{zonaId}/reemplazar-equipo', [ZonaController::class, 'reemplazarEquipo']);
+        Route::post('/{zonaId}/siguiente-ronda', [ZonaController::class, 'generarSiguienteRonda']);
+        Route::post('/{zonaId}/playoff', [ZonaController::class, 'crearPlayoff']);
+        Route::post('/{zonaId}/equipos', [ZonaController::class, 'agregarEquipos']);
+        Route::delete('/{zonaId}/equipos', [ZonaController::class, 'quitarEquipos']);
+    });
 
     Route::get('/fechas', [FechaController::class, 'index']);
     Route::get('/fechas/{id}', [FechaController::class, 'show']);
     Route::post('/fechas', [FechaController::class, 'store']);
     Route::put('/fechas/{id}', [FechaController::class, 'update']);
     Route::delete('/fechas/{id}', [FechaController::class, 'destroy']);
-    Route::get('/zonas/{zonaId}/fechas', [FechaController::class, 'getByZona']);
+    Route::delete('/fechas', [FechaController::class, 'destroyMultiple']);
+    Route::post('/fechas/{fechaId}/postergar', [FechaController::class, 'postergarFechas']);
+    Route::post('/fechas/{fechaId}/verificar-estado', [FechaController::class, 'verificarEstadoFecha']);
 
     Route::get('/partidos', [PartidoController::class, 'index']);
     Route::get('/partidos/{id}', [PartidoController::class, 'show']);
     Route::post('/partidos', [PartidoController::class, 'store']);
     Route::put('/partidos/{id}', [PartidoController::class, 'update']);
     Route::delete('/partidos/{id}', [PartidoController::class, 'destroy']);
-    Route::get('/fechas/{fechaId}/partidos', [PartidoController::class, 'getByFecha']);
-    Route::get('/equipos/{equipoId}/partidos', [PartidoController::class, 'getByEquipo']);
+
+    Route::get('/equipos/{equipoId}/zona/{zonaId}/partidos', [PartidoController::class, 'getByEquipoAndZona']);
+    //Route::get('/zonas/{zonaId}/equipos/{equipoId}/partidos', [PartidoController::class, 'getByEquipoAndZona']);
+    /* Route::post('/partidos/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCancha']); */
 
     Route::get('/estadisticas', [EstadisticaController::class, 'index']);
     Route::get('/estadisticas/{id}', [EstadisticaController::class, 'show']);
@@ -156,6 +186,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/estadisticas/{id}', [EstadisticaController::class, 'update']);
     Route::delete('/estadisticas/{id}', [EstadisticaController::class, 'destroy']);
     Route::get('/partidos/{partidoId}/estadisticas', [EstadisticaController::class, 'getByPartido']);
+    Route::post('/partidos/{partidoId}/estadisticas/multiple', [EstadisticaController::class, 'createOrUpdateMultiple']);
     Route::get('/equipos/{equipoId}/estadisticas', [EstadisticaController::class, 'getByEquipo']);
     Route::get('/jugadores/{jugadorId}/estadisticas', [EstadisticaController::class, 'getByJugador']);
     Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);
@@ -165,19 +196,48 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/metodos-pago/{id}', [MetodoPagoController::class, 'update']);
     Route::delete('/metodos-pago/{id}', [MetodoPagoController::class, 'destroy']);
 
+
     Route::get('/grupos', [GrupoController::class, 'index']);
     Route::get('/grupos/{id}', [GrupoController::class, 'show']);
     Route::post('/grupos', [GrupoController::class, 'store']);
     Route::put('/grupos/{id}', [GrupoController::class, 'update']);
     Route::delete('/grupos/{id}', [GrupoController::class, 'destroy']);
+    Route::delete('/grupos/{grupoId}/equipos/{equipoId}', [GrupoController::class, 'eliminarEquipoDeGrupo']);
+    Route::delete('/zonas/{zonaId}/eliminar-grupos-zona', [GrupoController::class, 'eliminarGruposDeZona']);
     Route::get('/zonas/{zonaId}/grupos', [GrupoController::class, 'getByZona']);
-
-    // Ruta temporal para probar la creación de grupos aleatoriamente
     Route::post('/zonas/{zonaId}/crear-grupos', [ZonaController::class, 'crearGruposAleatoriamente']);
+    Route::post('/zonas/{zonaId}/asignar-hora-cancha', [PartidoController::class, 'asignarHoraYCanchaPorZona']);
+    Route::post('/zona/{zonaId}/generar-siguiente-ronda', [ZonaController::class, 'generarSiguienteRonda']);
+    Route::post('/zonas/{zonaId}/crear-playoff', [ZonaController::class, 'crearPlayoff']);
+    Route::post('/grupos/{grupoId}/equipos/{equipoId}', [GrupoController::class, 'agregarEquipoAGrupo']);
+    Route::put('/grupos/{grupoId}/equipos', [GrupoController::class, 'actualizarEquiposDeGrupo']);
+    
 
+    Route::get('/auditorias', [AuditoriaController::class, 'index']);
+
+    Route::post('/equipos/{equipoId}/torneos/{torneoId}/pagar-inscripcion', [PagoController::class, 'registrarPagoInscripcion']);
+    Route::post('/fechas/{fechaId}/pagar', [PagoController::class, 'registrarPagoPorFecha']);
+    Route::get('/equipos/{equipoId}/torneos/{torneoId}/pago-inscripcion', [PagoController::class, 'obtenerPagoInscripcion']);
+    Route::get('/equipos/{equipoId}/zonas/{zonaId}/pago-fecha', [PagoController::class, 'obtenerPagoPorFecha']);
     
     Route::delete('/personas/{id}', [PersonaController::class, 'destroy']);
 
+    Route::post('pago/inscripcion/{equipoId}/{torneoId}/{metodoPagoId}', [PagoController::class, 'registrarPagoInscripcion']);
+    Route::post('pago/fecha/{fechaId}/{metodoPagoId}', [PagoController::class, 'registrarPagoPorFecha']);
+    Route::post('pago/evento/{id}/{metodoPagoId}', [PagoController::class, 'registrarPagoEvento']);
+
+    Route::post('/sanciones', [SancionController::class, 'store']);
+    Route::get('/sanciones/{id}', [SancionController::class, 'show']);
+    Route::delete('/sanciones/{id}', [SancionController::class, 'destroy']);
+    Route::put('/sanciones/{id}', [SancionController::class, 'updateSancion']);
+
+    Route::get('eventos', [EventoController::class, 'index']);
+    Route::get('eventos/{id}', [EventoController::class, 'show']);
+    Route::post('eventos', [EventoController::class, 'store']);
+    Route::put('eventos/{id}', [EventoController::class, 'update']);
+    Route::delete('eventos/{id}', [EventoController::class, 'destroy']);
+    Route::get('eventosComoTurnos', [EventoController::class, 'eventosComoTurnos']);
+    Route::get('estadoPago/eventos', [EventoController::class, 'obtenerEstadosPagoEventos']);
 }); 
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
@@ -198,7 +258,8 @@ Route::get('/transacciones/turno/{id}', [TransaccionesController::class, 'saldoP
 Route::get('/transacciones/caja/{cajaId}', [TransaccionesController::class, 'getTransaccionesPorCaja']);
 
 Route::get('/horarios/{id}', [HorarioController::class, 'show']);
-Route::get('/horarios-dia', [HorarioController::class, 'getPorDiaSemana']);
+Route::get('/horarios', [HorarioController::class, 'index']);
+Route::get('/horarios-dia', [HorarioController::class, 'getHorariosPorDiaSemana']);
 Route::get('/canchas/{id}', [CanchaController::class, 'show']);
 
 Route::get('/deportes', [DeporteController::class, 'index']);
@@ -212,3 +273,19 @@ Route::get('/test-email', function () {
     return response()->json(['message' => 'Email enviado correctamente']);
 });
 
+
+Route::get('/torneos', [TorneoController::class, 'index']);
+
+Route::get('/torneos/{torneoId}/zonas', [ZonaController::class, 'getByTorneo']);
+Route::get('/partidos/zona/{zonaId}', [PartidoController::class, 'getByZona']);
+Route::get('/jugadores/zona/{zonaId}', [JugadorController::class, 'getByZona']);
+Route::get('/zonas/{zonaId}/estadisticas', [EstadisticaController::class, 'getByZona']);
+Route::get('/zonas/{zonaId}/fechas', [FechaController::class, 'getByZona']);
+Route::get('/zonas/{zonaId}/equipos', [EquipoController::class, 'getByZona']);
+Route::get('/fechas/{fechaId}/partidos', [PartidoController::class, 'getByFecha']);
+Route::get('/zonas/{zonaId}/estadisticas-grupos', [ZonaController::class, 'obtenerEstadisticasGrupos']);
+Route::get('/zonas/{zonaId}/estadisticas-liga', [ZonaController::class, 'obtenerEstadisticasLiga']);
+Route::get('/zonas/{zonaId}/estadisticas/jugadores', [EstadisticaController::class, 'getJugadoresStatsByZona']);
+Route::get('/zonas/{id}', [ZonaController::class, 'show']);
+
+Route::get('/zonas/{zonaId}/sanciones', [SancionController::class, 'getSancionesPorZona']);
