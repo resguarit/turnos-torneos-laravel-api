@@ -10,6 +10,7 @@ use App\Enums\EventoEstado;
 use App\Models\CuentaCorriente;
 use App\Models\Transaccion;
 use App\Models\Persona;
+use Illuminate\Support\Facades\DB;
 
 
 
@@ -43,25 +44,48 @@ class EventoService implements EventoServiceInterface
             ], 400);
         }
 
-        $evento = Evento::create($request->only(['nombre', 'descripcion', 'fecha', 'persona_id']));
+        DB::beginTransaction();
 
-        foreach ($request->combinaciones as $combinacion) {
-            \App\Models\EventoHorarioCancha::create([
+        try {   
+
+            $evento = Evento::create($request->only(['nombre', 'descripcion', 'fecha', 'persona_id', 'monto']));
+
+            foreach ($request->combinaciones as $combinacion) {
+                \App\Models\EventoHorarioCancha::create([
+                    'evento_id' => $evento->id,
+                    'horario_id' => $combinacion['horario_id'],
+                    'cancha_id' => $combinacion['cancha_id'],
+                    // Agrega otros campos necesarios como 'estado'
+                ]);
+            }
+
+            $cuentaCorriente = CuentaCorriente::firstOrCreate(
+                            ['persona_id' => $request->persona_id],
+                            ['saldo' => 0] 
+                        );
+
+            Transaccion::create([
+                'cuenta_corriente_id' => $cuentaCorriente->id,
                 'evento_id' => $evento->id,
-                'horario_id' => $combinacion['horario_id'],
-                'cancha_id' => $combinacion['cancha_id'],
-                // Agrega otros campos necesarios como 'estado'
+                'monto' => -$evento->monto,
+                'tipo' => 'saldo',
+                'descripcion' => 'Reserva de evento #' . $evento->id . '(Pendiente de pago)',
             ]);
+            
+            $cuentaCorriente->saldo -= $evento->monto;
+
+            $cuentaCorriente->save();
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear el evento',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
         }
-
-        $cuentaCorriente = CuentaCorriente::firstOrCreate(
-                        ['persona_id' => $persona->id],
-                        ['saldo' => 0] 
-                    );
-        
-        $cuentaCorriente->saldo -= $evento->monto;
-
-        $cuentaCorriente->save();
 
         return response()->json([
             'message' => 'Evento creado correctamente',
