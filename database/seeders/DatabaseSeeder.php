@@ -38,63 +38,6 @@ class DatabaseSeeder extends Seeder
             'persona_id' => $persona->id,
         ]);
 
-        $persona = Persona::create([
-            'name' => 'moderador',
-            'dni' => '654321',
-            'telefono' => '1234567890',
-        ]);
-
-        CuentaCorriente::create([
-            'persona_id' => $persona->id,
-            'saldo' => 0,
-        ]);
-
-        User::factory()->create([
-            'email' => 'moderador@gmail.com',
-            'dni' => '654321',
-            'password' => bcrypt('password'),
-            'rol' => 'moderador',
-            'persona_id' => $persona->id,
-        ]);
-
-        $persona = Persona::create([
-            'name' => 'cliente',
-            'dni' => '87654321',
-            'telefono' => '1234567890',
-        ]);
-
-        CuentaCorriente::create([
-            'persona_id' => $persona->id,
-            'saldo' => 0,
-        ]);
-
-        User::factory()->create([
-            'email' => 'cliente@gmail.com',
-            'dni' => '87654321',
-            'password' => bcrypt('password'),
-            'rol' => 'cliente',
-            'persona_id' => $persona->id,
-        ]);
-
-        $persona = Persona::create([
-            'name' => 'Mora Gentil',
-            'dni' => '45396791',
-            'telefono' => '1234567890',
-        ]);
-
-        CuentaCorriente::create([
-            'persona_id' => $persona->id,
-            'saldo' => 0,
-        ]);
-
-        User::factory()->create([
-            'email' => 'moragentil@gmail.com',
-            'dni' => '45396791',
-            'password' => bcrypt('12345678'),
-            'rol' => 'cliente',
-            'persona_id' => $persona->id,
-        ]);
-
         $this->call([
             EquiposYJugadoresSeeder::class,
         ]);
