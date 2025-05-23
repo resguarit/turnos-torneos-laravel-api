@@ -22,7 +22,29 @@ class BloqueoDisponibilidadService implements BloqueoDisponibilidadServiceInterf
             'canchas' => 'required|array',
             'canchas.*' => 'exists:canchas,id',
             'hora_inicio' => 'required|date_format:H:i',
-            'hora_fin' => 'required|date_format:H:i|after:hora_inicio'
+            'hora_fin' => [
+                'required',
+                'date_format:H:i',
+                function ($attribute, $value, $fail) use ($request) {
+                    $horaInicio = $request->input('hora_inicio');
+                    
+                    if (!$horaInicio) return;
+                    
+                    // Convertir las horas a minutos para facilitar la comparación
+                    $minutosInicio = $this->horaAMinutos($horaInicio);
+                    $minutosFin = $this->horaAMinutos($value);
+                    
+                    // Permitir que hora_fin sea "00:00" (medianoche = 1440 minutos)
+                    if ($value === '00:00') {
+                        $minutosFin = 1440; // 24 * 60 = 1440 minutos
+                    }
+                    
+                    // Validar que la hora de fin sea mayor que la de inicio
+                    if ($minutosFin <= $minutosInicio) {
+                        $fail('La hora de fin debe ser posterior a la hora de inicio, o 00:00 para indicar medianoche.');
+                    }
+                }
+            ]
         ]);
 
         if ($validator->fails()) {
@@ -104,7 +126,29 @@ class BloqueoDisponibilidadService implements BloqueoDisponibilidadServiceInterf
             'canchas' => 'required|array',
             'canchas.*' => 'exists:canchas,id',
             'hora_inicio' => 'required|date_format:H:i',
-            'hora_fin' => 'required|date_format:H:i|after:hora_inicio'
+            'hora_fin' => [
+                'required',
+                'date_format:H:i',
+                function ($attribute, $value, $fail) use ($request) {
+                    $horaInicio = $request->input('hora_inicio');
+                    
+                    if (!$horaInicio) return;
+                    
+                    // Convertir las horas a minutos para facilitar la comparación
+                    $minutosInicio = $this->horaAMinutos($horaInicio);
+                    $minutosFin = $this->horaAMinutos($value);
+                    
+                    // Permitir que hora_fin sea "00:00" (medianoche = 1440 minutos)
+                    if ($value === '00:00') {
+                        $minutosFin = 1440; // 24 * 60 = 1440 minutos
+                    }
+                    
+                    // Validar que la hora de fin sea mayor que la de inicio
+                    if ($minutosFin <= $minutosInicio) {
+                        $fail('La hora de fin debe ser posterior a la hora de inicio, o 00:00 para indicar medianoche.');
+                    }
+                }
+            ]
         ]);
 
         if ($validator->fails()) {
@@ -190,5 +234,14 @@ class BloqueoDisponibilidadService implements BloqueoDisponibilidadServiceInterf
         ];
 
         return $dias[$diaSemana];
+    }
+
+    /**
+     * Convierte una hora en formato H:i a minutos desde medianoche
+     */
+    private function horaAMinutos($hora)
+    {
+        list($horas, $minutos) = explode(':', $hora);
+        return (int)$horas * 60 + (int)$minutos;
     }
 } 

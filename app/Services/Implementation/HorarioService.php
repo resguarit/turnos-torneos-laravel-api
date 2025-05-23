@@ -45,7 +45,30 @@ class HorarioService implements HorarioServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'hora_inicio' => 'required|date_format:H:i|unique:horarios,hora_inicio',  
-            'hora_fin' => 'required|date_format:H:i|after:hora_inicio|unique:horarios,hora_fin',
+            'hora_fin' => [
+                'required',
+                'date_format:H:i',
+                'unique:horarios,hora_fin',
+                function ($attribute, $value, $fail) use ($request) {
+                    $horaInicio = $request->input('hora_inicio');
+                    
+                    if (!$horaInicio) return;
+                    
+                    // Convertir las horas a minutos para facilitar la comparación
+                    $minutosInicio = $this->horaAMinutos($horaInicio);
+                    $minutosFin = $this->horaAMinutos($value);
+                    
+                    // Permitir que hora_fin sea "00:00" (medianoche = 1440 minutos)
+                    if ($value === '00:00') {
+                        $minutosFin = 1440; // 24 * 60 = 1440 minutos
+                    }
+                    
+                    // Validar que la hora de fin sea mayor que la de inicio
+                    if ($minutosFin <= $minutosInicio) {
+                        $fail('La hora de fin debe ser posterior a la hora de inicio, o 00:00 para indicar medianoche.');
+                    }
+                }
+            ],
             'dia' => 'required|in:l,m,x,j,v,s,d',
             'activo' => 'required|boolean',
             'deporte_id' => 'required|exists:deportes,id',
@@ -168,7 +191,29 @@ class HorarioService implements HorarioServiceInterface
         $validator = Validator::make($request->all(), [
             'dia' => 'required|string|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
             'hora_inicio' => 'required|date_format:H:i',
-            'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
+            'hora_fin' => [
+                'required',
+                'date_format:H:i',
+                function ($attribute, $value, $fail) use ($request) {
+                    $horaInicio = $request->input('hora_inicio');
+                    
+                    if (!$horaInicio) return;
+                    
+                    // Convertir las horas a minutos para facilitar la comparación
+                    $minutosInicio = $this->horaAMinutos($horaInicio);
+                    $minutosFin = $this->horaAMinutos($value);
+                    
+                    // Permitir que hora_fin sea "00:00" (medianoche = 1440 minutos)
+                    if ($value === '00:00') {
+                        $minutosFin = 1440; // 24 * 60 = 1440 minutos
+                    }
+                    
+                    // Validar que la hora de fin sea mayor que la de inicio
+                    if ($minutosFin <= $minutosInicio) {
+                        $fail('La hora de fin debe ser posterior a la hora de inicio, o 00:00 para indicar medianoche.');
+                    }
+                }
+            ],
             'deporte_id' => 'required|exists:deportes,id',
         ]);
 
@@ -235,7 +280,29 @@ class HorarioService implements HorarioServiceInterface
         $validator = Validator::make($request->all(), [
             'dia' => 'required|string|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
             'hora_inicio' => 'required|date_format:H:i',
-            'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
+            'hora_fin' => [
+                'required',
+                'date_format:H:i',
+                function ($attribute, $value, $fail) use ($request) {
+                    $horaInicio = $request->input('hora_inicio');
+                    
+                    if (!$horaInicio) return;
+                    
+                    // Convertir las horas a minutos para facilitar la comparación
+                    $minutosInicio = $this->horaAMinutos($horaInicio);
+                    $minutosFin = $this->horaAMinutos($value);
+                    
+                    // Permitir que hora_fin sea "00:00" (medianoche = 1440 minutos)
+                    if ($value === '00:00') {
+                        $minutosFin = 1440; // 24 * 60 = 1440 minutos
+                    }
+                    
+                    // Validar que la hora de fin sea mayor que la de inicio
+                    if ($minutosFin <= $minutosInicio) {
+                        $fail('La hora de fin debe ser posterior a la hora de inicio, o 00:00 para indicar medianoche.');
+                    }
+                }
+            ],
             'deporte_id' => 'required|exists:deportes,id',
         ]);
 
@@ -366,10 +433,21 @@ class HorarioService implements HorarioServiceInterface
                 ->get();
     
             if ($horariosActivos->isNotEmpty()) {
+                // Manejar correctamente la hora de fin considerando medianoche
+                $horaFinMaxima = $horariosActivos->map(function($horario) {
+                    // Si la hora_fin es 00:00, convertirla a 24:00 para comparación
+                    return $horario->hora_fin === '00:00:00' ? '24:00:00' : $horario->hora_fin;
+                })->max();
+                
+                // Si el resultado es 24:00:00, volver a convertirlo a 00:00:00
+                if ($horaFinMaxima === '24:00:00') {
+                    $horaFinMaxima = '00:00:00';
+                }
+                
                 return [
                     'dia' => $dia,
                     'hora_inicio' => $horariosActivos->min('hora_inicio'),
-                    'hora_fin' => $horariosActivos->max('hora_fin'),
+                    'hora_fin' => $horaFinMaxima,
                     'inactivo' => false
                 ];
             }
@@ -383,10 +461,19 @@ class HorarioService implements HorarioServiceInterface
                 ->first();
     
             if ($ultimosHorarios && $ultimosHorarios->isNotEmpty()) {
+                // Aplicar la misma lógica para horarios inactivos
+                $horaFinMaxima = $ultimosHorarios->map(function($horario) {
+                    return $horario->hora_fin === '00:00:00' ? '24:00:00' : $horario->hora_fin;
+                })->max();
+                
+                if ($horaFinMaxima === '24:00:00') {
+                    $horaFinMaxima = '00:00:00';
+                }
+                
                 return [
                     'dia' => $dia,
                     'hora_inicio' => $ultimosHorarios->min('hora_inicio'),
-                    'hora_fin' => $ultimosHorarios->max('hora_fin'),
+                    'hora_fin' => $horaFinMaxima,
                     'inactivo' => true
                 ];
             }
@@ -418,7 +505,30 @@ class HorarioService implements HorarioServiceInterface
 
         $validator = Validator::make($request->all(), [
             'hora_inicio' => 'sometimes|date_format:H:i|unique:horarios,hora_inicio,' . $id,
-            'hora_fin' => 'sometimes|date_format:H:i|after:hora_inicio|unique:horarios,hora_fin,' . $id,
+            'hora_fin' => [
+                'sometimes',
+                'date_format:H:i',
+                'unique:horarios,hora_fin,' . $id,
+                function ($attribute, $value, $fail) use ($request) {
+                    $horaInicio = $request->input('hora_inicio');
+                    
+                    if (!$horaInicio || !$value) return; // Si no hay ambos valores, no validar
+                    
+                    // Convertir las horas a minutos para facilitar la comparación
+                    $minutosInicio = $this->horaAMinutos($horaInicio);
+                    $minutosFin = $this->horaAMinutos($value);
+                    
+                    // Permitir que hora_fin sea "00:00" (medianoche = 1440 minutos)
+                    if ($value === '00:00') {
+                        $minutosFin = 1440; // 24 * 60 = 1440 minutos
+                    }
+                    
+                    // Validar que la hora de fin sea mayor que la de inicio
+                    if ($minutosFin <= $minutosInicio) {
+                        $fail('La hora de fin debe ser posterior a la hora de inicio, o 00:00 para indicar medianoche.');
+                    }
+                }
+            ],
             'dia' => 'sometimes|in:l,m,x,j,v,s,d',
             'activo' => 'sometimes|boolean',
         ]);
@@ -448,5 +558,14 @@ class HorarioService implements HorarioServiceInterface
             'horario' => $horario,
             'status' => 200
         ], 200);
+    }
+
+    /**
+     * Convierte una hora en formato H:i a minutos desde medianoche
+     */
+    private function horaAMinutos($hora)
+    {
+        list($horas, $minutos) = explode(':', $hora);
+        return (int)$horas * 60 + (int)$minutos;
     }
 }
