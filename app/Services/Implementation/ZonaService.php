@@ -71,7 +71,7 @@ class ZonaService implements ZonaServiceInterface
             'nombre' => 'sometimes|string|max:255',
             'formato' => ['sometimes', 'string', Rule::in(ZonaFormato::values())],
             'año' => 'sometimes|integer',
-            'activo' => 'sometime|integer',
+            'activo' => 'sometimes|boolean',
             'torneo_id' => 'sometimes|exists:torneos,id',
         ]);
 
