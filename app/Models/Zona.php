@@ -13,7 +13,7 @@ class Zona extends Model
     use HasFactory;
     use SoftDeletes;
 
-    protected $fillable = ['nombre', 'formato', 'año', 'torneo_id'];
+    protected $fillable = ['nombre', 'formato', 'año', 'torneo_id', 'activo'];
 
     protected $casts = [
         'formato' => ZonaFormato::class,
