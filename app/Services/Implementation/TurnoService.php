@@ -300,6 +300,7 @@ class TurnoService implements TurnoServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'persona_id' => 'required|exists:personas,id',
+            'deporte_id' => 'required|exists:deportes,id',
             'fecha_turno' => 'required|date',
             'horario_id' => 'required|exists:horarios,id',
             'estado' => ['required', Rule::enum(TurnoEstado::class)],
@@ -334,6 +335,7 @@ class TurnoService implements TurnoServiceInterface
 
                 // Obtener canchas disponibles para la fecha y horario
                 $canchasDisponibles = Cancha::where('activa', true)
+                    ->where('deporte_id', $request->deporte_id)
                     ->whereDoesntHave('turnos', function ($query) use ($fecha_turno_actual, $horario) {
                         $query->where('fecha_turno', $fecha_turno_actual)
                     ->where('horario_id', $horario->id)
@@ -375,6 +377,40 @@ class TurnoService implements TurnoServiceInterface
                     'estado' => $estado,
                     'tipo' => 'fijo'
                 ]);
+
+                $persona = Persona::with('cuentaCorriente')->find($persona_id);
+
+                if (!$persona) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Persona no encontrada',
+                        'status' => 404
+                    ], 404);
+                }
+
+                if ($estado != 'Pagado') {
+
+                    if ($estado == 'Pendiente') {
+                        $montoTransaccion = -$monto_total;
+                        $descripcion = "Reserva de turno fijo #{$turno->id} (pendiente de pago)";
+                        $persona->cuentaCorriente->saldo += $montoTransaccion;
+                        $persona->cuentaCorriente->save();
+                    } else if ($estado == 'Señado') {
+                        $montoTransaccion = -($monto_total - $monto_seña);
+                        $descripcion = "Reserva de turno fijo #{$turno->id} (señado)";
+                        $persona->cuentaCorriente->saldo += $montoTransaccion;
+                        $persona->cuentaCorriente->save();
+                    }
+
+                    $transaccion = Transaccion::create([
+                        'cuenta_corriente_id' => $persona->cuentaCorriente->id,
+                        'turno_id' => $turno->id,
+                        'monto' => $montoTransaccion,
+                        'tipo' => 'saldo',
+                        'descripcion' => $descripcion
+                    ]);
+
+                }
 
                 if (!$turno) {
                     DB::rollBack();
@@ -945,15 +981,15 @@ class TurnoService implements TurnoServiceInterface
                 
                 // Crear la transacción de devolución
                 $descripcion = $aplicaCargo 
-                    ? "Devolución por cancelación de turno #{$turno->id} (con cargo del 10%)" 
-                    : "Devolución por cancelación de turno #{$turno->id}";
+                    ? "Ajuste de saldo por cancelación de turno #{$turno->id} (con cargo del 10%)" 
+                    : "Ajuste de saldo por cancelación de turno #{$turno->id}";
                     
                 Transaccion::create([
                     'cuenta_corriente_id' => $cuentaCorriente->id,
                     'turno_id' => $turno->id,
                     'persona_id' => $turno->persona_id,
                     'monto' => $montoRealDevolver, // Monto positivo por ser devolución
-                    'tipo' => 'devolucion',
+                    'tipo' => 'saldo',
                     'descripcion' => $descripcion
                 ]);
                 
