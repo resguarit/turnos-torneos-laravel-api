@@ -22,7 +22,7 @@ use App\Http\Controllers\Api\GrupoController;
 use App\Http\Controllers\Api\PersonaController;
 use App\Http\Controllers\Api\CuentaCorrienteController;
 use App\Http\Controllers\Api\TransaccionesController;
-use App\Http\Controllers\MetodoPagoController;
+use App\Http\Controllers\Api\MetodoPagoController;
 use App\Http\Controllers\Api\CajaController;
 use App\Http\Controllers\Api\TransaccionController;
 use App\Http\Controllers\Api\SancionController;
