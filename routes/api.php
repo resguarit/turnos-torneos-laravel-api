@@ -145,6 +145,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/jugadores/info-por-dni/{dni}', [JugadorController::class, 'infoPorDni']);
     Route::get('/equipos/{equipoId}/jugadores/{jugadorId}/equipo-jugador-id', [JugadorController::class, 'getEquipoJugadorId']);
     Route::post('equipos/{equipoId}/jugadores/{jugadorId}/desvincular-jugador', [EquipoController::class, 'desvincularJugadorDeEquipo']);
+    Route::post('jugadores/crear-persona-cuenta-si-capitan', [JugadorController::class, 'crearPersonaYCuentaCorrienteSiCapitan']);
 
     Route::prefix('zonas')->group(function () {
         Route::get('/', [ZonaController::class, 'index']);

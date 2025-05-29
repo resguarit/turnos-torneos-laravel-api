@@ -56,6 +56,21 @@ class JugadorService implements JugadorServiceInterface
 
             $equiposPivot = [];
             foreach ($request->input('equipos') as $equipo) {
+                // Validar que no haya ya un capitán en el equipo si este jugador se marca como capitán
+                if ($equipo['capitan']) {
+                    $capitanExistente = \DB::table('equipo_jugador')
+                        ->where('equipo_id', $equipo['id'])
+                        ->where('capitan', true)
+                        ->exists();
+
+                    if ($capitanExistente) {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => 'Ya existe un capitán en el equipo ID ' . $equipo['id'],
+                            'status' => 400
+                        ], 400);
+                    }
+                }
                 $equiposPivot[$equipo['id']] = ['capitan' => $equipo['capitan']];
 
                 // Si es capitán, crear persona y cuenta corriente si no existen
@@ -77,7 +92,12 @@ class JugadorService implements JugadorServiceInterface
                         ['saldo' => 0] 
                     );
                     
-                    $cuentaCorriente->saldo -= $precioInscripcion;
+                    // Si la cuenta recién se creó, poner saldo negativo. Si ya existía, restar el precio de inscripción.
+                    if ($cuentaCorriente->wasRecentlyCreated) {
+                        $cuentaCorriente->saldo = -$precioInscripcion;
+                    } else {
+                        $cuentaCorriente->saldo -= $precioInscripcion;
+                    }
                     $cuentaCorriente->save();
                 }
             }
@@ -228,6 +248,29 @@ class JugadorService implements JugadorServiceInterface
 
         DB::beginTransaction();
         try {
+            // Validar que solo uno del array viene como capitán
+            $capitanes = array_filter($jugadoresData, function($jugador) {
+                return isset($jugador['capitan']) && $jugador['capitan'];
+            });
+            if (count($capitanes) > 1) {
+                return response()->json([
+                    'message' => 'Solo puede haber un capitán por equipo en la carga múltiple.',
+                    'status' => 400
+                ], 400);
+            }
+
+            // Validar que no haya ya un capitán en el equipo
+            $capitanExistente = \DB::table('equipo_jugador')
+                ->where('equipo_id', $equipoId)
+                ->where('capitan', true)
+                ->exists();
+            if ($capitanExistente && count($capitanes) > 0) {
+                return response()->json([
+                    'message' => 'Ya existe un capitán en el equipo.',
+                    'status' => 400
+                ], 400);
+            }
+
             foreach ($jugadoresData as $jugadorData) {
                 // Extraer y quitar 'capitan' del array para crear el jugador
                 $capitan = $jugadorData['capitan'];
@@ -298,7 +341,7 @@ class JugadorService implements JugadorServiceInterface
         return response()->json($jugadores, 200);
     }
     
-    public function asociarJugadorAEquipo($jugadorId, $equipoId)
+    public function asociarJugadorAEquipo($jugadorId, $equipoId, $capitan = false)
     {
         $jugador = Jugador::find($jugadorId);
         $equipo = Equipo::find($equipoId);
@@ -310,8 +353,20 @@ class JugadorService implements JugadorServiceInterface
             ], 404);
         }
 
-        // Asociar el jugador al equipo (no duplica si ya existe)
-        $jugador->equipos()->syncWithoutDetaching([$equipoId]);
+        if ($capitan) {
+            $capitanExistente = \DB::table('equipo_jugador')
+                ->where('equipo_id', $equipoId)
+                ->where('capitan', true)
+                ->exists();
+            if ($capitanExistente) {
+                return response()->json([
+                    'message' => 'Ya existe un capitán en el equipo.',
+                    'status' => 400
+                ], 400);
+            }
+        }
+
+        $jugador->equipos()->syncWithoutDetaching([$equipoId => ['capitan' => $capitan]]);
 
         return response()->json([
             'message' => 'Jugador asociado correctamente al equipo',
@@ -396,4 +451,63 @@ public function getEquipoJugadorId($equipoId, $jugadorId)
         ->value('id'); // Devuelve solo el ID
 }
 
+public function crearPersonaYCuentaCorrienteSiCapitan($jugadorId, $equipoId, $zonaId)
+{
+    $jugador = Jugador::find($jugadorId);
+    $equipo = Equipo::find($equipoId);
+    $zona = Zona::with('torneo')->find($zonaId);
+
+    if (!$jugador || !$equipo || !$zona || !$zona->torneo) {
+        return [
+            'message' => 'Jugador, equipo o zona (o torneo de la zona) no encontrado',
+            'status' => 404
+        ];
+    }
+
+    // Verificar si es capitán en la tabla pivote
+    $esCapitan = \DB::table('equipo_jugador')
+        ->where('equipo_id', $equipoId)
+        ->where('jugador_id', $jugadorId)
+        ->value('capitan');
+
+    if (!$esCapitan) {
+        return [
+            'message' => 'El jugador no es capitán en este equipo',
+            'status' => 200
+        ];
+    }
+
+    // Crear persona si no existe
+    $persona = Persona::firstOrCreate(
+        ['dni' => $jugador->dni],
+        [
+            'name' => $jugador->nombre . ' ' . $jugador->apellido,
+            'telefono' => $jugador->telefono,
+        ]
+    );
+
+    $precioInscripcion = $zona->torneo->precio_inscripcion ?? 0;
+
+    // Crear cuenta corriente si no existe y setear saldo negativo
+    $cuentaCorriente = CuentaCorriente::firstOrCreate(
+        ['persona_id' => $persona->id],
+        ['saldo' => 0]
+    );
+
+    // Si la cuenta recién se creó, poner saldo negativo. Si ya existía, restar el precio de inscripción.
+    if ($cuentaCorriente->wasRecentlyCreated) {
+        $cuentaCorriente->saldo = -$precioInscripcion;
+    } else {
+        $cuentaCorriente->saldo -= $precioInscripcion;
+    }
+    $cuentaCorriente->save();
+
+    return [
+        'message' => 'Persona y cuenta corriente verificadas/creadas para el capitán',
+        'persona_id' => $persona->id,
+        'cuenta_corriente_id' => $cuentaCorriente->id,
+        'saldo' => $cuentaCorriente->saldo,
+        'status' => 201
+    ];
+}
 }
