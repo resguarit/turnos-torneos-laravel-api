@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirmación de Turno</title>
+    <title>Cancelación de Turno</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333333;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -26,14 +26,15 @@
                             
                             <!-- Detalles sin formato de tabla especial -->
                             <div style="background-color: #f9f9f9; padding: 15px; margin: 15px 0; border-left: 3px solid #999999;">
-                                <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ $turno->fecha_turno->format('d/m/Y') }}</p>
-                                <p style="margin: 5px 0;"><strong>Horario:</strong> {{ $turno->horario->hora_inicio }} - {{ $turno->horario->hora_fin }}</p>
+                                <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ formatearFechaCompleta($turno->fecha_turno) }}</p>
+                                <p style="margin: 5px 0;"><strong>Horario:</strong> {{ formatearRangoHorario($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
+                                <p style="margin: 5px 0;"><strong>Duración:</strong> {{ calcularDuracion($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
                                 <p style="margin: 5px 0;"><strong>Cancha:</strong> #{{ $turno->cancha->nro }} {{ $turno->cancha->tipo_cancha }}</p>
                                 <p style="margin: 5px 0;"><strong>Estado:</strong> {{ $turno->estado }}</p>
                                 <p style="margin: 5px 0;"><strong>Nº Confirmación:</strong> {{ $turno->id }}</p>
                             </div>
-                            
-                            <p>El turno se reservó a las {{ $turno->fecha_reserva }}. Las cancelaciones realizadas 30 minutos despues de la reserva tienen un cargo del 10% del valor del turno.</p>
+                            <p style="margin: 5px 0;"><strong>Fecha de cancelación:</strong> {{ formatearFechaCompleta($turno->created_at) }} a las {{ $turno->created_at->format('H:i') }} hs</p>
+                            <p>Las cancelaciones realizadas 30 minutos después de la reserva tienen un cargo del 10% del valor del turno.</p>
                             
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
