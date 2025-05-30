@@ -62,7 +62,8 @@ class PagoService
                 'metodo_pago_id' => $metodoPagoId,
                 'monto' => $monto, // Cambia a positivo para un depósito
                 'tipo' => 'inscripcion', // Cambia el tipo a "deposito"
-                'descripcion' => "Pago inscripción torneo {$torneo->nombre} ({$torneo->id})"
+                'descripcion' => "Pago inscripción torneo {$torneo->nombre} ({$torneo->id})",
+                'torneo_id' => $torneo->id // <-- Agrega esto
             ]);
             $cuentaCorriente->saldo += $monto; // Incrementa el saldo
             $cuentaCorriente->save();
@@ -154,7 +155,8 @@ class PagoService
                 'metodo_pago_id' => $metodoPagoId,
                 'monto' => $monto,
                 'tipo' => 'fecha',
-                'descripcion' => "Pago de fecha '{$fecha->nombre}' del torneo {$torneo->nombre} ({$torneo->id})"
+                'descripcion' => "Pago de fecha '{$fecha->nombre}' del torneo {$torneo->nombre} ({$torneo->id})",
+                'torneo_id' => $torneo->id // <-- Agrega esto
             ]);
             
             $cuentaCorriente->save();
