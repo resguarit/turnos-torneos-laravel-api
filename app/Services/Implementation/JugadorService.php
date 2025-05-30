@@ -651,10 +651,27 @@ public function cambiarCapitan($equipoId, $jugadorNuevoId, $zonaId)
             }
             $cuentaCorrienteNuevo->save();
 
-            // Devolver el saldo al capitán anterior si corresponde
+            // Registrar transacción de deuda al nuevo capitán
+            Transaccion::create([
+                'cuenta_corriente_id' => $cuentaCorrienteNuevo->id,
+                'monto' => -$precioInscripcion,
+                'tipo' => 'saldo',
+                'descripcion' => "Asignación de deuda de inscripción por cambio de capitán en torneo {$torneo->nombre} ({$torneo->id})",
+                'torneo_id' => $torneo->id
+            ]);
+
+            // Devolver el saldo al capitán anterior si corresponde y registrar transacción
             if ($cuentaCorrienteActual) {
                 $cuentaCorrienteActual->saldo += $precioInscripcion;
                 $cuentaCorrienteActual->save();
+
+                Transaccion::create([
+                    'cuenta_corriente_id' => $cuentaCorrienteActual->id,
+                    'monto' => $precioInscripcion,
+                    'tipo' => 'saldo',
+                    'descripcion' => "Eliminación de deuda de inscripción por cambio de capitán en torneo {$torneo->nombre} ({$torneo->id})",
+                    'torneo_id' => $torneo->id
+                ]);
             }
         }
 
