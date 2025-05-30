@@ -13,6 +13,7 @@ use App\Models\CuentaCorriente;
 use App\Models\Equipo;
 use App\Models\Zona;
 use App\Models\Persona;
+use App\Models\Transaccion;
 
 
 class JugadorService implements JugadorServiceInterface
@@ -272,12 +273,36 @@ class JugadorService implements JugadorServiceInterface
             }
 
             foreach ($jugadoresData as $jugadorData) {
-                // Extraer y quitar 'capitan' del array para crear el jugador
                 $capitan = $jugadorData['capitan'];
                 unset($jugadorData['capitan']);
 
                 // Crear jugador
                 $jugador = Jugador::create($jugadorData);
+
+                // Si es capitán, crear persona y cuenta corriente si no existen
+                if ($capitan) {
+                    $persona = Persona::firstOrCreate(
+                        ['dni' => $jugador->dni],
+                        [
+                            'name' => $jugador->nombre . ' ' . $jugador->apellido,
+                            'telefono' => $jugador->telefono,
+                        ]
+                    );
+                    $equipoModel = Equipo::with('zonas.torneo')->find($equipoId);
+                    $torneo = $equipoModel->zonas->first()->torneo ?? null;
+                    $precioInscripcion = $torneo ? $torneo->precio_inscripcion : 0;
+
+                    $cuentaCorriente = CuentaCorriente::firstOrCreate(
+                        ['persona_id' => $persona->id],
+                        ['saldo' => 0]
+                    );
+                    if ($cuentaCorriente->wasRecentlyCreated) {
+                        $cuentaCorriente->saldo = -$precioInscripcion;
+                    } else {
+                        $cuentaCorriente->saldo -= $precioInscripcion;
+                    }
+                    $cuentaCorriente->save();
+                }
 
                 // Asociar al equipo con el campo capitan en el pivote
                 $jugador->equipos()->attach($equipoId, ['capitan' => $capitan]);
@@ -510,4 +535,133 @@ public function crearPersonaYCuentaCorrienteSiCapitan($jugadorId, $equipoId, $zo
         'status' => 201
     ];
 }
+
+public function cambiarCapitan($equipoId, $jugadorNuevoId, $zonaId)
+{
+    $equipo = Equipo::with('zonas.torneo')->find($equipoId);
+    $jugadorNuevo = Jugador::find($jugadorNuevoId);
+    $zona = Zona::with('torneo')->find($zonaId);
+
+    if (!$equipo || !$jugadorNuevo || !$zona || !$zona->torneo) {
+        return [
+            'message' => 'Datos no encontrados',
+            'status' => 404
+        ];
+    }
+
+    $torneo = $zona->torneo;
+    $precioInscripcion = $torneo->precio_inscripcion ?? 0;
+
+    // Buscar el jugador actual capitán del equipo
+    $jugadorActualId = DB::table('equipo_jugador')
+        ->where('equipo_id', $equipoId)
+        ->where('capitan', true)
+        ->value('jugador_id');
+
+    if (!$jugadorActualId) {
+        return [
+            'message' => 'No se encontró un capitán actual en el equipo',
+            'status' => 400
+        ];
+    }
+
+    if ($jugadorActualId == $jugadorNuevoId) {
+        return [
+            'message' => 'El jugador seleccionado ya es el capitán',
+            'status' => 400
+        ];
+    }
+
+    $jugadorActual = Jugador::find($jugadorActualId);
+
+    // Verificar que el nuevo jugador no sea ya capitán
+    $esCapitanNuevo = DB::table('equipo_jugador')
+        ->where('equipo_id', $equipoId)
+        ->where('jugador_id', $jugadorNuevoId)
+        ->value('capitan');
+
+    if ($esCapitanNuevo) {
+        return [
+            'message' => 'El jugador nuevo ya es capitán',
+            'status' => 400
+        ];
+    }
+
+    DB::beginTransaction();
+    try {
+        // Cambiar el capitán en la tabla pivote
+        DB::table('equipo_jugador')
+            ->where('equipo_id', $equipoId)
+            ->where('jugador_id', $jugadorActualId)
+            ->update(['capitan' => false]);
+        DB::table('equipo_jugador')
+            ->where('equipo_id', $equipoId)
+            ->where('jugador_id', $jugadorNuevoId)
+            ->update(['capitan' => true]);
+
+        // Crear persona y cuenta corriente para el nuevo capitán si no existen
+        $personaNuevo = Persona::firstOrCreate(
+            ['dni' => $jugadorNuevo->dni],
+            [
+                'name' => $jugadorNuevo->nombre . ' ' . $jugadorNuevo->apellido,
+                'telefono' => $jugadorNuevo->telefono,
+            ]
+        );
+        $cuentaCorrienteNuevo = CuentaCorriente::firstOrCreate(
+            ['persona_id' => $personaNuevo->id],
+            ['saldo' => 0]
+        );
+
+        // Buscar si existe pago de inscripción para este torneo en la cuenta corriente del capitán anterior
+        $personaActual = Persona::where('dni', $jugadorActual->dni)->first();
+        $cuentaCorrienteActual = $personaActual
+            ? CuentaCorriente::where('persona_id', $personaActual->id)->first()
+            : null;
+
+        $pagoInscripcion = null;
+        if ($cuentaCorrienteActual) {
+            $pagoInscripcion = Transaccion::where('torneo_id', $torneo->id)
+                ->where('tipo', 'inscripcion')
+                ->where('cuenta_corriente_id', $cuentaCorrienteActual->id)
+                ->first();
+        }
+
+        if ($pagoInscripcion) {
+            // Si ya se pagó la inscripción, la cuenta corriente del nuevo capitán queda en 0 si recién se crea
+            if ($cuentaCorrienteNuevo->wasRecentlyCreated) {
+                $cuentaCorrienteNuevo->saldo = 0;
+                $cuentaCorrienteNuevo->save();
+            }
+        } else {
+            // Si no se pagó la inscripción, se descuenta el precio de inscripción al nuevo capitán
+            if ($cuentaCorrienteNuevo->wasRecentlyCreated) {
+                $cuentaCorrienteNuevo->saldo = -$precioInscripcion;
+            } else {
+                $cuentaCorrienteNuevo->saldo -= $precioInscripcion;
+            }
+            $cuentaCorrienteNuevo->save();
+
+            // Devolver el saldo al capitán anterior si corresponde
+            if ($cuentaCorrienteActual) {
+                $cuentaCorrienteActual->saldo += $precioInscripcion;
+                $cuentaCorrienteActual->save();
+            }
+        }
+
+        DB::commit();
+        return [
+            'message' => 'Cambio de capitán realizado correctamente',
+            'status' => 200
+        ];
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return [
+            'message' => 'Error al cambiar capitán',
+            'error' => $e->getMessage(),
+            'status' => 500
+        ];
+    }
+}
+
+
 }

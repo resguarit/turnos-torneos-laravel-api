@@ -108,4 +108,15 @@ class JugadorController extends Controller
 
         return response()->json($result, $result['status'] ?? 200);
     }
+
+    public function cambiarCapitan(Request $request)
+    {
+        $equipoId = $request->input('equipo_id');
+        $jugadorNuevoId = $request->input('jugador_nuevo_id');
+        $zonaId = $request->input('zona_id');
+
+        $result = $this->jugadorService->cambiarCapitan($equipoId, $jugadorNuevoId, $zonaId);
+
+        return response()->json($result, $result['status'] ?? 200);
+    }
 }
