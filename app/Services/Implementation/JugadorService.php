@@ -558,22 +558,6 @@ public function cambiarCapitan($equipoId, $jugadorNuevoId, $zonaId)
         ->where('capitan', true)
         ->value('jugador_id');
 
-    if (!$jugadorActualId) {
-        return [
-            'message' => 'No se encontró un capitán actual en el equipo',
-            'status' => 400
-        ];
-    }
-
-    if ($jugadorActualId == $jugadorNuevoId) {
-        return [
-            'message' => 'El jugador seleccionado ya es el capitán',
-            'status' => 400
-        ];
-    }
-
-    $jugadorActual = Jugador::find($jugadorActualId);
-
     // Verificar que el nuevo jugador no sea ya capitán
     $esCapitanNuevo = DB::table('equipo_jugador')
         ->where('equipo_id', $equipoId)
@@ -589,15 +573,31 @@ public function cambiarCapitan($equipoId, $jugadorNuevoId, $zonaId)
 
     DB::beginTransaction();
     try {
-        // Cambiar el capitán en la tabla pivote
-        DB::table('equipo_jugador')
-            ->where('equipo_id', $equipoId)
-            ->where('jugador_id', $jugadorActualId)
-            ->update(['capitan' => false]);
-        DB::table('equipo_jugador')
-            ->where('equipo_id', $equipoId)
-            ->where('jugador_id', $jugadorNuevoId)
-            ->update(['capitan' => true]);
+        if ($jugadorActualId) {
+            // Hay capitán actual, hacer el cambio
+            if ($jugadorActualId == $jugadorNuevoId) {
+                return [
+                    'message' => 'El jugador seleccionado ya es el capitán',
+                    'status' => 400
+                ];
+            }
+
+            // Cambiar el capitán en la tabla pivote
+            DB::table('equipo_jugador')
+                ->where('equipo_id', $equipoId)
+                ->where('jugador_id', $jugadorActualId)
+                ->update(['capitan' => false]);
+            DB::table('equipo_jugador')
+                ->where('equipo_id', $equipoId)
+                ->where('jugador_id', $jugadorNuevoId)
+                ->update(['capitan' => true]);
+        } else {
+            // No hay capitán actual, simplemente asignar el nuevo
+            DB::table('equipo_jugador')
+                ->where('equipo_id', $equipoId)
+                ->where('jugador_id', $jugadorNuevoId)
+                ->update(['capitan' => true]);
+        }
 
         // Crear persona y cuenta corriente para el nuevo capitán si no existen
         $personaNuevo = Persona::firstOrCreate(
@@ -613,16 +613,26 @@ public function cambiarCapitan($equipoId, $jugadorNuevoId, $zonaId)
         );
 
         // Buscar si existe pago de inscripción para este torneo en la cuenta corriente del capitán anterior
-        $personaActual = Persona::where('dni', $jugadorActual->dni)->first();
-        $cuentaCorrienteActual = $personaActual
-            ? CuentaCorriente::where('persona_id', $personaActual->id)->first()
-            : null;
-
         $pagoInscripcion = null;
-        if ($cuentaCorrienteActual) {
+        $cuentaCorrienteActual = null;
+        if ($jugadorActualId) {
+            $jugadorActual = Jugador::find($jugadorActualId);
+            $personaActual = Persona::where('dni', $jugadorActual->dni)->first();
+            $cuentaCorrienteActual = $personaActual
+                ? CuentaCorriente::where('persona_id', $personaActual->id)->first()
+                : null;
+
+            if ($cuentaCorrienteActual) {
+                $pagoInscripcion = Transaccion::where('torneo_id', $torneo->id)
+                    ->where('tipo', 'inscripcion')
+                    ->where('cuenta_corriente_id', $cuentaCorrienteActual->id)
+                    ->first();
+            }
+        } else {
+            // Si no hay capitán anterior, buscar si existe algún pago de inscripción para este equipo y torneo
             $pagoInscripcion = Transaccion::where('torneo_id', $torneo->id)
                 ->where('tipo', 'inscripcion')
-                ->where('cuenta_corriente_id', $cuentaCorrienteActual->id)
+                ->where('cuenta_corriente_id', $cuentaCorrienteNuevo->id)
                 ->first();
         }
 
@@ -650,7 +660,9 @@ public function cambiarCapitan($equipoId, $jugadorNuevoId, $zonaId)
 
         DB::commit();
         return [
-            'message' => 'Cambio de capitán realizado correctamente',
+            'message' => $jugadorActualId
+                ? 'Cambio de capitán realizado correctamente'
+                : 'Capitán asignado correctamente',
             'status' => 200
         ];
     } catch (\Exception $e) {
