@@ -165,6 +165,18 @@ class EquipoService implements EquipoServiceInterface
             return response()->json(['message' => 'Jugador no está vinculado a este equipo', 'status' => 404], 404);
         }
 
+        // No permitir desvincular si es capitán
+        $esCapitan = \DB::table('equipo_jugador')
+            ->where('equipo_id', $equipo_id)
+            ->where('jugador_id', $jugador_id)
+            ->value('capitan');
+        if ($esCapitan) {
+            return response()->json([
+                'message' => 'No se puede desvincular al capitán del equipo. Debe cambiar el capitán antes de desvincularlo.',
+                'status' => 400
+            ], 400);
+        }
+
         $equipo->jugadores()->detach($jugador_id);
 
         return response()->json([
