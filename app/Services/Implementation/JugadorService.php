@@ -324,6 +324,50 @@ class JugadorService implements JugadorServiceInterface
         }
     }
 
+    public function createMultipleSinEquipo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'jugadores' => 'required|array',
+            'jugadores.*.nombre' => 'required|string|max:255',
+            'jugadores.*.apellido' => 'required|string|max:255',
+            'jugadores.*.dni' => 'required|string|max:20|unique:jugadores,dni',
+            'jugadores.*.telefono' => 'nullable|string|max:20',
+            'jugadores.*.fecha_nacimiento' => 'required|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $jugadoresData = $request->input('jugadores');
+        $createdJugadores = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($jugadoresData as $jugadorData) {
+                $jugador = Jugador::create($jugadorData);
+                $createdJugadores[] = $jugador;
+            }
+            DB::commit();
+            return response()->json([
+                'message' => 'Jugadores creados correctamente',
+                'jugadores' => $createdJugadores,
+                'status' => 201
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear jugadores múltiples.',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
+    }
+
     public function searchByDni(Request $request)
     {
         $dniQuery = $request->query('dni');

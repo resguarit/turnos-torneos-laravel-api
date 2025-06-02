@@ -119,4 +119,9 @@ class JugadorController extends Controller
 
         return response()->json($result, $result['status'] ?? 200);
     }
+
+    public function createMultipleSinEquipo(Request $request)
+    {
+        return $this->jugadorService->createMultipleSinEquipo($request);
+    }
 }
