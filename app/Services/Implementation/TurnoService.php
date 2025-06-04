@@ -32,15 +32,20 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use App\Jobs\TurnosPendientes;
 use Illuminate\Support\Facades\Log;
-
+use App\Services\Interface\PaymentServiceInterface;
+use App\Models\MetodoPago;
+use App\Models\Caja;
+use App\Http\Controllers\Checkout\MercadoPagoController;
 
 class TurnoService implements TurnoServiceInterface
 {
     protected $auditoriaService;
+    protected $paymentService;
 
-    public function __construct(AuditoriaServiceInterface $auditoriaService)
+    public function __construct(AuditoriaServiceInterface $auditoriaService, PaymentServiceInterface $paymentService)
     {
         $this->auditoriaService = $auditoriaService;
+        $this->paymentService = $paymentService;
     }
 
     public function getTurnos(Request $request)
@@ -456,13 +461,6 @@ class TurnoService implements TurnoServiceInterface
                 'message' => 'No hay turno encontrado',
                 'status' => 404
             ], 404);
-        }
-
-        if($turno->fecha_turno < Carbon::now()->subDays(3)->startOfDay()) {
-            return response()->json([
-                'message' => 'No puedes modificar un turno de más de 3 días atrás',
-                'status' => 400
-            ], 400);
         }
     
         // Validar los datos de entrada
@@ -918,11 +916,13 @@ class TurnoService implements TurnoServiceInterface
             return response()->json(['message' => 'El turno ya ha sido cancelado', 'status' => 400], 400);
         }
 
-        if (Carbon::parse($turno->fecha_turno . ' ' . $turno->horario->hora_inicio)->isPast()) {
+        $fechaTurnoParte = Carbon::parse($turno->fecha_turno)->format('Y-m-d'); // Extrae solo YYYY-MM-DD
+        $fechaHoraTurno = Carbon::parse($fechaTurnoParte . ' ' . $turno->horario->hora_inicio);
+
+        if ($fechaHoraTurno->isPast()) {
             return response()->json(['message' => 'No puedes cancelar un turno que ya ha pasado', 'status' => 400], 400);
         }
 
-        // Validación para turnos PAGADOS (el usuario no especificó nueva lógica, mantenemos restricción por ahora)
         if ($turno->estado === TurnoEstado::PAGADO) {
             return response()->json([
                 'message' => 'No se puede cancelar un turno que ya ha sido Pagado. Contacte al administrador.',
@@ -952,16 +952,14 @@ class TurnoService implements TurnoServiceInterface
 
             $now = Carbon::now();
             $fechaCreacionTurno = Carbon::parse($turno->created_at);
-            // Aseguramos que la hora_inicio del horario esté disponible para construir la fecha completa del turno.
+
             if (!$turno->horario || !$turno->horario->hora_inicio) {
                 DB::rollBack();
                 return response()->json(['message' => 'Error: El turno no tiene un horario o hora de inicio válida.', 'status' => 500], 500);
             }
-            $fechaHoraTurno = Carbon::parse($turno->fecha_turno->format('Y-m-d') . ' ' . $turno->horario->hora_inicio);
-
 
             $messageDetail = '';
-            $estadoOriginalTurno = $turno->estado; // Guardamos estado original para logs o notificaciones
+            $estadoOriginalTurno = $turno->estado;
 
             // Lógica de cancelación
             if ($turno->estado === TurnoEstado::PENDIENTE) {
@@ -1003,12 +1001,22 @@ class TurnoService implements TurnoServiceInterface
                     if ($transaccionSeñaMP && $transaccionSeñaMP->payment_id) {
                         // Devolución de seña por MercadoPago
                         // El usuario implementará handleRefund en PaymentService
-                        // $this->paymentService->handleRefund($transaccionSeñaMP->payment_id, $turno->monto_seña, $turno->id, "Cancelación >24h, seña MP");
-                        Log::info("Simulando llamada a PaymentService->handleRefund para payment_id: {$transaccionSeñaMP->payment_id} por monto: {$turno->monto_seña}");
-
-
+                        $this->paymentService->refundPayment($transaccionSeñaMP->payment_id);
                         // AGREGAR UNA TRANSACCION QUE ME INDIQUE EL MONTO SALIENTE DE LA SEÑA PARA QUE ME RESTE EN 
                         // EL BALANCE DE LA CAJA
+                        $cajaAbierta = Caja::where('activa', true)->first();
+                        $metodoPago = MetodoPago::where('nombre', 'mercadopago')->first();
+
+                        Transaccion::create([
+                            'cuenta_corriente_id' => $cuentaCorriente->id,
+                            'caja_id' => $cajaAbierta ? $cajaAbierta->id : null,
+                            'turno_id' => $turno->id,
+                            'monto' => -$turno->monto_seña,
+                            'tipo' => 'devolucion',
+                            'payment_id' => $transaccionSeñaMP->payment_id,
+                            'descripcion' => "Devolución de seña por MercadoPago de turno #{$turno->id}",
+                            'metodo_pago_id' => $metodoPago->id
+                        ]);
 
 
                         // Anular deuda restante en CC si existía
@@ -1026,14 +1034,27 @@ class TurnoService implements TurnoServiceInterface
                     } else {
                         // AGREGAR UNA TRANSACCION QUE ME INDIQUE EL MONTO SALIENTE DE LA SEÑA PARA QUE ME RESTE EN 
                         // EL BALANCE DE LA CAJA
+                        $cajaAbierta = Caja::where('activa', true)->first();
+                        $transaccionSeña = Transaccion::where('turno_id', $turno->id)->where('tipo', 'turno')->first();
+
+                        Transaccion::create([
+                            'cuenta_corriente_id' => $cuentaCorriente->id,
+                            'caja_id' => $cajaAbierta ? $cajaAbierta->id : null,
+                            'turno_id' => $turno->id,
+                            'monto' => -$turno->monto_seña,
+                            'tipo' => 'devolucion',
+                            'descripcion' => "Devolución de seña manual de turno #{$turno->id}",
+                            'metodo_pago_id' => $transaccionSeña->metodo_pago_id
+                        ]);
 
                         
+
                         // Devolución manual de seña (no MP) y anulación deuda restante
-                        $cuentaCorriente->saldo += $turno->monto_total; // Seña + Deuda Restante
+                        $cuentaCorriente->saldo += $montoDeudaRestante; // Seña + Deuda Restante
                         Transaccion::create([
                             'cuenta_corriente_id' => $cuentaCorriente->id,
                             'turno_id' => $turno->id,
-                            'monto' => $turno->monto_total,
+                            'monto' => $montoDeudaRestante,
                             'tipo' => 'saldo',
                             'descripcion' => "Ajuste de saldo por cancelación (>24h, seña manual) de turno #{$turno->id}"
                         ]);

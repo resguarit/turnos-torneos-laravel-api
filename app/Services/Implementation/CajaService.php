@@ -10,6 +10,7 @@ use App\Models\Caja;
 use App\Models\Transaccion;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CajaService implements CajaServiceInterface
 {
@@ -34,20 +35,30 @@ class CajaService implements CajaServiceInterface
         $resumenPagos = [
             'efectivo' => 0,
             'transferencia' => 0,
-            'tarjeta' => 0
+            'tarjeta' => 0,
+            'mercadopago' => 0
         ];
 
         // Procesar todas las transacciones una sola vez
         foreach ($caja->transacciones as $transaccion) {
             $balanceTotal += $transaccion->monto;
-            // Actualizar efectivo en caja si es método efectivo
-            if (strtolower($transaccion->metodoPago->nombre) === 'efectivo') {
-                $efectivoEnCaja += $transaccion->monto;
-                $resumenPagos['efectivo'] += $transaccion->monto;
-            } elseif (strtolower($transaccion->metodoPago->nombre) === 'transferencia') {
-                $resumenPagos['transferencia'] += $transaccion->monto;
-            } elseif (strtolower($transaccion->metodoPago->nombre) === 'tarjeta') {
-                $resumenPagos['tarjeta'] += $transaccion->monto;
+            
+            // Asegurarse que metodoPago no sea null antes de acceder a su nombre
+            if ($transaccion->metodoPago) {
+                $metodoPagoNombre = strtolower($transaccion->metodoPago->nombre);
+
+                if ($metodoPagoNombre === 'efectivo') {
+                    $efectivoEnCaja += $transaccion->monto;
+                }
+                // Sumar al resumen del método de pago correspondiente
+                if (array_key_exists($metodoPagoNombre, $resumenPagos)) {
+                    $resumenPagos[$metodoPagoNombre] += $transaccion->monto;
+                } else {
+                    // Opcional: Loguear si se encuentra un método de pago no esperado en el resumen
+                    Log::warning("CajaService: Método de pago '{$metodoPagoNombre}' no está en el resumen inicial de pagos para caja ID: {$caja->id}");
+                }
+            } else {
+                Log::warning("CajaService: Transacción ID {$transaccion->id} no tiene metodoPago asociado para caja ID: {$caja->id}");
             }
         }
 
@@ -121,6 +132,7 @@ class CajaService implements CajaServiceInterface
             ]);
 
             $transaccionesPendientes = Transaccion::where('tipo', 'turno')->whereNull('caja_id')->get();
+            $devolucionesPendientes = Transaccion::where('tipo', 'devolucion')->whereNull('caja_id')->get();
             
             foreach ($transaccionesPendientes as $transaccion) {
                 $transaccion->caja_id = $caja->id;
@@ -242,13 +254,21 @@ class CajaService implements CajaServiceInterface
                     $monto = $transaccion->monto;
                     $balanceTotal += $monto;
                     
-                    $metodoPago = strtolower($transaccion->metodoPago->nombre);
-                    if (isset($resumenPagos[$metodoPago])) {
-                        $resumenPagos[$metodoPago] += $monto;
-                    }
+                    // Asegurarse que metodoPago no sea null antes de acceder a su nombre
+                    if ($transaccion->metodoPago) {
+                        $metodoPago = strtolower($transaccion->metodoPago->nombre);
+                        if (array_key_exists($metodoPago, $resumenPagos)) {
+                            $resumenPagos[$metodoPago] += $monto;
+                        } else {
+                            // Opcional: Log para métodos no esperados
+                            Log::warning("CajaService->index: Método de pago '{$metodoPago}' no listado en resumen para cierre ID: {$cierre->id}");
+                        }
 
-                    if ($metodoPago === 'efectivo') {
-                        $efectivoEnSistema += $monto;
+                        if ($metodoPago === 'efectivo') {
+                            $efectivoEnSistema += $monto;
+                        }
+                    } else {
+                        Log::warning("CajaService->index: Transacción ID {$transaccion->id} no tiene metodoPago asociado para cierre ID: {$cierre->id}");
                     }
                 }
 
