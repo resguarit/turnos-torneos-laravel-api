@@ -386,22 +386,15 @@ class JugadorService implements JugadorServiceInterface
             return response()->json($jugadores, 200);
         }
 
-        // Obtener el torneo de la zona
-        $zona = Zona::with('torneo')->find($zonaId);
-        if (!$zona || !$zona->torneo) {
-            return response()->json([], 200);
-        }
-        $torneoId = $zona->torneo->id;
-
-        // Obtener equipos de ese torneo
-        $equiposTorneoIds = Equipo::whereHas('zonas', function($q) use ($torneoId) {
-            $q->where('torneo_id', $torneoId);
+        // Obtener equipos de esa zona
+        $equiposZonaIds = Equipo::whereHas('zonas', function($q) use ($zonaId) {
+            $q->where('zonas.id', $zonaId);
         })->pluck('id');
 
-        // Jugadores que NO están en ningún equipo de ese torneo
+        // Jugadores que NO están en ningún equipo de esa zona
         $jugadores = Jugador::where('dni', 'like', $dniQuery . '%')
-            ->whereDoesntHave('equipos', function($q) use ($equiposTorneoIds) {
-                $q->whereIn('equipos.id', $equiposTorneoIds);
+            ->whereDoesntHave('equipos', function($q) use ($equiposZonaIds) {
+                $q->whereIn('equipos.id', $equiposZonaIds);
             })
             ->with('equipos')
             ->limit(10)
