@@ -4,6 +4,7 @@
 namespace App\Services\Implementation;
 
 use App\Models\Equipo;
+use App\Models\Jugador;
 use App\Services\Interface\EquipoServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -130,5 +131,57 @@ class EquipoService implements EquipoServiceInterface
         return Equipo::whereDoesntHave('zonas', function ($query) use ($zonaId) {
             $query->where('zonas.id', $zonaId);
         })->with('jugadores')->get(); // Load players
+    }
+
+    public function desvincularJugadorDeEquipo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'jugador_id' => 'required|exists:jugadores,id',
+            'equipo_id' => 'required|exists:equipos,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $jugador_id = $request->jugador_id;
+        $equipo_id = $request->equipo_id;
+
+        $equipo = Equipo::find($equipo_id);
+        if (!$equipo) {
+            return response()->json(['message' => 'Equipo no encontrado', 'status' => 404], 404);
+        }
+
+        $jugador = Jugador::find($jugador_id);
+        if (!$jugador) {
+            return response()->json(['message' => 'Jugador no encontrado', 'status' => 404], 404);
+        }
+
+        if (!$equipo->jugadores()->where('jugadores.id', $jugador_id)->exists()) {
+            return response()->json(['message' => 'Jugador no está vinculado a este equipo', 'status' => 404], 404);
+        }
+
+        // No permitir desvincular si es capitán
+        $esCapitan = \DB::table('equipo_jugador')
+            ->where('equipo_id', $equipo_id)
+            ->where('jugador_id', $jugador_id)
+            ->value('capitan');
+        if ($esCapitan) {
+            return response()->json([
+                'message' => 'No se puede desvincular al capitán del equipo. Debe cambiar el capitán antes de desvincularlo.',
+                'status' => 400
+            ], 400);
+        }
+
+        $equipo->jugadores()->detach($jugador_id);
+
+        return response()->json([
+            'message' => 'Jugador desvinculado del equipo',
+            'status' => 200
+        ], 200);
     }
 }

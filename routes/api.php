@@ -142,8 +142,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/jugadores/asociar-a-equipo', [JugadorController::class, 'asociarJugadorAEquipo']);
     Route::get('/equipos/{equipoId}/jugadores', [JugadorController::class, 'getByEquipo']);
     Route::post('/equipos/{equipoId}/jugadores/multiple', [JugadorController::class, 'createMultiple']);
+    Route::post('/jugadores/multiple-sin-equipo', [JugadorController::class, 'createMultipleSinEquipo']);
     Route::get('/jugadores/info-por-dni/{dni}', [JugadorController::class, 'infoPorDni']);
     Route::get('/equipos/{equipoId}/jugadores/{jugadorId}/equipo-jugador-id', [JugadorController::class, 'getEquipoJugadorId']);
+    Route::post('equipos/{equipoId}/jugadores/{jugadorId}/desvincular-jugador', [EquipoController::class, 'desvincularJugadorDeEquipo']);
+    Route::post('jugadores/crear-persona-cuenta-si-capitan', [JugadorController::class, 'crearPersonaYCuentaCorrienteSiCapitan']);
+    Route::post('jugadores/cambiar-capitan', [JugadorController::class, 'cambiarCapitan']);
 
     Route::prefix('zonas')->group(function () {
         Route::get('/', [ZonaController::class, 'index']);
@@ -219,6 +223,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/fechas/{fechaId}/pagar', [PagoController::class, 'registrarPagoPorFecha']);
     Route::get('/equipos/{equipoId}/torneos/{torneoId}/pago-inscripcion', [PagoController::class, 'obtenerPagoInscripcion']);
     Route::get('/equipos/{equipoId}/zonas/{zonaId}/pago-fecha', [PagoController::class, 'obtenerPagoPorFecha']);
+    Route::get('/equipos/{equipoId}/torneos/{torneoId}/zonas/{zonaId}/pagos', [PagoController::class, 'obtenerPagosEquipoTorneo']);
     
     Route::delete('/personas/{id}', [PersonaController::class, 'destroy']);
 

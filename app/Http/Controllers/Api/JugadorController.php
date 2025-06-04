@@ -97,4 +97,31 @@ class JugadorController extends Controller
             'status' => 200
         ], 200);
     }
+
+     public function crearPersonaYCuentaCorrienteSiCapitan(Request $request)
+    {
+        $jugadorId = $request->input('jugador_id');
+        $equipoId = $request->input('equipo_id');
+        $zonaId = $request->input('zona_id');
+
+        $result = $this->jugadorService->crearPersonaYCuentaCorrienteSiCapitan($jugadorId, $equipoId, $zonaId);
+
+        return response()->json($result, $result['status'] ?? 200);
+    }
+
+    public function cambiarCapitan(Request $request)
+    {
+        $equipoId = $request->input('equipo_id');
+        $jugadorNuevoId = $request->input('jugador_nuevo_id');
+        $zonaId = $request->input('zona_id');
+
+        $result = $this->jugadorService->cambiarCapitan($equipoId, $jugadorNuevoId, $zonaId);
+
+        return response()->json($result, $result['status'] ?? 200);
+    }
+
+    public function createMultipleSinEquipo(Request $request)
+    {
+        return $this->jugadorService->createMultipleSinEquipo($request);
+    }
 }
