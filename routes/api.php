@@ -131,6 +131,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/equipos/{id}', [EquipoController::class, 'destroy']);
     Route::get('/zonas/{zonaId}/equipos', [EquipoController::class, 'getByZona']);
     Route::get('/equipos/exclude-zona/{zonaId}', [EquipoController::class, 'getExcludeZona']);
+    Route::get('/equipos/dos/{id1}/{id2}', [EquipoController::class, 'getDosEquiposPorId']);
 
 
     Route::get('/jugadores', [JugadorController::class, 'index']);

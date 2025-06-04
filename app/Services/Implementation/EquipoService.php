@@ -184,4 +184,43 @@ class EquipoService implements EquipoServiceInterface
             'status' => 200
         ], 200);
     }
+
+    public function getDosEquiposPorId($equipoId1, $equipoId2)
+    {
+        $equipos = Equipo::with(['jugadores', 'zonas'])
+            ->whereIn('id', [$equipoId1, $equipoId2])
+            ->get();
+
+        // Para cada equipo, para cada jugador, agregar 'expulsado'
+        $equipos = $equipos->map(function ($equipo) {
+            $jugadores = $equipo->jugadores->map(function ($jugador) use ($equipo) {
+                // Buscar en la tabla pivote el id de equipo_jugador
+                $equipoJugador = \DB::table('equipo_jugador')
+                    ->where('equipo_id', $equipo->id)
+                    ->where('jugador_id', $jugador->id)
+                    ->first();
+
+                $expulsado = false;
+                if ($equipoJugador) {
+                    $expulsado = \App\Models\Sancion::where('equipo_jugador_id', $equipoJugador->id)
+                        ->where('tipo_sancion', \App\Enums\TipoSancion::EXPULSION_PERMANENTE->value)
+                        ->exists();
+                }
+
+                // Devolver los datos del jugador + expulsado
+                $jugadorArray = $jugador->toArray();
+                $jugadorArray['expulsado'] = $expulsado;
+                return $jugadorArray;
+            });
+
+            $equipoArray = $equipo->toArray();
+            $equipoArray['jugadores'] = $jugadores;
+            return $equipoArray;
+        });
+
+        return response()->json([
+            'equipos' => $equipos,
+            'status' => 200
+        ], 200);
+    }
 }

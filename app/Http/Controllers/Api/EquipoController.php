@@ -64,4 +64,9 @@ class EquipoController extends Controller
     {
         return $this->equipoService->desvincularJugadorDeEquipo($request);
     }
+
+    public function getDosEquiposPorId($id1, $id2)
+    {
+        return $this->equipoService->getDosEquiposPorId($id1, $id2);
+    }
 }
