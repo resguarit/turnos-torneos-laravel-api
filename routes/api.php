@@ -235,6 +235,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/sanciones/{id}', [SancionController::class, 'show']);
     Route::delete('/sanciones/{id}', [SancionController::class, 'destroy']);
     Route::put('/sanciones/{id}', [SancionController::class, 'updateSancion']);
+    Route::get('/expulsiones-permanentes', [SancionController::class, 'getExpulsionesPermanentes']);
 
     Route::get('eventos', [EventoController::class, 'index']);
     Route::get('eventos/{id}', [EventoController::class, 'show']);

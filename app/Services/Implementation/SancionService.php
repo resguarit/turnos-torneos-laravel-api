@@ -10,6 +10,7 @@ use App\Models\Equipo;
 use App\Models\Jugador;
 use Illuminate\Http\Request;
 use App\Enums\EstadoSancion;
+use App\Enums\TipoSancion;
 
 class SancionService
 {
@@ -18,7 +19,7 @@ class SancionService
         $validator = Validator::make($data, [
             'equipo_jugador_id' => 'required|exists:equipo_jugador,id',
             'motivo' => 'required|string|max:255',
-            'tipo_sancion' => 'required|in:expulsión,advertencia,suspensión,multa',
+            'tipo_sancion' => 'required|in:expulsión,advertencia,suspensión,multa,expulsión permanente',
             'cantidad_fechas' => 'nullable|integer|min:1',
             'fecha_inicio' => 'nullable|exists:fechas,id',
             'fecha_fin' => 'nullable|exists:fechas,id|after_or_equal:fecha_inicio',
@@ -199,4 +200,25 @@ class SancionService
         ];
     }
 
+    public function getExpulsionesPermanentes()
+    {
+        $sanciones = Sancion::where('tipo_sancion', TipoSancion::EXPULSION_PERMANENTE->value)->get();
+
+        $result = $sanciones->map(function ($sancion) {
+            // Buscar el registro en la tabla pivote equipo_jugador
+            $equipoJugador = \DB::table('equipo_jugador')->where('id', $sancion->equipo_jugador_id)->first();
+            // Buscar el jugador si existe el registro pivote
+            $jugador = $equipoJugador ? Jugador::find($equipoJugador->jugador_id) : null;
+
+            return [
+                'sancion' => $sancion,
+                'jugador' => $jugador,
+            ];
+        });
+
+        return [
+            'expulsiones_permanentes' => $result,
+            'status' => 200
+        ];
+    }
 }
