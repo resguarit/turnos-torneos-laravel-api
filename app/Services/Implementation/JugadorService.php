@@ -406,13 +406,30 @@ class JugadorService implements JugadorServiceInterface
     public function asociarJugadorAEquipo($jugadorId, $equipoId, $capitan = false)
     {
         $jugador = Jugador::find($jugadorId);
-        $equipo = Equipo::find($equipoId);
+        $equipo = Equipo::with('zonas')->find($equipoId);
 
         if (!$jugador || !$equipo) {
             return response()->json([
                 'message' => 'Jugador o equipo no encontrado',
                 'status' => 404
             ], 404);
+        }
+
+        // Obtener todas las zonas del equipo destino
+        $zonasEquipoDestinoIds = $equipo->zonas->pluck('id')->toArray();
+
+        // Buscar si el jugador ya está en algún equipo de esas zonas
+        $yaEnZona = $jugador->equipos()
+            ->whereHas('zonas', function($q) use ($zonasEquipoDestinoIds) {
+                $q->whereIn('zonas.id', $zonasEquipoDestinoIds);
+            })
+            ->exists();
+
+        if ($yaEnZona) {
+            return response()->json([
+                'message' => 'No se puede asociar el jugador porque ya está en un equipo de la misma zona.',
+                'status' => 400
+            ], 400);
         }
 
         if ($capitan) {
