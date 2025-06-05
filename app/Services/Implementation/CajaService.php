@@ -10,6 +10,7 @@ use App\Models\Caja;
 use App\Models\Transaccion;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CajaService implements CajaServiceInterface
 {
@@ -18,7 +19,7 @@ class CajaService implements CajaServiceInterface
         $caja = Caja::where('activa', true)
             ->with(['empleado', 'transacciones' => function($query) {
                 $query->orderBy('created_at', 'desc');
-            }, 'transacciones.metodoPago'])
+            }, 'transacciones.metodoPago', 'transacciones.tipoGasto'])
             ->first();
 
         if (!$caja) {
@@ -34,33 +35,60 @@ class CajaService implements CajaServiceInterface
         $resumenPagos = [
             'efectivo' => 0,
             'transferencia' => 0,
-            'tarjeta' => 0
+            'tarjeta' => 0,
+            'mercadopago' => 0,
+            'gastos' => 0 // Nueva categoría para los gastos
         ];
 
         // Procesar todas las transacciones una sola vez
         foreach ($caja->transacciones as $transaccion) {
             $balanceTotal += $transaccion->monto;
-            // Actualizar efectivo en caja si es método efectivo
-            if (strtolower($transaccion->metodoPago->nombre) === 'efectivo') {
-                $efectivoEnCaja += $transaccion->monto;
-                $resumenPagos['efectivo'] += $transaccion->monto;
-            } elseif (strtolower($transaccion->metodoPago->nombre) === 'transferencia') {
-                $resumenPagos['transferencia'] += $transaccion->monto;
-            } elseif (strtolower($transaccion->metodoPago->nombre) === 'tarjeta') {
-                $resumenPagos['tarjeta'] += $transaccion->monto;
+            
+            // Si es un gasto, añadirlo a la categoría de gastos (en valor absoluto)
+            if ($transaccion->tipo === 'gasto' && $transaccion->monto < 0) {
+                $resumenPagos['gastos'] += abs($transaccion->monto);
+            }
+            
+            // Asegurarse que metodoPago no sea null antes de acceder a su nombre
+            if ($transaccion->metodoPago) {
+                $metodoPagoNombre = strtolower($transaccion->metodoPago->nombre);
+
+                if ($metodoPagoNombre === 'efectivo') {
+                    $efectivoEnCaja += $transaccion->monto;
+                }
+                // Sumar al resumen del método de pago correspondiente
+                if (array_key_exists($metodoPagoNombre, $resumenPagos)) {
+                    $resumenPagos[$metodoPagoNombre] += $transaccion->monto;
+                } else {
+                    // Opcional: Loguear si se encuentra un método de pago no esperado en el resumen
+                    Log::warning("CajaService: Método de pago '{$metodoPagoNombre}' no está en el resumen inicial de pagos para caja ID: {$caja->id}");
+                }
+            } else {
+                // Para transacciones sin método de pago (como gastos)
+                // Los gastos NO impactan en el efectivo en caja, solo en el balance total
+                // No se hace nada adicional aquí porque el balance total ya se actualizó arriba
+                // con $balanceTotal += $transaccion->monto;
+                Log::info("CajaService: Transacción ID {$transaccion->id} no tiene metodoPago asociado (posiblemente un gasto) para caja ID: {$caja->id}");
             }
         }
 
         // Formatear transacciones para el frontend
         $transacciones = $caja->transacciones->map(function ($transaccion) {
-            return [
+            $datos = [
                 'id' => $transaccion->id,
-                'tipo' => (($transaccion->monto > 0) || $transaccion->tipo === 'inscripcion' || $transaccion->tipo === 'fecha') ? 'deposito' : 'retiro',
+                'tipo' => (($transaccion->monto > 0) || $transaccion->tipo === 'inscripcion' || $transaccion->tipo === 'fecha') ? 'deposito' : ($transaccion->tipo === 'gasto' ? 'gasto' : 'retiro'),
                 'monto' => abs($transaccion->monto),
                 'descripcion' => $transaccion->descripcion,
-                'metodo_pago' => strtolower($transaccion->metodoPago->nombre),
+                'metodo_pago' => $transaccion->metodoPago ? strtolower($transaccion->metodoPago->nombre) : null,
                 'fecha' => $transaccion->created_at
             ];
+            
+            // Agregar tipo_gasto si la transacción es de tipo gasto
+            if ($transaccion->tipo === 'gasto' && $transaccion->tipoGasto) {
+                $datos['tipo_gasto'] = $transaccion->tipoGasto->nombre;
+            }
+            
+            return $datos;
         });
 
         return response()->json([
@@ -121,6 +149,7 @@ class CajaService implements CajaServiceInterface
             ]);
 
             $transaccionesPendientes = Transaccion::where('tipo', 'turno')->whereNull('caja_id')->get();
+            $devolucionesPendientes = Transaccion::where('tipo', 'devolucion')->whereNull('caja_id')->get();
             
             foreach ($transaccionesPendientes as $transaccion) {
                 $transaccion->caja_id = $caja->id;
@@ -232,7 +261,8 @@ class CajaService implements CajaServiceInterface
                     'efectivo' => 0,
                     'transferencia' => 0,
                     'tarjeta' => 0,
-                    'mercadopago' => 0
+                    'mercadopago' => 0,
+                    'gastos' => 0 // Nueva categoría para los gastos
                 ];
 
                 $balanceTotal = 0;
@@ -242,13 +272,30 @@ class CajaService implements CajaServiceInterface
                     $monto = $transaccion->monto;
                     $balanceTotal += $monto;
                     
-                    $metodoPago = strtolower($transaccion->metodoPago->nombre);
-                    if (isset($resumenPagos[$metodoPago])) {
-                        $resumenPagos[$metodoPago] += $monto;
+                    // Si es un gasto, añadirlo a la categoría de gastos (en valor absoluto)
+                    if ($transaccion->tipo === 'gasto' && $monto < 0) {
+                        $resumenPagos['gastos'] += abs($monto);
                     }
+                    
+                    // Asegurarse que metodoPago no sea null antes de acceder a su nombre
+                    if ($transaccion->metodoPago) {
+                        $metodoPago = strtolower($transaccion->metodoPago->nombre);
+                        if (array_key_exists($metodoPago, $resumenPagos)) {
+                            $resumenPagos[$metodoPago] += $monto;
+                        } else {
+                            // Opcional: Log para métodos no esperados
+                            Log::warning("CajaService->index: Método de pago '{$metodoPago}' no listado en resumen para cierre ID: {$cierre->id}");
+                        }
 
-                    if ($metodoPago === 'efectivo') {
-                        $efectivoEnSistema += $monto;
+                        if ($metodoPago === 'efectivo') {
+                            $efectivoEnSistema += $monto;
+                        }
+                    } else {
+                        // Para transacciones sin método de pago (como gastos)
+                        // Los gastos NO impactan en el efectivo en sistema, solo en el balance total
+                        // No se hace nada adicional aquí porque el balance total ya se actualizó arriba
+                        // con $balanceTotal += $monto;
+                        Log::info("CajaService->index: Transacción ID {$transaccion->id} no tiene metodoPago asociado (posiblemente un gasto) para cierre ID: {$cierre->id}");
                     }
                 }
 

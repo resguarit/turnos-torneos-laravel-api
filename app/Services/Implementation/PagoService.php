@@ -11,6 +11,7 @@ use App\Models\Fecha;
 use App\Models\CuentaCorriente;
 use App\Models\Persona;
 use App\Models\Transaccion;
+use App\Enums\EventoEstado;
 use Illuminate\Support\Facades\DB;
 
 class PagoService
@@ -314,12 +315,17 @@ class PagoService
                 'cuenta_corriente_id' => $cuentaCorriente->id,
                 'caja_id' => $caja->id,
                 'metodo_pago_id' => $metodoPagoId,
+                'evento_id' => $evento->id,
                 'monto' => $montoAPagar, 
                 'tipo' => 'evento', 
                 'descripcion' => "Pago evento {$evento->nombre} ({$evento->id})"
             ]);
             $cuentaCorriente->saldo += $montoAPagar;
             $cuentaCorriente->save();
+
+            $evento->combinaciones()->update([
+                'estado' => EventoEstado::PAGADO
+            ]);
 
             DB::commit();
             return [

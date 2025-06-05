@@ -48,13 +48,13 @@ class BloqueoTemporalService implements BloqueoTemporalServiceInterface
             return response()->json(['message' => 'El Turno esta siendo reservado por alguien mas.'], 400);
         }
 
-        // Crear el bloqueo en Cache con un tiempo de expiración de 3 minutos
+        // Crear el bloqueo en Cache con un tiempo de expiración de 30 minutos
         Cache::put($clave, [
             'usuario_id' => Auth::id(),
             'horario_id' => $request->horario_id,
             'cancha_id' => $request->cancha_id,
             'fecha' => $request->fecha,
-        ], 600);    
+        ], 180);    
 
         return response()->json([
             'message' => 'Bloqueo temporal creado con éxito.',

@@ -12,9 +12,20 @@ class Transaccion extends Model
     protected $table = 'transacciones';
 
     protected $fillable = [
-        'cuenta_corriente_id', 'turno_id', 'monto', 'tipo', 'descripcion', 'caja_id', 'metodo_pago_id', 'payment_id', 'torneo_id'
+        'cuenta_corriente_id', 
+        'turno_id', 
+        'monto', 
+        'tipo', 
+        'descripcion', 
+        'caja_id', 
+        'metodo_pago_id', 
+        'payment_id', 
+        'torneo_id',
+        'tipo_gasto_id',
+        'evento_id',
+        'metodo_pago_id'
     ];
-
+    
     /**
      * Relación con la tabla `cuentas_corrientes`.
      */
@@ -36,5 +47,18 @@ class Transaccion extends Model
     public function metodoPago()
     {
         return $this->belongsTo(MetodoPago::class);
+    }
+
+    public function evento()
+    {
+        return $this->belongsTo(Evento::class);
+    }
+    
+    /**
+     * Obtener el tipo de gasto asociado a esta transacción.
+     */
+    public function tipoGasto()
+    {
+        return $this->belongsTo(TipoGasto::class, 'tipo_gasto_id');
     }
 }

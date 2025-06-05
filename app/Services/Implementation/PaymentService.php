@@ -17,9 +17,13 @@ use Carbon\Carbon;
 use App\Models\MetodoPago;
 use App\Models\User;
 use App\Notifications\ReservaNotification;
+use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Client\Payment\PaymentRefundClient;
+use MercadoPago\Exceptions\MPApiException;
 
 class PaymentService implements PaymentServiceInterface
 {
+
     public function handleNewPayment($payment)
     {
         Log::info("payment status desde payment service: ");
@@ -156,6 +160,28 @@ class PaymentService implements PaymentServiceInterface
         Log::info("bloqueo desde payment service: ");
         Log::info(json_encode($bloqueo));
 
+    }
+
+    public function refundPayment($paymentId)
+    {
+        MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
+        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+        Log::info("refund payment desde payment service: ");
+        Log::info($paymentId);
+
+        try {
+            $client = new PaymentRefundClient();
+            $refund = $client->refundTotal($paymentId);
+            Log::info(json_encode($refund));
+        } catch (MPApiException $e) {
+            // Handle API exceptions
+            Log::error("Status code: " . $e->getApiResponse()->getStatusCode());
+            Log::error("Content: ");
+            Log::error(json_encode($e->getApiResponse()->getContent()));
+        } catch (\Exception $e) {
+            // Handle all other exceptions
+            Log::error($e->getMessage());
+        }
     }
 }
 
