@@ -36,6 +36,8 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Checkout\MercadoPagoController;
 use App\Http\Controllers\Webhook\MercadoPagoWebhook;
 use App\Http\Controllers\Api\BloqueoDisponibilidadController;
+use App\Http\Controllers\TipoGastoController;
+use App\Http\Controllers\BalanceController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -294,3 +296,12 @@ Route::get('/zonas/{zonaId}/estadisticas/jugadores', [EstadisticaController::cla
 Route::get('/zonas/{id}', [ZonaController::class, 'show']);
 
 Route::get('/zonas/{zonaId}/sanciones', [SancionController::class, 'getSancionesPorZona']);
+
+// Rutas para tipos de gasto
+Route::get('/tipos-gasto', [TipoGastoController::class, 'index']);
+Route::post('/tipos-gasto', [TipoGastoController::class, 'store']);
+Route::put('/tipos-gasto/{id}', [TipoGastoController::class, 'update']);
+Route::delete('/tipos-gasto/{id}', [TipoGastoController::class, 'destroy']);
+
+// Ruta para balance entre fechas
+Route::get('/balance', [BalanceController::class, 'getBalance']);

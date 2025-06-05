@@ -6,6 +6,7 @@ enum EventoEstado: string
 {
     case DISPONIBLE = 'disponible';
     case RESERVADO = 'reservado';
+    case PAGADO = 'pagado';
     case CANCELADO = 'cancelado';
 
     public static function values(): array

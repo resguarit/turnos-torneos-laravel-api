@@ -224,6 +224,7 @@ class EventoService implements EventoServiceInterface
 
         $transaccion = Transaccion::where('cuenta_corriente_id', $cuentacorriente->id)
             ->where('evento_id', $evento->id)
+            ->where('tipo', 'evento')
             ->first();
             
         if (!$transaccion) {
@@ -251,6 +252,7 @@ class EventoService implements EventoServiceInterface
             if ($cuentacorriente) {
                 $transaccion = Transaccion::where('cuenta_corriente_id', $cuentacorriente->id)
                     ->where('evento_id', $evento->id)
+                    ->where('tipo', 'evento')
                     ->first();
 
                 if ($transaccion) {

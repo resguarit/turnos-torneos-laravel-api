@@ -38,6 +38,44 @@ class DatabaseSeeder extends Seeder
             'persona_id' => $persona->id,
         ]);
 
+        $persona = Persona::create([
+            'name' => 'Mariano Salas',
+            'dni' => '45356347',
+            'telefono' => '2215607115'
+        ]);
+
+        CuentaCorriente::create([
+            'persona_id' => $persona->id,
+            'saldo' => 0,
+        ]);
+
+        User::create([
+            'email' => 'marianosalas24@gmail.com',
+            'dni' => '45356347',
+            'password' => bcrypt('password'),
+            'rol' => 'cliente',
+            'persona_id' => $persona->id,
+        ]);
+
+        $persona = Persona::create([
+            'name' => 'Mariano Admin',
+            'dni' => '45356348',
+            'telefono' => '2215607116'
+        ]);
+
+        CuentaCorriente::create([
+            'persona_id' => $persona->id,
+            'saldo' => 0,
+        ]);
+
+        User::create([
+            'email' => 'msalas.escuela@gmail.com',
+            'dni' => '45356348',
+            'password' => bcrypt('password'),
+            'rol' => 'admin',
+            'persona_id' => $persona->id,
+        ]);
+
         $this->call([
             EquiposYJugadoresSeeder::class,
             CanchasYHorariosSeeder::class,
