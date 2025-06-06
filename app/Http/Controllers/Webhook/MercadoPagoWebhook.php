@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use App\Services\Interface\PaymentServiceInterface;
 use MercadoPago\Client\Payment\PaymentClient;
+use App\Services\MercadoPagoConfigService;
+use MercadoPago\Exceptions\MPApiException;
 
 class MercadoPagoWebhook extends Controller
 {
@@ -17,13 +19,14 @@ class MercadoPagoWebhook extends Controller
     
     public function __construct(PaymentServiceInterface $paymentService)
     {
-        MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
         $this->paymentService = $paymentService;
     }
 
     public function handleWebhook(Request $request)
     {
-        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+        // Configurar MercadoPago con las credenciales de la base de datos
+        MercadoPagoConfigService::configureMP();
+        
         $xSignature = $_SERVER['HTTP_X_SIGNATURE'];
         $xRequestId = $_SERVER['HTTP_X_REQUEST_ID'];
 
@@ -49,7 +52,8 @@ class MercadoPagoWebhook extends Controller
             }
         }
 
-        $secret = config('app.mercadopago_webhook_secret');
+        // Usar el webhook secret de la base de datos
+        $secret = MercadoPagoConfigService::getWebhookSecret();
 
         $manifest = "id:$dataID;request-id:$xRequestId;ts:$ts;";
 
@@ -64,18 +68,32 @@ class MercadoPagoWebhook extends Controller
                         $client = new PaymentClient();
                         $payment = $client->get($dataID);
                     } catch (MPApiException $e) {
-                        Log::info(var_dump($e->getApiResponse()->getContent()));
+                        Log::error('Error al obtener el pago', [
+                            'message' => $e->getMessage(),
+                            'response' => isset($e->getApiResponse) ? $e->getApiResponse()->getContent() : null
+                        ]);
+                        return response()->json(['error' => 'Error al obtener el pago'], 500);
                     } catch (\Exception $e) {
-                        Log::info($e->getMessage());
+                        Log::error('Excepción al procesar el webhook', [
+                            'message' => $e->getMessage()
+                        ]);
+                        return response()->json(['error' => 'Error al procesar el webhook'], 500);
                     }
 
                     // Toda la logica de pago se maneja en el paymentService
                     $this->paymentService->handleNewPayment($payment);
-
+                    
+                    return response()->json(['status' => 'success'], 200);
                     break;
+                    
                 case "invoice":
-                    Log::info("Invoice");
+                    Log::info("Invoice notification received");
+                    return response()->json(['status' => 'success'], 200);
                     break;
+                    
+                default:
+                    Log::info("Unhandled notification type: " . $_GET["type"]);
+                    return response()->json(['status' => 'success'], 200);
             }
             
         } else {

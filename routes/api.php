@@ -38,19 +38,24 @@ use App\Http\Controllers\Webhook\MercadoPagoWebhook;
 use App\Http\Controllers\Api\BloqueoDisponibilidadController;
 use App\Http\Controllers\TipoGastoController;
 use App\Http\Controllers\BalanceController;
+use App\Http\Controllers\Configuracion\ConfiguracionController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 Route::post('/verify-email', [VerifyEmailController::class, 'verifyEmail']);
+
+// Rutas de MercadoPago públicas (no requieren autenticación)
 Route::post('/mercadopago/webhook', [MercadoPagoWebhook::class, 'handleWebhook']);
 Route::post('/mercadopago/verify-payment', [MercadoPagoController::class, 'verifyPaymentStatus']);
-Route::post('/mercadopago/verify-payment-by-preference', [MercadoPagoController::class, 'verifyPaymentStatusByPreference']);
+Route::post('/mercadopago/verify-payment-by-preference', [MercadoPagoController::class, 'verifyPaymentStatusByPreference']);    
+
+Route::get('/configuracion-usuario', [ConfiguracionController::class, 'ObtenerConfiguracion']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
 
-    Route::post('/mercadopago/create-preference', [MercadoPagoController::class, 'createPreference']);
+    Route::post('/configuracion-update', [ConfiguracionController::class, 'actualizarConfiguracion']);
 
     
     Route::get('/canchas', [CanchaController::class, 'index']);
@@ -247,7 +252,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('eventos/{id}', [EventoController::class, 'destroy']);
     Route::get('eventosComoTurnos', [EventoController::class, 'eventosComoTurnos']);
     Route::get('estadoPago/eventos', [EventoController::class, 'obtenerEstadosPagoEventos']);
-}); 
+
+    // Rutas que requieren verificación de MercadoPago habilitado
+    Route::middleware(['check.mercadopago'])->group(function () {
+        Route::post('/mercadopago/create-preference', [MercadoPagoController::class, 'createPreference']);
+    });
+});
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
 Route::get('/disponibilidad/dias', [DisponibilidadController::class, 'getDiasNoDisponibles']);
@@ -307,3 +317,17 @@ Route::delete('/tipos-gasto/{id}', [TipoGastoController::class, 'destroy']);
 
 // Ruta para balance entre fechas
 Route::get('/balance', [BalanceController::class, 'getBalance']);
+
+Route::get('/test-mercadopago', function () {
+    $enabled = \App\Services\MercadoPagoConfigService::isEnabled();
+    $token = \App\Services\MercadoPagoConfigService::getAccessToken();
+    $webhookSecret = \App\Services\MercadoPagoConfigService::getWebhookSecret();
+    
+    return response()->json([
+        'mercadopago_enabled' => $enabled,
+        'token_masked' => $token ? substr($token, 0, 4) . '...' . substr($token, -4) : null,
+        'webhook_secret_masked' => $webhookSecret ? substr($webhookSecret, 0, 4) . '...' . substr($webhookSecret, -4) : null
+    ]);
+});
+
+

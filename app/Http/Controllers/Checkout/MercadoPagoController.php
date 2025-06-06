@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use MercadoPago\Client\Payment\PaymentRefundClient;
 use MercadoPago\Exceptions\MPApiException;
+use App\Services\MercadoPagoConfigService;
 
 class MercadoPagoController extends Controller
 {
@@ -30,7 +31,9 @@ class MercadoPagoController extends Controller
 
     public function createPreference(Request $request)
     {
-        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+        // Configurar MercadoPago con las credenciales de la base de datos
+        MercadoPagoConfigService::configureMP();
+        
         try {
             $client = new PreferenceClient();
 
@@ -101,13 +104,11 @@ class MercadoPagoController extends Controller
             ], 422);
         }
 
-        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
-        $accessToken = config('app.mercadopago_access_token');
+        // Configurar MercadoPago con las credenciales de la base de datos
+        MercadoPagoConfigService::configureMP();
 
         $turnoId = $request->external_reference;
         $paymentId = $request->payment_id;
-        
-        //$response = Http::withToken($accessToken)->get("https://api.mercadopago.com/v1/payments/{$paymentId}");
 
         $client = new PaymentClient();
         try {
@@ -158,7 +159,8 @@ class MercadoPagoController extends Controller
             ], 422);
         }
 
-        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+        // Configurar MercadoPago con las credenciales de la base de datos
+        MercadoPagoConfigService::configureMP();
 
         $client = new PreferenceClient();
         $preference = $client->get($request->preference_id);

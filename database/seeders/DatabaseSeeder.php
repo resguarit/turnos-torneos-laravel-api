@@ -79,6 +79,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             EquiposYJugadoresSeeder::class,
             CanchasYHorariosSeeder::class,
+            ConfigurationSeeder::class,
         ]);
     }
 }
