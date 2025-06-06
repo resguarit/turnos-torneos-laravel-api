@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Grupo;
 use Carbon\Carbon;
 use App\Enums\PartidoEstado;
+use App\Services\EstadisticaService;
 
 class ZonaService implements ZonaServiceInterface
 {
@@ -1090,5 +1091,111 @@ class ZonaService implements ZonaServiceInterface
         });
 
         return response()->json($estadisticasEquipos, 200);
+    }
+
+    public function crearPlayoffEnLiga(Request $request, $zonaId)
+    {
+        $zona = Zona::with('equipos', 'torneo')->find($zonaId);
+        if (!$zona) {
+            return response()->json(['message' => 'Zona no encontrada', 'status' => 404], 404);
+        }
+
+        $fechaInicial = $request->input('fecha_inicial');
+        if (!$fechaInicial) {
+            return response()->json(['message' => 'Debe enviar fecha_inicial', 'status' => 400], 400);
+        }
+
+        // Obtener equipos ordenados por puntaje
+        $response = $this->calcularEstadisticasLiga($zonaId);
+        $equiposOrdenados = $response->getData(true); // Devuelve el array de equipos ordenados
+
+        $numEquipos = count($equiposOrdenados);
+        if ($numEquipos < 2) {
+            return response()->json(['message' => 'No hay suficientes equipos para playoff', 'status' => 400], 400);
+        }
+
+        $mitad = intdiv($numEquipos, 2);
+        $ganadores = array_slice($equiposOrdenados, 0, $mitad);
+        $perdedores = array_slice($equiposOrdenados, $mitad);
+
+        DB::beginTransaction();
+        try {
+            // Crear zona de ganadores
+            $zonaGanadores = Zona::create([
+                'nombre' => $zona->nombre . ' Playoff Ganadores',
+                'formato' => ZonaFormato::ELIMINATORIA,
+                'año' => $zona->año,
+                'torneo_id' => $zona->torneo_id,
+            ]);
+            $equiposGanadoresIds = array_column($ganadores, 'id');
+            $zonaGanadores->equipos()->attach($equiposGanadoresIds);
+
+            // Crear zona de perdedores
+            $zonaPerdedores = Zona::create([
+                'nombre' => $zona->nombre . ' Playoff Perdedores',
+                'formato' => ZonaFormato::ELIMINATORIA,
+                'año' => $zona->año,
+                'torneo_id' => $zona->torneo_id,
+            ]);
+            $equiposPerdedoresIds = array_column($perdedores, 'id');
+            $zonaPerdedores->equipos()->attach($equiposPerdedoresIds);
+
+            // Crear fecha y partidos para ganadores
+            $this->crearFechaPlayoffZona($zonaGanadores, $ganadores, $fechaInicial);
+
+            // Crear fecha y partidos para perdedores
+            $this->crearFechaPlayoffZona($zonaPerdedores, $perdedores, $fechaInicial);
+
+            DB::commit();
+            return response()->json([
+                'message' => 'Playoff en liga creado correctamente',
+                'zona_ganadores' => $zonaGanadores->load('equipos', 'fechas.partidos'),
+                'zona_perdedores' => $zonaPerdedores->load('equipos', 'fechas.partidos'),
+                'status' => 201
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear playoff en liga',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
+    }
+
+    private function crearFechaPlayoffZona($zona, $equiposStats, $fechaInicial)
+    {
+        $numEquipos = count($equiposStats);
+        if ($numEquipos < 2) return;
+
+        // Usar el nombre de la ronda según la cantidad de equipos
+        $nombreFecha = $this->getNombreEliminatoria($numEquipos);
+
+        $fecha = Fecha::create([
+            'nombre' => $nombreFecha,
+            'fecha_inicio' => $fechaInicial,
+            'fecha_fin' => Carbon::parse($fechaInicial)->addDays(1),
+            'estado' => 'Pendiente',
+            'zona_id' => $zona->id,
+        ]);
+
+        $partidos = [];
+        for ($i = 0; $i < $numEquipos / 2; $i++) {
+            $local = $equiposStats[$i];
+            $visitante = $equiposStats[$numEquipos - 1 - $i];
+
+            $partido = Partido::create([
+                'fecha_id' => $fecha->id,
+                'equipo_local_id' => $local['id'],
+                'equipo_visitante_id' => $visitante['id'],
+                'estado' => 'Pendiente',
+                'fecha' => $fecha->fecha_inicio,
+                'horario_id' => null,
+                'cancha_id' => null,
+            ]);
+            $partido->equipos()->attach([$local['id'], $visitante['id']]);
+            $partidos[] = $partido;
+        }
+        $fecha->partidos = $partidos;
     }
 }
