@@ -151,9 +151,9 @@ class ZonaService implements ZonaServiceInterface
         }
 
         // Validar que el número de equipos sea 4, 8 o 16 para eliminatoria
-        if ($zona->formato === ZonaFormato::ELIMINATORIA && !in_array($numEquipos, [4, 8, 16])) {
+        if ($zona->formato === ZonaFormato::ELIMINATORIA && !in_array($numEquipos, [2, 4, 8, 16, 32, 64])) {
             return response()->json([
-                'message' => 'El número de equipos debe ser 4, 8 o 16 para un torneo eliminatoria',
+                'message' => 'El número de equipos debe ser 2, 4, 8, 16, 32 o 64 para un torneo eliminatoria',
                 'status' => 400
             ], 400);
         }
