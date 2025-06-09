@@ -670,6 +670,8 @@ class ZonaService implements ZonaServiceInterface
         $validator = Validator::make($request->all(), [
             'winners' => 'required|array|min:2',
             'fecha_anterior_id' => 'required|exists:fechas,id',
+            'crear_tercer_puesto' => 'sometimes|boolean', // Nuevo parámetro opcional
+            'perdedores' => 'sometimes|array|min:2' // Solo requerido si crear_tercer_puesto es true
         ]);
 
         if ($validator->fails()) {
@@ -690,6 +692,8 @@ class ZonaService implements ZonaServiceInterface
 
         $winners = $request->input('winners');
         $numEquipos = count($winners);
+        $crearTercerPuesto = $request->boolean('crear_tercer_puesto', false);
+        $perdedores = $request->input('perdedores', []);
 
         // Validar que sea potencia de 2
         if (!in_array($numEquipos, [2, 4, 8, 16, 32, 64])) {
@@ -703,41 +707,102 @@ class ZonaService implements ZonaServiceInterface
         $fechaFinAnterior = Carbon::parse($fechaAnterior->fecha_fin);
 
         // Crear nueva fecha
-        $fecha = Fecha::create([
-            'nombre' => $this->getNombreEliminatoria($numEquipos),
-            'fecha_inicio' => $fechaFinAnterior->copy()->addDays(1),
-            'fecha_fin' => $fechaFinAnterior->copy()->addDays(2),
-            'estado' => 'Pendiente',
-            'zona_id' => $zona->id,
-        ]);
+        if ($numEquipos == 2) {
+            // Solo crear fechas "Final" y "Tercer Puesto" aquí
+            $fechaInicioAnterior = Carbon::parse($fechaAnterior->fecha_inicio);
+            $fechaFinal = Fecha::create([
+                'nombre' => 'Final',
+                'fecha_inicio' => $fechaInicioAnterior->copy()->addDays(7),
+                'fecha_fin' => $fechaInicioAnterior->copy()->addDays(7),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
 
-        // Crear partidos con los ganadores
-        $partidos = [];
-        for ($i = 0; $i < $numEquipos; $i += 2) {
-            $localId = $winners[$i];
-            $visitanteId = $winners[$i + 1] ?? null;
+            $localId = $winners[0];
+            $visitanteId = $winners[1];
 
-            if (!$visitanteId) break;
-
-            $partido = Partido::create([
-                'fecha_id' => $fecha->id,
+            $final = Partido::create([
+                'fecha_id' => $fechaFinal->id,
                 'equipo_local_id' => $localId,
                 'equipo_visitante_id' => $visitanteId,
                 'estado' => 'Pendiente',
-                'fecha' => $fecha->fecha_inicio,
+                'fecha' => $fechaFinal->fecha_inicio,
                 'horario_id' => null,
                 'cancha_id' => null,
             ]);
+            $final->equipos()->attach([$localId, $visitanteId]);
 
-            $partido->equipos()->attach([$localId, $visitanteId]);
-            $partidos[] = $partido;
+            $fechasCreadas = [$fechaFinal->load('partidos.equipos')];
+
+            // Si se solicita, crear partido por el tercer puesto en otra fecha
+            if ($crearTercerPuesto && count($perdedores) == 2) {
+                $terceroLocal = $perdedores[0];
+                $terceroVisitante = $perdedores[1];
+
+                $fechaTercerPuesto = Fecha::create([
+                    'nombre' => 'Tercer Puesto',
+                    'fecha_inicio' => $fechaInicioAnterior->copy()->addDays(7),
+                    'fecha_fin' => $fechaInicioAnterior->copy()->addDays(7),
+                    'estado' => 'Pendiente',
+                    'zona_id' => $zona->id,
+                ]);
+
+                $tercerPuesto = Partido::create([
+                    'fecha_id' => $fechaTercerPuesto->id,
+                    'equipo_local_id' => $terceroLocal,
+                    'equipo_visitante_id' => $terceroVisitante,
+                    'estado' => 'Pendiente',
+                    'fecha' => $fechaTercerPuesto->fecha_inicio,
+                    'horario_id' => null,
+                    'cancha_id' => null,
+                ]);
+                $tercerPuesto->equipos()->attach([$terceroLocal, $terceroVisitante]);
+
+                $fechasCreadas[] = $fechaTercerPuesto->load('partidos.equipos');
+            }
+
+            return response()->json([
+                'message' => 'Siguiente ronda creada correctamente',
+                'fechas' => $fechasCreadas,
+                'status' => 201
+            ], 201);
+        } else {
+            // Solo aquí crear la fecha para el resto de rondas
+            $fecha = Fecha::create([
+                'nombre' => $this->getNombreEliminatoria($numEquipos),
+                'fecha_inicio' => $fechaFinAnterior->copy()->addDays(1),
+                'fecha_fin' => $fechaFinAnterior->copy()->addDays(2),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
+
+            $partidos = [];
+            for ($i = 0; $i < $numEquipos; $i += 2) {
+                $localId = $winners[$i];
+                $visitanteId = $winners[$i + 1] ?? null;
+
+                if (!$visitanteId) break;
+
+                $partido = Partido::create([
+                    'fecha_id' => $fecha->id,
+                    'equipo_local_id' => $localId,
+                    'equipo_visitante_id' => $visitanteId,
+                    'estado' => 'Pendiente',
+                    'fecha' => $fecha->fecha_inicio,
+                    'horario_id' => null,
+                    'cancha_id' => null,
+                ]);
+
+                $partido->equipos()->attach([$localId, $visitanteId]);
+                $partidos[] = $partido;
+            }
+
+            return response()->json([
+                'message' => 'Siguiente ronda creada correctamente',
+                'fecha' => $fecha->load('partidos.equipos'),
+                'status' => 201
+            ], 201);
         }
-
-        return response()->json([
-            'message' => 'Siguiente ronda creada correctamente',
-            'fecha' => $fecha->load('partidos.equipos'),
-            'status' => 201
-        ], 201);
     }
 
     private function getNumeroRonda($numEquipos)
