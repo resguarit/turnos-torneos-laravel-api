@@ -671,7 +671,7 @@ class ZonaService implements ZonaServiceInterface
             'winners' => 'required|array|min:2',
             'fecha_anterior_id' => 'required|exists:fechas,id',
             'crear_tercer_puesto' => 'sometimes|boolean', // Nuevo parámetro opcional
-            'perdedores' => 'sometimes|array|min:2' // Solo requerido si crear_tercer_puesto es true
+            'perdedores' => 'sometimes|array' // Solo requerido si crear_tercer_puesto es true
         ]);
 
         if ($validator->fails()) {
