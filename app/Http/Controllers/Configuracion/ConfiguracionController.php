@@ -17,12 +17,29 @@ class ConfiguracionController extends Controller
     public function ObtenerConfiguracion()
     {
         $configuracion = Configuracion::first();
+        
+        // Enmascarar parcialmente las credenciales de Mercado Pago
+        $accessToken = '';
+        $webhookSecret = '';
+        
+        if ($configuracion->mercado_pago_access_token) {
+            $accessToken = substr($configuracion->mercado_pago_access_token, 0, 4) . '...' . 
+                          substr($configuracion->mercado_pago_access_token, -4);
+        }
+        
+        if ($configuracion->mercado_pago_webhook_secret) {
+            $webhookSecret = substr($configuracion->mercado_pago_webhook_secret, 0, 4) . '...' . 
+                            substr($configuracion->mercado_pago_webhook_secret, -4);
+        }
+        
         return response()->json([
             'colores' => $configuracion->colores,
             'habilitar_turnos' => $configuracion->habilitar_turnos,
             'habilitar_mercado_pago' => $configuracion->habilitar_mercado_pago,
             'direccion_complejo' => $configuracion->direccion_complejo,
             'telefono_complejo' => $configuracion->telefono_complejo,
+            'mercado_pago_access_token' => $accessToken,
+            'mercado_pago_webhook_secret' => $webhookSecret,
         ]);
     }
     
