@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Grupo;
 use Carbon\Carbon;
 use App\Enums\PartidoEstado;
+use App\Services\EstadisticaService;
 
 class ZonaService implements ZonaServiceInterface
 {
@@ -150,9 +151,9 @@ class ZonaService implements ZonaServiceInterface
         }
 
         // Validar que el número de equipos sea 4, 8 o 16 para eliminatoria
-        if ($zona->formato === ZonaFormato::ELIMINATORIA && !in_array($numEquipos, [4, 8, 16])) {
+        if ($zona->formato === ZonaFormato::ELIMINATORIA && !in_array($numEquipos, [2, 4, 8, 16, 32, 64])) {
             return response()->json([
-                'message' => 'El número de equipos debe ser 4, 8 o 16 para un torneo eliminatoria',
+                'message' => 'El número de equipos debe ser 2, 4, 8, 16, 32 o 64 para un torneo eliminatoria',
                 'status' => 400
             ], 400);
         }
@@ -669,6 +670,8 @@ class ZonaService implements ZonaServiceInterface
         $validator = Validator::make($request->all(), [
             'winners' => 'required|array|min:2',
             'fecha_anterior_id' => 'required|exists:fechas,id',
+            'crear_tercer_puesto' => 'sometimes|boolean', // Nuevo parámetro opcional
+            'perdedores' => 'sometimes|array' // Solo requerido si crear_tercer_puesto es true
         ]);
 
         if ($validator->fails()) {
@@ -689,6 +692,8 @@ class ZonaService implements ZonaServiceInterface
 
         $winners = $request->input('winners');
         $numEquipos = count($winners);
+        $crearTercerPuesto = $request->boolean('crear_tercer_puesto', false);
+        $perdedores = $request->input('perdedores', []);
 
         // Validar que sea potencia de 2
         if (!in_array($numEquipos, [2, 4, 8, 16, 32, 64])) {
@@ -702,41 +707,102 @@ class ZonaService implements ZonaServiceInterface
         $fechaFinAnterior = Carbon::parse($fechaAnterior->fecha_fin);
 
         // Crear nueva fecha
-        $fecha = Fecha::create([
-            'nombre' => $this->getNombreEliminatoria($numEquipos),
-            'fecha_inicio' => $fechaFinAnterior->copy()->addDays(1),
-            'fecha_fin' => $fechaFinAnterior->copy()->addDays(2),
-            'estado' => 'Pendiente',
-            'zona_id' => $zona->id,
-        ]);
+        if ($numEquipos == 2) {
+            // Solo crear fechas "Final" y "Tercer Puesto" aquí
+            $fechaInicioAnterior = Carbon::parse($fechaAnterior->fecha_inicio);
+            $fechaFinal = Fecha::create([
+                'nombre' => 'Final',
+                'fecha_inicio' => $fechaInicioAnterior->copy()->addDays(7),
+                'fecha_fin' => $fechaInicioAnterior->copy()->addDays(7),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
 
-        // Crear partidos con los ganadores
-        $partidos = [];
-        for ($i = 0; $i < $numEquipos; $i += 2) {
-            $localId = $winners[$i];
-            $visitanteId = $winners[$i + 1] ?? null;
+            $localId = $winners[0];
+            $visitanteId = $winners[1];
 
-            if (!$visitanteId) break;
-
-            $partido = Partido::create([
-                'fecha_id' => $fecha->id,
+            $final = Partido::create([
+                'fecha_id' => $fechaFinal->id,
                 'equipo_local_id' => $localId,
                 'equipo_visitante_id' => $visitanteId,
                 'estado' => 'Pendiente',
-                'fecha' => $fecha->fecha_inicio,
+                'fecha' => $fechaFinal->fecha_inicio,
                 'horario_id' => null,
                 'cancha_id' => null,
             ]);
+            $final->equipos()->attach([$localId, $visitanteId]);
 
-            $partido->equipos()->attach([$localId, $visitanteId]);
-            $partidos[] = $partido;
+            $fechasCreadas = [$fechaFinal->load('partidos.equipos')];
+
+            // Si se solicita, crear partido por el tercer puesto en otra fecha
+            if ($crearTercerPuesto && count($perdedores) == 2) {
+                $terceroLocal = $perdedores[0];
+                $terceroVisitante = $perdedores[1];
+
+                $fechaTercerPuesto = Fecha::create([
+                    'nombre' => 'Tercer Puesto',
+                    'fecha_inicio' => $fechaInicioAnterior->copy()->addDays(7),
+                    'fecha_fin' => $fechaInicioAnterior->copy()->addDays(7),
+                    'estado' => 'Pendiente',
+                    'zona_id' => $zona->id,
+                ]);
+
+                $tercerPuesto = Partido::create([
+                    'fecha_id' => $fechaTercerPuesto->id,
+                    'equipo_local_id' => $terceroLocal,
+                    'equipo_visitante_id' => $terceroVisitante,
+                    'estado' => 'Pendiente',
+                    'fecha' => $fechaTercerPuesto->fecha_inicio,
+                    'horario_id' => null,
+                    'cancha_id' => null,
+                ]);
+                $tercerPuesto->equipos()->attach([$terceroLocal, $terceroVisitante]);
+
+                $fechasCreadas[] = $fechaTercerPuesto->load('partidos.equipos');
+            }
+
+            return response()->json([
+                'message' => 'Siguiente ronda creada correctamente',
+                'fechas' => $fechasCreadas,
+                'status' => 201
+            ], 201);
+        } else {
+            // Solo aquí crear la fecha para el resto de rondas
+            $fecha = Fecha::create([
+                'nombre' => $this->getNombreEliminatoria($numEquipos),
+                'fecha_inicio' => $fechaFinAnterior->copy()->addDays(1),
+                'fecha_fin' => $fechaFinAnterior->copy()->addDays(2),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
+
+            $partidos = [];
+            for ($i = 0; $i < $numEquipos; $i += 2) {
+                $localId = $winners[$i];
+                $visitanteId = $winners[$i + 1] ?? null;
+
+                if (!$visitanteId) break;
+
+                $partido = Partido::create([
+                    'fecha_id' => $fecha->id,
+                    'equipo_local_id' => $localId,
+                    'equipo_visitante_id' => $visitanteId,
+                    'estado' => 'Pendiente',
+                    'fecha' => $fecha->fecha_inicio,
+                    'horario_id' => null,
+                    'cancha_id' => null,
+                ]);
+
+                $partido->equipos()->attach([$localId, $visitanteId]);
+                $partidos[] = $partido;
+            }
+
+            return response()->json([
+                'message' => 'Siguiente ronda creada correctamente',
+                'fecha' => $fecha->load('partidos.equipos'),
+                'status' => 201
+            ], 201);
         }
-
-        return response()->json([
-            'message' => 'Siguiente ronda creada correctamente',
-            'fecha' => $fecha->load('partidos.equipos'),
-            'status' => 201
-        ], 201);
     }
 
     private function getNumeroRonda($numEquipos)
@@ -1090,5 +1156,111 @@ class ZonaService implements ZonaServiceInterface
         });
 
         return response()->json($estadisticasEquipos, 200);
+    }
+
+    public function crearPlayoffEnLiga(Request $request, $zonaId)
+    {
+        $zona = Zona::with('equipos', 'torneo')->find($zonaId);
+        if (!$zona) {
+            return response()->json(['message' => 'Zona no encontrada', 'status' => 404], 404);
+        }
+
+        $fechaInicial = $request->input('fecha_inicial');
+        if (!$fechaInicial) {
+            return response()->json(['message' => 'Debe enviar fecha_inicial', 'status' => 400], 400);
+        }
+
+        // Obtener equipos ordenados por puntaje
+        $response = $this->calcularEstadisticasLiga($zonaId);
+        $equiposOrdenados = $response->getData(true); // Devuelve el array de equipos ordenados
+
+        $numEquipos = count($equiposOrdenados);
+        if ($numEquipos < 2) {
+            return response()->json(['message' => 'No hay suficientes equipos para playoff', 'status' => 400], 400);
+        }
+
+        $mitad = intdiv($numEquipos, 2);
+        $ganadores = array_slice($equiposOrdenados, 0, $mitad);
+        $perdedores = array_slice($equiposOrdenados, $mitad);
+
+        DB::beginTransaction();
+        try {
+            // Crear zona de ganadores
+            $zonaGanadores = Zona::create([
+                'nombre' => $zona->nombre . ' Playoff Ganadores',
+                'formato' => ZonaFormato::ELIMINATORIA,
+                'año' => $zona->año,
+                'torneo_id' => $zona->torneo_id,
+            ]);
+            $equiposGanadoresIds = array_column($ganadores, 'id');
+            $zonaGanadores->equipos()->attach($equiposGanadoresIds);
+
+            // Crear zona de perdedores
+            $zonaPerdedores = Zona::create([
+                'nombre' => $zona->nombre . ' Playoff Perdedores',
+                'formato' => ZonaFormato::ELIMINATORIA,
+                'año' => $zona->año,
+                'torneo_id' => $zona->torneo_id,
+            ]);
+            $equiposPerdedoresIds = array_column($perdedores, 'id');
+            $zonaPerdedores->equipos()->attach($equiposPerdedoresIds);
+
+            // Crear fecha y partidos para ganadores
+            $this->crearFechaPlayoffZona($zonaGanadores, $ganadores, $fechaInicial);
+
+            // Crear fecha y partidos para perdedores
+            $this->crearFechaPlayoffZona($zonaPerdedores, $perdedores, $fechaInicial);
+
+            DB::commit();
+            return response()->json([
+                'message' => 'Playoff en liga creado correctamente',
+                'zona_ganadores' => $zonaGanadores->load('equipos', 'fechas.partidos'),
+                'zona_perdedores' => $zonaPerdedores->load('equipos', 'fechas.partidos'),
+                'status' => 201
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al crear playoff en liga',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
+    }
+
+    private function crearFechaPlayoffZona($zona, $equiposStats, $fechaInicial)
+    {
+        $numEquipos = count($equiposStats);
+        if ($numEquipos < 2) return;
+
+        // Usar el nombre de la ronda según la cantidad de equipos
+        $nombreFecha = $this->getNombreEliminatoria($numEquipos);
+
+        $fecha = Fecha::create([
+            'nombre' => $nombreFecha,
+            'fecha_inicio' => $fechaInicial,
+            'fecha_fin' => Carbon::parse($fechaInicial)->addDays(1),
+            'estado' => 'Pendiente',
+            'zona_id' => $zona->id,
+        ]);
+
+        $partidos = [];
+        for ($i = 0; $i < $numEquipos / 2; $i++) {
+            $local = $equiposStats[$i];
+            $visitante = $equiposStats[$numEquipos - 1 - $i];
+
+            $partido = Partido::create([
+                'fecha_id' => $fecha->id,
+                'equipo_local_id' => $local['id'],
+                'equipo_visitante_id' => $visitante['id'],
+                'estado' => 'Pendiente',
+                'fecha' => $fecha->fecha_inicio,
+                'horario_id' => null,
+                'cancha_id' => null,
+            ]);
+            $partido->equipos()->attach([$local['id'], $visitante['id']]);
+            $partidos[] = $partido;
+        }
+        $fecha->partidos = $partidos;
     }
 }
