@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\BloqueoDisponibilidadController;
 use App\Http\Controllers\TipoGastoController;
 use App\Http\Controllers\BalanceController;
 use App\Http\Controllers\Configuracion\ConfiguracionController;
+use App\Http\Controllers\Api\PenalController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -253,6 +254,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('eventos/{id}', [EventoController::class, 'destroy']);
     Route::get('eventosComoTurnos', [EventoController::class, 'eventosComoTurnos']);
     Route::get('estadoPago/eventos', [EventoController::class, 'obtenerEstadosPagoEventos']);
+
+    Route::get('/penales', [PenalController::class, 'index']);
+    Route::get('/penales/{id}', [PenalController::class, 'show']);
+    Route::post('/penales', [PenalController::class, 'store']);
+    Route::put('/penales/{id}', [PenalController::class, 'update']);
+    Route::delete('/penales/{id}', [PenalController::class, 'destroy']);
+    Route::get('/penales/partido/{partidoId}', [PenalController::class, 'getByPartido']);
 
     // Rutas que requieren verificación de MercadoPago habilitado
     Route::middleware(['check.mercadopago'])->group(function () {
