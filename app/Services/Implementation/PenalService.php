@@ -3,6 +3,7 @@
 namespace App\Services\Implementation;
 use App\Services\Interface\PenalServiceInterface;
 use App\Models\Penal;
+use App\Models\Partido;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -37,6 +38,19 @@ class PenalService implements PenalServiceInterface
         }
 
         $penal = Penal::create($request->all());
+
+        // Traer el partido y actualizar el ganador_id
+        $partido = Partido::find($request->partido_id);
+        if ($partido) {
+            if ($request->penales_local > $request->penales_visitante) {
+                $partido->ganador_id = $request->equipo_local_id;
+            } elseif ($request->penales_visitante > $request->penales_local) {
+                $partido->ganador_id = $request->equipo_visitante_id;
+            } else {
+                $partido->ganador_id = null; // Empate, no debería pasar en penales
+            }
+            $partido->save();
+        }
 
         return response()->json([
             'message' => 'Penal creado correctamente',
