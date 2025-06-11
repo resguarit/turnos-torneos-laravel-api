@@ -45,4 +45,9 @@ class SancionController extends Controller
         return response()->json($result, $result['status']);
     }
 
+    public function getExpulsionesPermanentes()
+    {
+        $result = $this->sancionService->getExpulsionesPermanentes();
+        return response()->json($result, $result['status']);
+    }
 }

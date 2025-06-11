@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva Reserva Pendiente de Pago</title>
+    <title>Cancelación Automática de Reserva</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333333;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -13,7 +13,7 @@
                     <!-- Encabezado simple -->
                     <tr>
                         <td style="padding: 15px 20px; background-color: #f5f5f5; border-bottom: 1px solid #dddddd;">
-                            <h2 style="margin: 0; font-size: 18px;">Nueva Reserva Registrada</h2>
+                            <h2 style="margin: 0; font-size: 18px; color: #e74c3c;">🤖 Cancelación Automática de Reserva</h2>
                         </td>
                     </tr>
                     
@@ -22,12 +22,12 @@
                         <td style="padding: 20px;">
                             <p>Hola, Administrador</p>
                             
-                            <p>Se ha registrado una nueva reserva el <strong>{{ formatearFechaCompleta($turno->created_at) }}</strong> a las <strong>{{ $turno->created_at->format('H:i') }} hs</strong>
-                            para el turno del <strong> {{formatearFechaCompleta($turno->fecha_turno)}} </strong> a las <strong> {{formatearRangoHorario($turno->horario->hora_inicio, $turno->horario->hora_fin)}} </strong>
-                            . Aquí están los detalles:</p>
+                            <p style="color: #e74c3c; font-weight: bold;">Una reserva ha sido cancelada automáticamente por el sistema debido a falta de pago dentro de los 30 minutos.</p>
+                            
+                            <p>Aquí están los detalles de la reserva cancelada:</p>
                             
                             <!-- Detalles sin formato de tabla especial -->
-                            <div style="background-color: #f9f9f9; padding: 15px; margin: 15px 0; border-left: 3px solid #999999;">
+                            <div style="background-color: #fff5f5; padding: 15px; margin: 15px 0; border-left: 3px solid #e74c3c;">
                                 <p style="margin: 5px 0;"><strong>Cliente:</strong> {{ $turno->persona->name }}</p>
                                 <p style="margin: 5px 0;"><strong>Email:</strong> {{ $turno->persona->usuario->email }}</p>
                                 <p style="margin: 5px 0;"><strong>Teléfono:</strong> {{ $turno->persona->telefono }}</p>
@@ -41,12 +41,25 @@
                                 <p style="margin: 5px 0;"><strong>ID Reserva:</strong> {{ $turno->id }}</p>
                             </div>
                             
+                            <div style="background-color: #e8f4fd; padding: 15px; margin: 15px 0; border-left: 3px solid #3498db;">
+                                <p style="margin: 5px 0; color: #2c3e50;"><strong>ℹ️ Detalles de la cancelación automática:</strong></p>
+                                <p style="margin: 5px 0;">• <strong>Motivo:</strong> Falta de pago dentro de los 30 minutos</p>
+                                <p style="margin: 5px 0;">• <strong>Tiempo transcurrido:</strong> 30 minutos desde la creación</p>
+                                <p style="margin: 5px 0;">• <strong>Acción tomada:</strong> Cancelación automática sin cargo</p>
+                                <p style="margin: 5px 0;">• <strong>Estado de cuenta corriente:</strong> Monto devuelto automáticamente</p>
+                                <p style="margin: 5px 0;">• <strong>Notificación al cliente:</strong> Email enviado automáticamente</p>
+                            </div>
+                            
+                            <p style="margin: 5px 0; color: #27ae60; font-weight: bold;">✅ El horario está ahora disponible para nuevas reservas.</p>
+                            
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
-                                <a href="{{ config('app.url_front') }}/panel-admin?tab=turnos&id={{ $turno->id }}" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver en el sistema</a>
+                                <a href="{{ config('app.url_front') }}/panel-admin?tab=turnos&id={{ $turno->id }}" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px; margin-right: 10px;">Ver en el sistema</a>
                             </p>
                             
-                            <p>Este es un mensaje automático del sistema de reservas.</p>
+                            <p style="margin: 5px 0;"><strong>Fecha de cancelación:</strong> {{ formatearFechaCompleta(now()) }} a las {{ now()->format('H:i') }} hs</p>
+                            
+                            <p>No se requiere ninguna acción manual. El sistema procesó automáticamente la devolución del monto y liberó el horario.</p>
                         </td>
                     </tr>
                     
@@ -61,4 +74,4 @@
         </tr>
     </table>
 </body>
-</html>
+</html> 

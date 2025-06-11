@@ -59,4 +59,14 @@ class EquipoController extends Controller
     {
         return response()->json($this->equipoService->getExcludeZona($zonaId), 200);
     }
+
+    public function desvincularJugadorDeEquipo(Request $request)
+    {
+        return $this->equipoService->desvincularJugadorDeEquipo($request);
+    }
+
+    public function getDosEquiposPorId($id1, $id2)
+    {
+        return $this->equipoService->getDosEquiposPorId($id1, $id2);
+    }
 }

@@ -8,6 +8,7 @@ enum TipoSancion: string
     case ADVERTENCIA = 'advertencia';
     case SUSPENSION = 'suspensión';
     case MULTA = 'multa';
+    case EXPULSION_PERMANENTE = 'expulsión permanente';
 
     public static function values(): array
     {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cancelación de Turno</title>
+    <title>Cancelación Automática de Turno</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333333;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -13,7 +13,7 @@
                     <!-- Encabezado simple -->
                     <tr>
                         <td style="padding: 15px 20px; background-color:#f5f5f5; border-bottom: 1px solid #dddddd;">
-                            <h2 style="margin: 0; font-size: 18px;">Cancelación de Turno</h2>
+                            <h2 style="margin: 0; font-size: 18px; color: #e74c3c;">⚠️ Cancelación Automática de Turno</h2>
                         </td>
                     </tr>
                     
@@ -22,24 +22,37 @@
                         <td style="padding: 20px;">
                             <p>Hola, <strong>{{ $turno->persona->name }}</strong></p>
                             
-                            <p>Tu turno ha sido cancelado. Aquí están los detalles del turno cancelado:</p>
+                            <p style="color: #e74c3c; font-weight: bold;">Tu turno ha sido cancelado automáticamente por falta de pago dentro de los 30 minutos.</p>
+                            
+                            <p>Los detalles del turno cancelado son los siguientes:</p>
                             
                             <!-- Detalles sin formato de tabla especial -->
-                            <div style="background-color: #f9f9f9; padding: 15px; margin: 15px 0; border-left: 3px solid #999999;">
+                            <div style="background-color: #fff5f5; padding: 15px; margin: 15px 0; border-left: 3px solid #e74c3c;">
                                 <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ formatearFechaCompleta($turno->fecha_turno) }}</p>
                                 <p style="margin: 5px 0;"><strong>Horario:</strong> {{ formatearRangoHorario($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
                                 <p style="margin: 5px 0;"><strong>Duración:</strong> {{ calcularDuracion($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
                                 <p style="margin: 5px 0;"><strong>Cancha:</strong> #{{ $turno->cancha->nro }} {{ $turno->cancha->tipo_cancha }}</p>
                                 <p style="margin: 5px 0;"><strong>Estado:</strong> {{ $turno->estado }}</p>
                                 <p style="margin: 5px 0;"><strong>Nº Confirmación:</strong> {{ $turno->id }}</p>
+                                <p style="margin: 5px 0;"><strong>Monto Total:</strong> ${{ formatearMonto($turno->monto_total) }}</p>
                             </div>
-                            <p style="margin: 5px 0;"><strong>Fecha de cancelación:</strong> {{ formatearFechaCompleta($turno->created_at) }} a las {{ $turno->created_at->format('H:i') }} hs</p>
-                            <p>Las cancelaciones realizadas 30 minutos después de la reserva tienen un cargo del 10% del valor del turno.</p>
+                            
+                            <div style="background-color: #e8f4fd; padding: 15px; margin: 15px 0; border-left: 3px solid #3498db;">
+                                <p style="margin: 5px 0; color: #2c3e50;"><strong>ℹ️ Información importante:</strong></p>
+                                <p style="margin: 5px 0;">• El turno fue cancelado automáticamente después de 30 minutos sin confirmación de pago.</p>
+                                <p style="margin: 5px 0;">• <strong>No se aplicó ningún cargo</strong> por esta cancelación automática.</p>
+                                <p style="margin: 5px 0;">• El horario está ahora disponible para nuevas reservas.</p>
+                            </div>
+                            
+                            <p style="margin: 5px 0;"><strong>Fecha de cancelación:</strong> {{ formatearFechaCompleta(now()) }} a las {{ now()->format('H:i') }} hs</p>
                             
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
-                                <a href="{{ config('app.url_front') }}/user-profile" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver mis turnos</a>
+                                <a href="{{ config('app.url_front') }}/user-profile" style="display: inline-block; background-color: #3498db; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 10px;">Ver mis turnos</a>
+                                <a href="{{ config('app.url_front') }}/select-deporte" style="display: inline-block; background-color: #27ae60; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px;">Reservar nuevo turno</a>
                             </p>
+                            
+                            <p>Si tienes alguna consulta sobre esta cancelación o necesitas asistencia, no dudes en contactarnos.</p>
                             
                             <p>Gracias por confiar en nosotros.<br>
                             El equipo de Resguar IT</p>
@@ -58,4 +71,4 @@
         </tr>
     </table>
 </body>
-</html>
+</html> 

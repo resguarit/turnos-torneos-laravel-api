@@ -22,7 +22,7 @@ use App\Http\Controllers\Api\GrupoController;
 use App\Http\Controllers\Api\PersonaController;
 use App\Http\Controllers\Api\CuentaCorrienteController;
 use App\Http\Controllers\Api\TransaccionesController;
-use App\Http\Controllers\MetodoPagoController;
+use App\Http\Controllers\Api\MetodoPagoController;
 use App\Http\Controllers\Api\CajaController;
 use App\Http\Controllers\Api\TransaccionController;
 use App\Http\Controllers\Api\SancionController;
@@ -36,19 +36,26 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Checkout\MercadoPagoController;
 use App\Http\Controllers\Webhook\MercadoPagoWebhook;
 use App\Http\Controllers\Api\BloqueoDisponibilidadController;
+use App\Http\Controllers\TipoGastoController;
+use App\Http\Controllers\BalanceController;
+use App\Http\Controllers\Configuracion\ConfiguracionController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 Route::post('/verify-email', [VerifyEmailController::class, 'verifyEmail']);
+
+// Rutas de MercadoPago públicas (no requieren autenticación)
 Route::post('/mercadopago/webhook', [MercadoPagoWebhook::class, 'handleWebhook']);
 Route::post('/mercadopago/verify-payment', [MercadoPagoController::class, 'verifyPaymentStatus']);
-Route::post('/mercadopago/verify-payment-by-preference', [MercadoPagoController::class, 'verifyPaymentStatusByPreference']);
+Route::post('/mercadopago/verify-payment-by-preference', [MercadoPagoController::class, 'verifyPaymentStatusByPreference']);    
+
+Route::get('/configuracion-usuario', [ConfiguracionController::class, 'ObtenerConfiguracion']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
 
-    Route::post('/mercadopago/create-preference', [MercadoPagoController::class, 'createPreference']);
+    Route::post('/configuracion-update', [ConfiguracionController::class, 'actualizarConfiguracion']);
 
     
     Route::get('/canchas', [CanchaController::class, 'index']);
@@ -131,6 +138,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/equipos/{id}', [EquipoController::class, 'destroy']);
     Route::get('/zonas/{zonaId}/equipos', [EquipoController::class, 'getByZona']);
     Route::get('/equipos/exclude-zona/{zonaId}', [EquipoController::class, 'getExcludeZona']);
+    Route::get('/equipos/dos/{id1}/{id2}', [EquipoController::class, 'getDosEquiposPorId']);
 
 
     Route::get('/jugadores', [JugadorController::class, 'index']);
@@ -142,8 +150,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/jugadores/asociar-a-equipo', [JugadorController::class, 'asociarJugadorAEquipo']);
     Route::get('/equipos/{equipoId}/jugadores', [JugadorController::class, 'getByEquipo']);
     Route::post('/equipos/{equipoId}/jugadores/multiple', [JugadorController::class, 'createMultiple']);
+    Route::post('/jugadores/multiple-sin-equipo', [JugadorController::class, 'createMultipleSinEquipo']);
     Route::get('/jugadores/info-por-dni/{dni}', [JugadorController::class, 'infoPorDni']);
     Route::get('/equipos/{equipoId}/jugadores/{jugadorId}/equipo-jugador-id', [JugadorController::class, 'getEquipoJugadorId']);
+    Route::post('equipos/{equipoId}/jugadores/{jugadorId}/desvincular-jugador', [EquipoController::class, 'desvincularJugadorDeEquipo']);
+    Route::post('jugadores/crear-persona-cuenta-si-capitan', [JugadorController::class, 'crearPersonaYCuentaCorrienteSiCapitan']);
+    Route::post('jugadores/cambiar-capitan', [JugadorController::class, 'cambiarCapitan']);
 
     Route::prefix('zonas')->group(function () {
         Route::get('/', [ZonaController::class, 'index']);
@@ -159,6 +171,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/{zonaId}/playoff', [ZonaController::class, 'crearPlayoff']);
         Route::post('/{zonaId}/equipos', [ZonaController::class, 'agregarEquipos']);
         Route::delete('/{zonaId}/equipos', [ZonaController::class, 'quitarEquipos']);
+        Route::post('/{zonaId}/crear-playoff-en-liga', [ZonaController::class, 'crearPlayoffEnLiga']);
     });
 
     Route::get('/fechas', [FechaController::class, 'index']);
@@ -219,6 +232,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/fechas/{fechaId}/pagar', [PagoController::class, 'registrarPagoPorFecha']);
     Route::get('/equipos/{equipoId}/torneos/{torneoId}/pago-inscripcion', [PagoController::class, 'obtenerPagoInscripcion']);
     Route::get('/equipos/{equipoId}/zonas/{zonaId}/pago-fecha', [PagoController::class, 'obtenerPagoPorFecha']);
+    Route::get('/equipos/{equipoId}/torneos/{torneoId}/zonas/{zonaId}/pagos', [PagoController::class, 'obtenerPagosEquipoTorneo']);
     
     Route::delete('/personas/{id}', [PersonaController::class, 'destroy']);
 
@@ -230,6 +244,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/sanciones/{id}', [SancionController::class, 'show']);
     Route::delete('/sanciones/{id}', [SancionController::class, 'destroy']);
     Route::put('/sanciones/{id}', [SancionController::class, 'updateSancion']);
+    Route::get('/expulsiones-permanentes', [SancionController::class, 'getExpulsionesPermanentes']);
 
     Route::get('eventos', [EventoController::class, 'index']);
     Route::get('eventos/{id}', [EventoController::class, 'show']);
@@ -238,7 +253,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('eventos/{id}', [EventoController::class, 'destroy']);
     Route::get('eventosComoTurnos', [EventoController::class, 'eventosComoTurnos']);
     Route::get('estadoPago/eventos', [EventoController::class, 'obtenerEstadosPagoEventos']);
-}); 
+
+    // Rutas que requieren verificación de MercadoPago habilitado
+    Route::middleware(['check.mercadopago'])->group(function () {
+        Route::post('/mercadopago/create-preference', [MercadoPagoController::class, 'createPreference']);
+    });
+});
 
 Route::get('/disponibilidad', [DisponibilidadController::class, 'getHorariosNoDisponibles']);
 Route::get('/disponibilidad/dias', [DisponibilidadController::class, 'getDiasNoDisponibles']);
@@ -289,3 +309,26 @@ Route::get('/zonas/{zonaId}/estadisticas/jugadores', [EstadisticaController::cla
 Route::get('/zonas/{id}', [ZonaController::class, 'show']);
 
 Route::get('/zonas/{zonaId}/sanciones', [SancionController::class, 'getSancionesPorZona']);
+
+// Rutas para tipos de gasto
+Route::get('/tipos-gasto', [TipoGastoController::class, 'index']);
+Route::post('/tipos-gasto', [TipoGastoController::class, 'store']);
+Route::put('/tipos-gasto/{id}', [TipoGastoController::class, 'update']);
+Route::delete('/tipos-gasto/{id}', [TipoGastoController::class, 'destroy']);
+
+// Ruta para balance entre fechas
+Route::get('/balance', [BalanceController::class, 'getBalance']);
+
+Route::get('/test-mercadopago', function () {
+    $enabled = \App\Services\MercadoPagoConfigService::isEnabled();
+    $token = \App\Services\MercadoPagoConfigService::getAccessToken();
+    $webhookSecret = \App\Services\MercadoPagoConfigService::getWebhookSecret();
+    
+    return response()->json([
+        'mercadopago_enabled' => $enabled,
+        'token_masked' => $token ? substr($token, 0, 4) . '...' . substr($token, -4) : null,
+        'webhook_secret_masked' => $webhookSecret ? substr($webhookSecret, 0, 4) . '...' . substr($webhookSecret, -4) : null
+    ]);
+});
+
+

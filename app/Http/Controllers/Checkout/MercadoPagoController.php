@@ -15,7 +15,13 @@ use Illuminate\Support\Facades\Http;
 use App\Enums\TurnoEstado;
 use Illuminate\Support\Facades\Validator;   
 use App\Models\Persona;
+use App\Models\Transaccion;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use MercadoPago\Client\Payment\PaymentRefundClient;
+use MercadoPago\Exceptions\MPApiException;
+use App\Services\MercadoPagoConfigService;
+
 class MercadoPagoController extends Controller
 {
     public function __construct()
@@ -25,7 +31,9 @@ class MercadoPagoController extends Controller
 
     public function createPreference(Request $request)
     {
-        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+        // Configurar MercadoPago con las credenciales de la base de datos
+        MercadoPagoConfigService::configureMP();
+        
         try {
             $client = new PreferenceClient();
 
@@ -96,13 +104,11 @@ class MercadoPagoController extends Controller
             ], 422);
         }
 
-        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
-        $accessToken = config('app.mercadopago_access_token');
+        // Configurar MercadoPago con las credenciales de la base de datos
+        MercadoPagoConfigService::configureMP();
 
         $turnoId = $request->external_reference;
         $paymentId = $request->payment_id;
-        
-        //$response = Http::withToken($accessToken)->get("https://api.mercadopago.com/v1/payments/{$paymentId}");
 
         $client = new PaymentClient();
         try {
@@ -153,7 +159,8 @@ class MercadoPagoController extends Controller
             ], 422);
         }
 
-        MercadoPagoConfig::setAccessToken(config('app.mercadopago_access_token'));
+        // Configurar MercadoPago con las credenciales de la base de datos
+        MercadoPagoConfigService::configureMP();
 
         $client = new PreferenceClient();
         $preference = $client->get($request->preference_id);
@@ -173,7 +180,17 @@ class MercadoPagoController extends Controller
             if ($turno->estado == TurnoEstado::PENDIENTE) {
                 $turno->estado = TurnoEstado::CANCELADO;
                 $turno->save();
+
                 $persona = Persona::where('id', $turno->persona_id)->first();
+
+                Transaccion::create([
+                    'cuenta_corriente_id' => $persona->cuentaCorriente->id,
+                    'monto' => $turno->monto_total,
+                    'turno_id' => $turno->id,
+                    'tipo' => 'saldo',
+                    'descripcion' => 'Cancelacion de turno #' . $turno->id . '(Por falta de pago)',
+                ]);
+
                 $persona->cuentaCorriente->saldo += $turno->monto_total;
                 $persona->cuentaCorriente->save();
 
@@ -200,4 +217,5 @@ class MercadoPagoController extends Controller
             ], 500);
         }
     }
+    
 }

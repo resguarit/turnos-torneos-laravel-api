@@ -11,6 +11,7 @@ use App\Models\Fecha;
 use App\Models\CuentaCorriente;
 use App\Models\Persona;
 use App\Models\Transaccion;
+use App\Enums\EventoEstado;
 use Illuminate\Support\Facades\DB;
 
 class PagoService
@@ -62,7 +63,8 @@ class PagoService
                 'metodo_pago_id' => $metodoPagoId,
                 'monto' => $monto, // Cambia a positivo para un depósito
                 'tipo' => 'inscripcion', // Cambia el tipo a "deposito"
-                'descripcion' => "Pago inscripción torneo {$torneo->nombre} ({$torneo->id})"
+                'descripcion' => "Pago inscripción torneo {$torneo->nombre} ({$torneo->id})",
+                'torneo_id' => $torneo->id // <-- Agrega esto
             ]);
             $cuentaCorriente->saldo += $monto; // Incrementa el saldo
             $cuentaCorriente->save();
@@ -154,7 +156,8 @@ class PagoService
                 'metodo_pago_id' => $metodoPagoId,
                 'monto' => $monto,
                 'tipo' => 'fecha',
-                'descripcion' => "Pago de fecha '{$fecha->nombre}' del torneo {$torneo->nombre} ({$torneo->id})"
+                'descripcion' => "Pago de fecha '{$fecha->nombre}' del torneo {$torneo->nombre} ({$torneo->id})",
+                'torneo_id' => $torneo->id // <-- Agrega esto
             ]);
             
             $cuentaCorriente->save();
@@ -312,12 +315,17 @@ class PagoService
                 'cuenta_corriente_id' => $cuentaCorriente->id,
                 'caja_id' => $caja->id,
                 'metodo_pago_id' => $metodoPagoId,
+                'evento_id' => $evento->id,
                 'monto' => $montoAPagar, 
                 'tipo' => 'evento', 
                 'descripcion' => "Pago evento {$evento->nombre} ({$evento->id})"
             ]);
             $cuentaCorriente->saldo += $montoAPagar;
             $cuentaCorriente->save();
+
+            $evento->combinaciones()->update([
+                'estado' => EventoEstado::PAGADO
+            ]);
 
             DB::commit();
             return [
@@ -336,5 +344,70 @@ class PagoService
         }
 
 
+    }
+
+    public function obtenerPagosEquipoTorneo($equipoId, $torneoId, $zonaId)
+    {
+        $equipo = Equipo::findOrFail($equipoId);
+        $torneo = Torneo::findOrFail($torneoId);
+        $zona = Zona::with(['fechas', 'torneo'])->findOrFail($zonaId);
+
+        // Buscar capitán del equipo
+        $capitan = $equipo->jugadores()->wherePivot('capitan', true)->first();
+        if (!$capitan) {
+            return [
+                'message' => 'No se encontró capitán para este equipo',
+                'status' => 400
+            ];
+        }
+
+        // Buscar persona y cuenta corriente
+        $persona = Persona::where('dni', $capitan->dni)->first();
+        if (!$persona) {
+            return [
+                'message' => 'No se encontró persona para el capitán',
+                'status' => 400
+            ];
+        }
+        $cuentaCorriente = CuentaCorriente::where('persona_id', $persona->id)->first();
+
+        if (!$cuentaCorriente) {
+            return [
+                'message' => 'No se encontró cuenta corriente para el capitán',
+                'status' => 400
+            ];
+        }
+
+        // Pago inscripción
+        $transaccionInscripcion = Transaccion::where('cuenta_corriente_id', $cuentaCorriente->id)
+            ->where('tipo', 'inscripcion')
+            ->where('descripcion', 'like', "%torneo {$torneo->nombre}%")
+            ->first();
+
+        // Pagos por fecha
+        $resultadosFechas = [];
+        foreach ($zona->fechas as $fecha) {
+            $transaccion = Transaccion::where('cuenta_corriente_id', $cuentaCorriente->id)
+                ->where('tipo', 'fecha')
+                ->where('descripcion', 'like', "%fecha '{$fecha->nombre}'%")
+                ->where('descripcion', 'like', "%torneo {$torneo->nombre}%")
+                ->first();
+
+            $resultadosFechas[] = [
+                'fecha_id' => $fecha->id,
+                'fecha_nombre' => $fecha->nombre,
+                'pagado' => $transaccion ? true : false,
+                'transaccion' => $transaccion
+            ];
+        }
+
+        return [
+            'pago_inscripcion' => [
+                'pagado' => $transaccionInscripcion ? true : false,
+                'transaccion' => $transaccionInscripcion
+            ],
+            'pagos_por_fecha' => $resultadosFechas,
+            'status' => 200
+        ];
     }
 }

@@ -26,12 +26,13 @@
                             
                             <!-- Detalles sin formato de tabla especial -->
                             <div style="background-color: #f9f9f9; padding: 15px; margin: 15px 0; border-left: 3px solid #999999;">
-                                <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ $turno->fecha_turno->format('d/m/Y') }}</p>
-                                <p style="margin: 5px 0;"><strong>Horario:</strong> {{ $turno->horario->hora_inicio }} - {{ $turno->horario->hora_fin }}</p>
+                                <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ formatearFechaCompleta($turno->fecha_turno) }}</p>
+                                <p style="margin: 5px 0;"><strong>Horario:</strong> {{ formatearRangoHorario($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
+                                <p style="margin: 5px 0;"><strong>Duración:</strong> {{ calcularDuracion($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
                                 <p style="margin: 5px 0;"><strong>Cancha:</strong> nro {{ $turno->cancha->nro }} {{ $turno->cancha->tipo_cancha }}</p>
                                 <p style="margin: 5px 0;"><strong>Estado:</strong> {{ $turno->estado }}</p>
-                                <p style="margin: 5px 0;"><strong>Monto Seña:</strong> ${{ $turno->monto_seña }}</p>
-                                <p style="margin: 5px 0;"><strong>Monto Total:</strong> ${{ $turno->monto_total }}</p>
+                                <p style="margin: 5px 0;"><strong>Monto Seña:</strong> ${{ formatearMonto($turno->monto_seña) }}</p>
+                                <p style="margin: 5px 0;"><strong>Monto Total:</strong> ${{ formatearMonto($turno->monto_total) }}</p>
                                 <p style="margin: 5px 0;"><strong>Nº Confirmación:</strong> {{ $turno->id }}</p>
                             </div>
                             

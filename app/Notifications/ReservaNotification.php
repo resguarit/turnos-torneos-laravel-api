@@ -49,6 +49,10 @@ class ReservaNotification extends Notification implements ShouldQueue
                 return (new MailMessage)
                     ->subject('Reserva Cancelada (' . $this->turno->id . ')')
                     ->view('emails.turnos.cancelation', ['turno' => $this->turno]);
+            case 'cancelacion_automatica':
+                return (new MailMessage)
+                    ->subject('Reserva Cancelada Automáticamente (' . $this->turno->id . ')')
+                    ->view('emails.turnos.automatic-cancelation', ['turno' => $this->turno]);
             case 'admin.confirmacion':
                 return (new MailMessage)
                     ->subject('Reserva Confirmada (' . $this->turno->id . ')')
@@ -57,6 +61,10 @@ class ReservaNotification extends Notification implements ShouldQueue
                 return (new MailMessage)
                     ->subject('Reserva Cancelada (' . $this->turno->id . ')')
                     ->view('emails.turnos.admin.cancelation', ['turno' => $this->turno]);
+            case 'admin.cancelacion_automatica':
+                return (new MailMessage)
+                    ->subject('Reserva Cancelada Automáticamente (' . $this->turno->id . ')')
+                    ->view('emails.turnos.admin.automatic-cancelation', ['turno' => $this->turno]);
             case 'admin.pending':
                 return (new MailMessage)
                     ->subject('Reserva Pendiente (' . $this->turno->id . ')')

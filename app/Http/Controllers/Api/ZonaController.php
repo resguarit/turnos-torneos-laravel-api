@@ -144,4 +144,9 @@ class ZonaController extends Controller
     {
         return $this->zonaService->calcularEstadisticasLiga($zonaId);
     }
+
+    public function crearPlayoffEnLiga(Request $request, $zonaId)
+    {
+        return $this->zonaService->crearPlayoffEnLiga($request, $zonaId);
+    }
 }

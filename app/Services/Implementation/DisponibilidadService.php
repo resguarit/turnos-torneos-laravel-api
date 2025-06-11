@@ -329,6 +329,7 @@ class DisponibilidadService implements DisponibilidadServiceInterface
     {
         $validator = Validator::make($request->all(), [
             'fecha_inicio' => 'required|date_format:Y-m-d',
+            'deporte_id' => 'required|exists:deportes,id',
         ]);
 
         if ($validator->fails()) {
@@ -341,11 +342,12 @@ class DisponibilidadService implements DisponibilidadServiceInterface
 
         $fechaInicio = Carbon::createFromFormat('Y-m-d', $request->fecha_inicio);
         $diaSemana = $this->getNombreDiaSemana($fechaInicio->dayOfWeek);
-        $canchasCount = Cancha::where('activa', true)->count();
+        $canchasCount = Cancha::where('activa', true)->where('deporte_id', $request->deporte_id)->count();
 
         // Obtener los horarios activos para ese día de la semana
         $horarios = Horario::where('activo', true)
                             ->where('dia', $diaSemana)
+                            ->where('deporte_id', $request->deporte_id)
                             ->orderBy('hora_inicio')
                             ->get();
 

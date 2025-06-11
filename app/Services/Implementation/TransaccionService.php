@@ -77,10 +77,11 @@ class TransaccionService implements TransaccionServiceInterface
             'cuenta_corriente_id' => 'sometimes|exists:cuentas_corrientes,id',
             'turno_id' => 'nullable|exists:turnos,id',
             'monto' => 'required|numeric',
-            'tipo' => 'required|in:ingreso,egreso,seña,turno,pago,deuda,devolucion',
+            'tipo' => 'required|in:ingreso,egreso,seña,turno,pago,deuda,devolucion,gasto',
             'descripcion' => 'nullable|string',
             'caja_id' => 'nullable|exists:cajas,id',
-            'metodo_pago' => 'required|in:efectivo,transferencia,tarjeta,mercadopago',
+            'metodo_pago' => 'required_unless:tipo,gasto|nullable|in:efectivo,transferencia,tarjeta,mercadopago',
+            'tipo_gasto_id' => 'nullable|exists:tipos_gasto,id',
         ]);
 
         if ($validator->fails()) {
@@ -94,16 +95,24 @@ class TransaccionService implements TransaccionServiceInterface
         DB::beginTransaction();
 
         try {
-            $metodoPago = DB::table('metodos_pago')->where('nombre', $request->metodo_pago)->first();
-            
             // Preparar los datos de la transacción
             $transaccionData = [
                 'monto' => $request->monto,
                 'tipo' => $request->tipo,
                 'descripcion' => $request->descripcion ?? null,
                 'caja_id' => $request->caja_id,
-                'metodo_pago_id' => $metodoPago->id,
             ];
+
+            // Agregar metodo_pago_id solo si está presente
+            if ($request->has('metodo_pago') && $request->metodo_pago) {
+                $metodoPago = DB::table('metodos_pago')->where('nombre', $request->metodo_pago)->first();
+                $transaccionData['metodo_pago_id'] = $metodoPago->id;
+            }
+
+            // Agregar tipo_gasto_id si es una transacción de tipo gasto
+            if ($request->tipo === 'gasto' && $request->has('tipo_gasto_id')) {
+                $transaccionData['tipo_gasto_id'] = $request->tipo_gasto_id;
+            }
 
             // Si es una transacción de cuenta corriente
             if ($request->has('cuenta_corriente_id') || $request->has('persona_id')) {
@@ -208,7 +217,8 @@ class TransaccionService implements TransaccionServiceInterface
             $transacciones = Transaccion::with([
                 'cuentaCorriente.persona',
                 'metodoPago',
-                'caja.empleado'
+                'caja.empleado',
+                'tipoGasto'
             ])
             ->where('caja_id', $cajaId)
             ->orderBy('created_at', 'desc')
@@ -225,7 +235,8 @@ class TransaccionService implements TransaccionServiceInterface
                     'cliente' => $transaccion->cuentaCorriente ? [
                         'nombre' => $transaccion->cuentaCorriente->persona->name
                     ] : null,
-                    'es_movimiento_caja' => !$transaccion->cuentaCorriente
+                    'es_movimiento_caja' => !$transaccion->cuentaCorriente,
+                    'tipo_gasto' => $transaccion->tipoGasto ? $transaccion->tipoGasto->nombre : null
                 ];
             });
 
