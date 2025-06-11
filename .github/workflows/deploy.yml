@@ -1,0 +1,32 @@
+# Nombre del Workflow que verás en la pestaña "Actions"
+name: Desplegar Backend en Producción
+
+# Disparador: Define cuándo se debe ejecutar este workflow.
+on:
+  push:
+    branches:
+      - main
+
+# Tareas (Jobs): Conjunto de pasos a ejecutar.
+jobs:
+  # Nombramos nuestro único job 'deploy'
+  deploy:
+    # El tipo de máquina que usará GitHub para correr los pasos.
+    # 'ubuntu-latest' es el estándar y funciona perfecto.
+    runs-on: ubuntu-latest
+
+    # Pasos (Steps): Las acciones que se ejecutarán en orden.
+    steps:
+      - name: Conectar al VPS y ejecutar script de despliegue
+        # Usamos una 'acción' de la comunidad para facilitar la conexión SSH.
+        uses: appleboy/ssh-action@master
+        # 'with' define los parámetros para la acción anterior.
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          
+          # Este es el comando que se ejecuta en tu VPS una vez conectado.
+          # Como ves, simplemente llama al script que ya hemos perfeccionado.
+          script: /home/deployer/deploy-backend.sh
