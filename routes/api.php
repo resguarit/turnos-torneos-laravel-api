@@ -288,11 +288,6 @@ Route::get('/deportes/{id}', [DeporteController::class, 'show']);
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::post('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 
-Route::get('/test-email', function () {
-    Mail::raw('Funciona !', fn($m) => $m->to('marianosalas24@gmail.com')->subject('Test de email'));
-    return response()->json(['message' => 'Email enviado correctamente']);
-});
-
 
 Route::get('/torneos', [TorneoController::class, 'index']);
 
