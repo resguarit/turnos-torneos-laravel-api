@@ -149,4 +149,9 @@ class ZonaController extends Controller
     {
         return $this->zonaService->crearPlayoffEnLiga($request, $zonaId);
     }
+
+    public function crearPlayoffEnGrupos(Request $request, $zonaId)
+    {
+        return $this->zonaService->crearPlayoffEnGrupos($request, $zonaId);
+    }
 }
