@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Enums\PartidoEstado;
+use App\Models\Penal;
 
 class Partido extends Model
 {
@@ -54,5 +55,10 @@ class Partido extends Model
     public function equipoVisitante()
     {
         return $this->belongsTo(Equipo::class, 'equipo_visitante_id');
+    }
+
+    public function penales()
+    {
+        return $this->hasMany(Penal::class, 'partido_id');
     }
 }
