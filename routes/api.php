@@ -173,6 +173,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/{zonaId}/equipos', [ZonaController::class, 'agregarEquipos']);
         Route::delete('/{zonaId}/equipos', [ZonaController::class, 'quitarEquipos']);
         Route::post('/{zonaId}/crear-playoff-en-liga', [ZonaController::class, 'crearPlayoffEnLiga']);
+        Route::post('/{zonaId}/crear-playoff-en-grupos', [ZonaController::class, 'crearPlayoffEnGrupos']);
     });
 
     Route::get('/fechas', [FechaController::class, 'index']);

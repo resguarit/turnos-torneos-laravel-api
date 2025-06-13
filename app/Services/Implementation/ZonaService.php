@@ -1263,4 +1263,91 @@ class ZonaService implements ZonaServiceInterface
         }
         $fecha->partidos = $partidos;
     }
+
+    public function crearPlayoffEnGrupos(Request $request, $zonaId)
+{
+    $zona = Zona::with('grupos.equipos', 'torneo')->find($zonaId);
+    if (!$zona) {
+        return response()->json(['message' => 'Zona no encontrada', 'status' => 404], 404);
+    }
+
+    if ($zona->formato !== ZonaFormato::GRUPOS) {
+        return response()->json(['message' => 'La zona no tiene formato de Grupos', 'status' => 400], 400);
+    }
+
+    $fechaInicial = $request->input('fecha_inicial');
+    $equiposPorGrupo = $request->input('equipos_por_grupo'); // array de arrays de ids de equipos por grupo
+
+    if (!$fechaInicial || !is_array($equiposPorGrupo) || count($equiposPorGrupo) < 2) {
+        return response()->json(['message' => 'Debe enviar fecha_inicial y al menos dos grupos de equipos', 'status' => 400], 400);
+    }
+
+    $cantidadPorGrupo = count($equiposPorGrupo[0]);
+    foreach ($equiposPorGrupo as $grupo) {
+        if (count($grupo) !== $cantidadPorGrupo) {
+            return response()->json(['message' => 'Todos los grupos deben tener la misma cantidad de equipos seleccionados', 'status' => 400], 400);
+        }
+    }
+
+    // Obtener estadísticas y ordenar equipos por grupo
+    $estadisticasGrupos = $this->calcularEstadisticasGrupos($zonaId)->getData(true);
+    $equiposOrdenadosPorGrupo = [];
+    foreach ($equiposPorGrupo as $idx => $equipoIds) {
+        $grupoStats = $estadisticasGrupos[$idx]['equipos'] ?? [];
+        // Filtrar solo los equipos seleccionados y mantener el orden por estadísticas
+        $equiposFiltrados = array_filter($grupoStats, function($eq) use ($equipoIds) {
+            return in_array($eq['id'], $equipoIds);
+        });
+        $equiposOrdenadosPorGrupo[] = array_values($equiposFiltrados);
+    }
+
+    // Crear la zona de playoff
+    $zonaPlayoff = Zona::create([
+        'nombre' => $zona->nombre . ' Playoff',
+        'formato' => ZonaFormato::ELIMINATORIA,
+        'año' => $zona->año,
+        'torneo_id' => $zona->torneo_id,
+    ]);
+    // Asociar todos los equipos seleccionados
+    $todosEquipos = array_merge(...$equiposPorGrupo);
+    $zonaPlayoff->equipos()->attach($todosEquipos);
+
+    // Crear la fecha y los partidos cruzados
+    $nombreFecha = $this->getNombreEliminatoria($cantidadPorGrupo * 2);
+    $fecha = Fecha::create([
+        'nombre' => $nombreFecha,
+        'fecha_inicio' => $fechaInicial,
+        'fecha_fin' => \Carbon\Carbon::parse($fechaInicial)->addDays(1),
+        'estado' => 'Pendiente',
+        'zona_id' => $zonaPlayoff->id,
+    ]);
+
+    $partidos = [];
+    // Cruces: 1° grupo A vs último grupo B, 2° grupo A vs penúltimo grupo B, etc.
+    $grupoA = $equiposOrdenadosPorGrupo[0];
+    $grupoB = $equiposOrdenadosPorGrupo[1];
+    for ($i = 0; $i < $cantidadPorGrupo; $i++) {
+        $local = $grupoA[$i];
+        $visitante = $grupoB[$cantidadPorGrupo - 1 - $i];
+
+        $partido = Partido::create([
+            'fecha_id' => $fecha->id,
+            'equipo_local_id' => $local['id'],
+            'equipo_visitante_id' => $visitante['id'],
+            'estado' => 'Pendiente',
+            'fecha' => $fecha->fecha_inicio,
+            'horario_id' => null,
+            'cancha_id' => null,
+        ]);
+        $partido->equipos()->attach([$local['id'], $visitante['id']]);
+        $partidos[] = $partido;
+    }
+    $fecha->partidos = $partidos;
+
+    return response()->json([
+        'message' => 'Playoff de grupos creado correctamente',
+        'zona_playoff' => $zonaPlayoff->load('equipos', 'fechas.partidos'),
+        'status' => 201
+    ], 201);
+}
 }
