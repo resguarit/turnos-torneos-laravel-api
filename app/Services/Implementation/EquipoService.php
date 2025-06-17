@@ -202,9 +202,13 @@ class EquipoService implements EquipoServiceInterface
 
                 $expulsado = false;
                 if ($equipoJugador) {
-                    $expulsado = \App\Models\Sancion::where('equipo_jugador_id', $equipoJugador->id)
-                        ->where('tipo_sancion', \App\Enums\TipoSancion::EXPULSION_PERMANENTE->value)
-                        ->exists();
+                    $expulsado = \App\Models\Sancion::whereIn('equipo_jugador_id', function($query) use ($jugador) {
+        $query->select('id')
+              ->from('equipo_jugador')
+              ->where('jugador_id', $jugador->id);
+    })
+    ->where('tipo_sancion', \App\Enums\TipoSancion::EXPULSION_PERMANENTE->value)
+    ->exists();
                 }
 
                 // Devolver los datos del jugador + expulsado
