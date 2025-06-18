@@ -36,6 +36,7 @@ class ConfiguracionController extends Controller
             'colores' => $configuracion->colores,
             'habilitar_turnos' => $configuracion->habilitar_turnos,
             'habilitar_mercado_pago' => $configuracion->habilitar_mercado_pago,
+            'nombre_complejo' => $configuracion->nombre_complejo,
             'direccion_complejo' => $configuracion->direccion_complejo,
             'telefono_complejo' => $configuracion->telefono_complejo,
             'mercado_pago_access_token' => $accessToken,
@@ -50,6 +51,7 @@ class ConfiguracionController extends Controller
             'colores.secondary' => 'required|string',
             'habilitar_turnos' => 'required|boolean',
             'habilitar_mercado_pago' => 'required|boolean',
+            'nombre_complejo' => 'required|string',
             'direccion_complejo' => 'required|string',
             'telefono_complejo' => 'required|string',
             'mercado_pago_access_token' => 'nullable|string',
@@ -70,6 +72,7 @@ class ConfiguracionController extends Controller
             'colores' => $request->colores,
             'habilitar_turnos' => $request->habilitar_turnos,
             'habilitar_mercado_pago' => $request->habilitar_mercado_pago,
+            'nombre_complejo' => $request->nombre_complejo,
             'direccion_complejo' => $request->direccion_complejo,
             'telefono_complejo' => $request->telefono_complejo,
         ];
@@ -98,6 +101,7 @@ class ConfiguracionController extends Controller
                 'colores' => $configuracion->colores,
                 'habilitar_turnos' => $configuracion->habilitar_turnos,
                 'habilitar_mercado_pago' => $configuracion->habilitar_mercado_pago,
+                'nombre_complejo' => $configuracion->nombre_complejo,
                 'direccion_complejo' => $configuracion->direccion_complejo,
                 'telefono_complejo' => $configuracion->telefono_complejo,
             ]

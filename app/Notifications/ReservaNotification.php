@@ -10,19 +10,23 @@ use App\Mail\ReservaConfirmada;
 use App\Mail\ReservaCancelada;
 use App\Models\Turno;
 use App\Models\User;
+use App\Models\Configuracion;
+
 class ReservaNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
     protected $turno;
     protected $tipo;
+    protected $configuracion;
     /**
      * Create a new notification instance.
      */
-    public function __construct($turno, $tipo)
+    public function __construct($turno, $tipo, $configuracion = null)
     {
         $this->turno = $turno;
         $this->tipo = $tipo;
+        $this->configuracion = $configuracion;
     }
 
     /**
@@ -44,31 +48,52 @@ class ReservaNotification extends Notification implements ShouldQueue
             case 'confirmacion':
                 return (new MailMessage)
                     ->subject('Reserva Confirmada (' . $this->turno->id . ')')
-                    ->view('emails.turnos.confirmation', ['turno' => $this->turno]);
+                    ->view('emails.turnos.confirmation', [
+                        'turno' => $this->turno,
+                        'configuracion' => $this->configuracion
+                    ]);
             case 'cancelacion':
                 return (new MailMessage)
                     ->subject('Reserva Cancelada (' . $this->turno->id . ')')
-                    ->view('emails.turnos.cancelation', ['turno' => $this->turno]);
+                    ->view('emails.turnos.cancelation', [
+                        'turno' => $this->turno,
+                        'configuracion' => $this->configuracion
+                    ]);
             case 'cancelacion_automatica':
                 return (new MailMessage)
                     ->subject('Reserva Cancelada Automáticamente (' . $this->turno->id . ')')
-                    ->view('emails.turnos.automatic-cancelation', ['turno' => $this->turno]);
+                    ->view('emails.turnos.automatic-cancelation', [
+                        'turno' => $this->turno,
+                        'configuracion' => $this->configuracion
+                    ]);
             case 'admin.confirmacion':
                 return (new MailMessage)
                     ->subject('Reserva Confirmada (' . $this->turno->id . ')')
-                    ->view('emails.turnos.admin.confirmation', ['turno' => $this->turno]);
+                    ->view('emails.turnos.admin.confirmation', [
+                        'turno' => $this->turno,
+                        'configuracion' => $this->configuracion
+                    ]);
             case 'admin.cancelacion':
                 return (new MailMessage)
                     ->subject('Reserva Cancelada (' . $this->turno->id . ')')
-                    ->view('emails.turnos.admin.cancelation', ['turno' => $this->turno]);
+                    ->view('emails.turnos.admin.cancelation', [
+                        'turno' => $this->turno,
+                        'configuracion' => $this->configuracion
+                    ]);
             case 'admin.cancelacion_automatica':
                 return (new MailMessage)
                     ->subject('Reserva Cancelada Automáticamente (' . $this->turno->id . ')')
-                    ->view('emails.turnos.admin.automatic-cancelation', ['turno' => $this->turno]);
+                    ->view('emails.turnos.admin.automatic-cancelation', [
+                        'turno' => $this->turno,
+                        'configuracion' => $this->configuracion
+                    ]);
             case 'admin.pending':
                 return (new MailMessage)
                     ->subject('Reserva Pendiente (' . $this->turno->id . ')')
-                    ->view('emails.turnos.admin.pending', ['turno' => $this->turno]);
+                    ->view('emails.turnos.admin.pending', [
+                        'turno' => $this->turno,
+                        'configuracion' => $this->configuracion
+                    ]);
             default:
                 throw new \InvalidArgumentException('Tipo de notificación no válido: ' . $this->tipo);
         }

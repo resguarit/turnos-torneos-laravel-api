@@ -34,6 +34,11 @@
                                 <p style="margin: 5px 0;"><strong>Monto Seña:</strong> ${{ formatearMonto($turno->monto_seña) }}</p>
                                 <p style="margin: 5px 0;"><strong>Monto Total:</strong> ${{ formatearMonto($turno->monto_total) }}</p>
                                 <p style="margin: 5px 0;"><strong>Nº Confirmación:</strong> {{ $turno->id }}</p>
+                                @if(isset($configuracion))
+                                <p style="margin: 5px 0;"><strong>Complejo:</strong> {{ $configuracion->nombre_complejo }}</p>
+                                <p style="margin: 5px 0;"><strong>Dirección del Complejo:</strong> {{ $configuracion->direccion_complejo }}</p>
+                                <p style="margin: 5px 0;"><strong>Teléfono del Complejo:</strong> {{ $configuracion->telefono_complejo }}</p>
+                                @endif
                             </div>
                             
                             <p>Recuerda llegar 10 minutos antes para realizar el ingreso.</p>

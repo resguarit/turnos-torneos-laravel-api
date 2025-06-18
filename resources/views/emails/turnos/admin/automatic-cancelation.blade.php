@@ -39,6 +39,11 @@
                                 <p style="margin: 5px 0;"><strong>Monto Seña:</strong> ${{ formatearMonto($turno->monto_seña) }}</p>
                                 <p style="margin: 5px 0;"><strong>Monto Total:</strong> ${{ formatearMonto($turno->monto_total) }}</p>
                                 <p style="margin: 5px 0;"><strong>ID Reserva:</strong> {{ $turno->id }}</p>
+                                @if(isset($configuracion))
+                                <p style="margin: 5px 0;"><strong>Complejo:</strong> {{ $configuracion->nombre_complejo }}</p>
+                                <p style="margin: 5px 0;"><strong>Dirección del Complejo:</strong> {{ $configuracion->direccion_complejo }}</p>
+                                <p style="margin: 5px 0;"><strong>Teléfono del Complejo:</strong> {{ $configuracion->telefono_complejo }}</p>
+                                @endif
                             </div>
                             
                             <div style="background-color: #e8f4fd; padding: 15px; margin: 15px 0; border-left: 3px solid #3498db;">

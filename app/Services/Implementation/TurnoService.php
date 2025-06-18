@@ -36,6 +36,7 @@ use App\Services\Interface\PaymentServiceInterface;
 use App\Models\MetodoPago;
 use App\Models\Caja;
 use App\Http\Controllers\Checkout\MercadoPagoController;
+use App\Models\Configuracion;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -270,9 +271,12 @@ class TurnoService implements TurnoServiceInterface
                 $cuentaCorriente->save();
             }
 
-            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.pending'));
+            // Obtener la configuración para incluirla en las notificaciones
+            $configuracion = Configuracion::first();
             
-            TurnosPendientes::dispatch($turno->id)->delay(Carbon::now()->addMinutes(30));
+            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.pending', $configuracion));
+            
+            TurnosPendientes::dispatch($turno->id, $configuracion)->delay(Carbon::now()->addMinutes(30));
 
             DB::commit();
 
@@ -1094,10 +1098,13 @@ class TurnoService implements TurnoServiceInterface
             ]);
 
             // Notificaciones (adaptar según necesidad)
+            // Obtener la configuración para incluirla en las notificaciones
+            $configuracion = Configuracion::first();
+            
             if ($persona->usuario) {
-                $persona->usuario->notify(new ReservaNotification($turno, 'cancelacion'));
+                $persona->usuario->notify(new ReservaNotification($turno, 'cancelacion', $configuracion));
             }
-            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.cancelacion'));
+            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.cancelacion', $configuracion));
 
             DB::commit();
 

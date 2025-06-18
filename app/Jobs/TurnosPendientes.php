@@ -18,19 +18,22 @@ use App\Models\TurnoCancelacion;
 use App\Notifications\ReservaNotification;
 use App\Models\User;
 use Carbon\Carbon;
+use App\Models\Configuracion;
 
 class TurnosPendientes implements ShouldQueue
 {
     use Queueable, Dispatchable, InteractsWithQueue, SerializesModels;
 
     protected $turnoId;
+    protected $configuracion;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($turnoId)
+    public function __construct($turnoId, $configuracion = null)
     {
         $this->turnoId = $turnoId;
+        $this->configuracion = $configuracion;
     }
 
     /**
@@ -123,14 +126,20 @@ class TurnosPendientes implements ShouldQueue
     private function enviarNotificaciones(Turno $turno): void
     {
         try {
+            // Si no se pasó la configuración en el constructor, la obtenemos ahora
+            $configuracion = $this->configuracion;
+            if (!$configuracion) {
+                $configuracion = Configuracion::first();
+            }
+            
             if($turno->persona && $turno->persona->usuario) {
                 $turno->persona->usuario->notify(
-                    new ReservaNotification($turno, 'cancelacion_automatica')
+                    new ReservaNotification($turno, 'cancelacion_automatica', $configuracion)
                 );
             }
 
             User::where('rol', 'admin')->get()->each->notify(
-                new ReservaNotification($turno, 'admin.cancelacion_automatica')
+                new ReservaNotification($turno, 'admin.cancelacion_automatica', $configuracion)
             );
         } catch (\Exception $e) {
             Log::error('Error al enviar notificaciones: ' . $e->getMessage());
