@@ -17,6 +17,7 @@ class Configuracion extends Model
         'mercado_pago_access_token',
         'mercado_pago_webhook_secret',
         'nombre_complejo',
+        'logo_complejo',
         'direccion_complejo',
         'telefono_complejo',
     ];
