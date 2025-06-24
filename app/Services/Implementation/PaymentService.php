@@ -21,6 +21,7 @@ use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Payment\PaymentRefundClient;
 use MercadoPago\Exceptions\MPApiException;
 use App\Services\MercadoPagoConfigService;
+use App\Models\Configuracion;
 
 class PaymentService implements PaymentServiceInterface
 {
@@ -112,11 +113,14 @@ class PaymentService implements PaymentServiceInterface
                     $clave = "bloqueo:{$turno->fecha_turno->format('Y-m-d')}:{$turno->horario_id}:{$turno->cancha_id}";
                     Cache::forget($clave);
 
+                    // Obtener la configuración para incluirla en las notificaciones
+                    $configuracion = Configuracion::first();
+                    
                     if ($persona->usuario) {
-                        $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion'));
+                        $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion', $configuracion));
                     }
 
-                    User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion'));
+                    User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion', $configuracion));
 
                     DB::commit();
                 } else if ($turno->estado == TurnoEstado::PENDIENTE) {
@@ -144,11 +148,14 @@ class PaymentService implements PaymentServiceInterface
                     $clave = "bloqueo:{$turno->fecha_turno->format('Y-m-d')}:{$turno->horario_id}:{$turno->cancha_id}";
                     Cache::forget($clave);
 
+                    // Obtener la configuración para incluirla en las notificaciones
+                    $configuracion = Configuracion::first();
+                    
                     if ($persona->usuario) {
-                        $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion'));
+                        $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion', $configuracion));
                     }
 
-                    User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion'));
+                    User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion', $configuracion));
 
                     DB::commit();
                 }

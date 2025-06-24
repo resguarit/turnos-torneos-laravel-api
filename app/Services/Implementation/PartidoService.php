@@ -108,6 +108,19 @@ class PartidoService implements PartidoServiceInterface
 
         $partido->update($request->all());
 
+        // Actualizar las relaciones en la tabla pivote si se cambiaron los equipos
+        if ($request->has('equipo_local_id') || $request->has('equipo_visitante_id')) {
+            // Obtener los IDs actuales de los equipos
+            $equipoLocalId = $request->has('equipo_local_id') ? $request->equipo_local_id : $partido->equipo_local_id;
+            $equipoVisitanteId = $request->has('equipo_visitante_id') ? $request->equipo_visitante_id : $partido->equipo_visitante_id;
+            
+            // Desasociar todos los equipos actuales
+            $partido->equipos()->detach();
+            
+            // Asociar los nuevos equipos
+            $partido->equipos()->attach([$equipoLocalId, $equipoVisitanteId]);
+        }
+
         $partido->refresh();
         if ($partido->horario_id && $partido->cancha_id && $partido->fecha) {
             app(\App\Services\Implementation\TurnoService::class)->crearTurnoTorneo($partido);

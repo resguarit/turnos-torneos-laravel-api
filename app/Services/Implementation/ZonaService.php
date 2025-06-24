@@ -710,29 +710,8 @@ class ZonaService implements ZonaServiceInterface
         if ($numEquipos == 2) {
             // Solo crear fechas "Final" y "Tercer Puesto" aquí
             $fechaInicioAnterior = Carbon::parse($fechaAnterior->fecha_inicio);
-            $fechaFinal = Fecha::create([
-                'nombre' => 'Final',
-                'fecha_inicio' => $fechaInicioAnterior->copy()->addDays(7),
-                'fecha_fin' => $fechaInicioAnterior->copy()->addDays(7),
-                'estado' => 'Pendiente',
-                'zona_id' => $zona->id,
-            ]);
-
-            $localId = $winners[0];
-            $visitanteId = $winners[1];
-
-            $final = Partido::create([
-                'fecha_id' => $fechaFinal->id,
-                'equipo_local_id' => $localId,
-                'equipo_visitante_id' => $visitanteId,
-                'estado' => 'Pendiente',
-                'fecha' => $fechaFinal->fecha_inicio,
-                'horario_id' => null,
-                'cancha_id' => null,
-            ]);
-            $final->equipos()->attach([$localId, $visitanteId]);
-
-            $fechasCreadas = [$fechaFinal->load('partidos.equipos')];
+            // Inicializar el arreglo que almacenará todas las fechas creadas en esta ronda
+            $fechasCreadas = [];
 
             // Si se solicita, crear partido por el tercer puesto en otra fecha
             if ($crearTercerPuesto && count($perdedores) == 2) {
@@ -760,6 +739,30 @@ class ZonaService implements ZonaServiceInterface
 
                 $fechasCreadas[] = $fechaTercerPuesto->load('partidos.equipos');
             }
+
+            $fechaFinal = Fecha::create([
+                'nombre' => 'Final',
+                'fecha_inicio' => $fechaInicioAnterior->copy()->addDays(7),
+                'fecha_fin' => $fechaInicioAnterior->copy()->addDays(7),
+                'estado' => 'Pendiente',
+                'zona_id' => $zona->id,
+            ]);
+
+            $localId = $winners[0];
+            $visitanteId = $winners[1];
+
+            $final = Partido::create([
+                'fecha_id' => $fechaFinal->id,
+                'equipo_local_id' => $localId,
+                'equipo_visitante_id' => $visitanteId,
+                'estado' => 'Pendiente',
+                'fecha' => $fechaFinal->fecha_inicio,
+                'horario_id' => null,
+                'cancha_id' => null,
+            ]);
+            $final->equipos()->attach([$localId, $visitanteId]);
+
+            $fechasCreadas[] = $fechaFinal->load('partidos.equipos');
 
             return response()->json([
                 'message' => 'Siguiente ronda creada correctamente',

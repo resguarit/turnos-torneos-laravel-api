@@ -32,6 +32,11 @@
                                 <p style="margin: 5px 0;"><strong>Cancha:</strong> #{{ $turno->cancha->nro }} {{ $turno->cancha->tipo_cancha }}</p>
                                 <p style="margin: 5px 0;"><strong>Estado:</strong> {{ $turno->estado }}</p>
                                 <p style="margin: 5px 0;"><strong>Nº Confirmación:</strong> {{ $turno->id }}</p>
+                                @if(isset($configuracion))
+                                <p style="margin: 5px 0;"><strong>Complejo:</strong> {{ $configuracion->nombre_complejo }}</p>
+                                <p style="margin: 5px 0;"><strong>Dirección del Complejo:</strong> {{ $configuracion->direccion_complejo }}</p>
+                                <p style="margin: 5px 0;"><strong>Teléfono del Complejo:</strong> {{ $configuracion->telefono_complejo }}</p>
+                                @endif
                             </div>
                             <p style="margin: 5px 0;"><strong>Fecha de cancelación:</strong> {{ formatearFechaCompleta($turno->created_at) }} a las {{ $turno->created_at->format('H:i') }} hs</p>
                             <p>Las cancelaciones realizadas 30 minutos después de la reserva tienen un cargo del 10% del valor del turno.</p>

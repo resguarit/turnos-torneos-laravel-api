@@ -30,14 +30,9 @@ class EquipoService implements EquipoServiceInterface
                 'required',
                 'string',
                 'max:255',
-                // Consider if uniqueness needs to be global or per tournament/zone
-                // For global uniqueness:
                 'unique:equipos,nombre',
-                // For uniqueness within a specific context, validation needs adjustment
-                // or handled differently (e.g., checking before creation based on context).
             ],
-            'escudo' => 'nullable|string',
-            // zona_id is no longer directly handled here for creation
+            'escudo' => 'nullable|image|max:2048', // Validar imagen
         ]);
 
         if ($validator->fails()) {
@@ -48,12 +43,15 @@ class EquipoService implements EquipoServiceInterface
             ], 400);
         }
 
-        $equipo = Equipo::create([
-            'nombre' => $request->nombre,
-            'escudo' => $request->escudo
-        ]);
+        $equipo = new Equipo();
+        $equipo->nombre = $request->nombre;
 
-        // Association with zona is typically handled in ZonaService or when adding teams to a zone
+        if ($request->hasFile('escudo')) {
+            $path = $request->file('escudo')->store('escudos', 'public');
+            $equipo->escudo = $path;
+        }
+
+        $equipo->save();
 
         return response()->json([
             'message' => 'Equipo creado correctamente',
@@ -65,8 +63,12 @@ class EquipoService implements EquipoServiceInterface
     public function update(Request $request, $id)
     {
         $equipo = Equipo::find($id);
+
         if (!$equipo) {
-            return response()->json(['message' => 'Equipo no encontrado', 'status' => 404], 404);
+            return response()->json([
+                'message' => 'Equipo no encontrado',
+                'status' => 404
+            ], 404);
         }
 
         $validator = Validator::make($request->all(), [
@@ -75,9 +77,9 @@ class EquipoService implements EquipoServiceInterface
                 'required',
                 'string',
                 'max:255',
-                'unique:equipos,nombre,' . $id, // Unique check excluding self
+                'unique:equipos,nombre,' . $id,
             ],
-            'escudo' => 'nullable|string',
+            'escudo' => 'nullable|image|max:2048', // Validar imagen
         ]);
 
         if ($validator->fails()) {
@@ -88,7 +90,16 @@ class EquipoService implements EquipoServiceInterface
             ], 400);
         }
 
-        $equipo->update($request->only(['nombre', 'escudo']));
+        if ($request->has('nombre')) {
+            $equipo->nombre = $request->nombre;
+        }
+
+        if ($request->hasFile('escudo')) {
+            $path = $request->file('escudo')->store('escudos', 'public');
+            $equipo->escudo = $path;
+        }
+
+        $equipo->save();
 
         return response()->json([
             'message' => 'Equipo actualizado correctamente',
@@ -202,9 +213,13 @@ class EquipoService implements EquipoServiceInterface
 
                 $expulsado = false;
                 if ($equipoJugador) {
-                    $expulsado = \App\Models\Sancion::where('equipo_jugador_id', $equipoJugador->id)
-                        ->where('tipo_sancion', \App\Enums\TipoSancion::EXPULSION_PERMANENTE->value)
-                        ->exists();
+                    $expulsado = \App\Models\Sancion::whereIn('equipo_jugador_id', function($query) use ($jugador) {
+        $query->select('id')
+              ->from('equipo_jugador')
+              ->where('jugador_id', $jugador->id);
+    })
+    ->where('tipo_sancion', \App\Enums\TipoSancion::EXPULSION_PERMANENTE->value)
+    ->exists();
                 }
 
                 // Devolver los datos del jugador + expulsado
