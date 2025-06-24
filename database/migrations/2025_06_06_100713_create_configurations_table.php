@@ -22,7 +22,6 @@ return new class extends Migration
             $table->text('mercado_pago_access_token')->nullable()->comment('Credenciales encriptadas'); // Usar text para encriptar
             $table->text('mercado_pago_webhook_secret')->nullable()->comment('Credenciales encriptadas'); // Usar text para encriptar
 
-            $table->string('nombre_complejo');
             $table->string('direccion_complejo');
             $table->string('telefono_complejo')->nullable();
 
