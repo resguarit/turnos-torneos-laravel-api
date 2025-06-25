@@ -124,6 +124,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/cierre-caja', [CajaController::class, 'cerrarCaja']);
 
     Route::get('/auditorias', [AuditoriaController::class, 'index']);
+    Route::get('/auditoria/tipos-accion', [AuditoriaController::class, 'tiposDeAccion']);
 
     Route::post('/deportes', [DeporteController::class, 'store']);
     Route::put('/deportes/{id}', [DeporteController::class, 'update']);

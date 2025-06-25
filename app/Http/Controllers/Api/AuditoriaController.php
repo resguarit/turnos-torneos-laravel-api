@@ -33,4 +33,9 @@ class AuditoriaController extends Controller
             'status' => 200
         ]);
     }
+
+    public function tiposDeAccion()
+    {
+        return $this->auditoriaService->tiposDeAccion();
+    }
 }
