@@ -1,0 +1,21 @@
+name: Desplegar API Rock And Gol
+
+on:
+  push:
+    branches:
+      - main-rockandgol
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Conectar al VPS y ejecutar script de despliegue
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: /home/deployer/deploy-rockandgol.sh
+      
