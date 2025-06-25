@@ -57,4 +57,15 @@ class AuditoriaService implements AuditoriaServiceInterface
         
         return $query->paginate($perPage);
     }
+
+    public function tiposDeAccion()
+    {
+        $tipos = Auditoria::query()
+            ->select('accion')
+            ->distinct()
+            ->pluck('accion')
+            ->values();
+
+        return response()->json($tipos);
+    }
 }

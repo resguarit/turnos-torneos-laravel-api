@@ -108,6 +108,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/deshabilitar-franja-horaria', [HorarioController::class, 'deshabilitarFranjaHoraria']);
     Route::put('/habilitar-franja-horaria', [HorarioController::class, 'habilitarFranjaHoraria']);
     Route::get('/franjas-horarias-no-disponibles', [HorarioController::class, 'showFranjasHorariasNoDisponibles']);
+    Route::post('/config/horario-semana-completa', [ConfigController::class, 'setHorarioSemanaCompleta']);
+
 
     Route::get('/usuarios', [UserController::class, 'index']);
     Route::get('/usuarios/{id}', [UserController::class, 'show']);
@@ -122,6 +124,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/cierre-caja', [CajaController::class, 'cerrarCaja']);
 
     Route::get('/auditorias', [AuditoriaController::class, 'index']);
+    Route::get('/auditoria/tipos-accion', [AuditoriaController::class, 'tiposDeAccion']);
 
     Route::post('/deportes', [DeporteController::class, 'store']);
     Route::put('/deportes/{id}', [DeporteController::class, 'update']);
@@ -334,5 +337,6 @@ Route::get('/test-mercadopago', function () {
         'webhook_secret_masked' => $webhookSecret ? substr($webhookSecret, 0, 4) . '...' . substr($webhookSecret, -4) : null
     ]);
 });
+
 
 

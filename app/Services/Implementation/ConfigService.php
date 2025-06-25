@@ -115,6 +115,44 @@ class ConfigService implements ConfigServiceInterface
         ], 201);
     }
 
+    public function setHorarioSemanaCompleta($horaApertura, $horaCierre, $deporteId)
+    {
+        $validator = Validator::make([
+            'hora_apertura' => $horaApertura,
+            'hora_cierre' => $horaCierre,
+            'deporte_id' => $deporteId
+        ], [
+            'hora_apertura' => 'required|date_format:H:i',
+            'hora_cierre' => 'required|date_format:H:i',
+            'deporte_id' => 'required|exists:deportes,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $diasSemana = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+
+        $data = [
+            'dias' => [],
+            'deporte_id' => $deporteId
+        ];
+
+        foreach ($diasSemana as $dia) {
+            $data['dias'][$dia] = [
+                'hora_apertura' => $horaApertura,
+                'hora_cierre' => $horaCierre
+            ];
+        }
+
+        // Pasa el array como un nuevo Request
+        return $this->configurarHorarios(new Request($data));
+    }
+
     private function crearHorarios(Carbon $horaInicio, Carbon $horaFin, string $dia, int $deporteId, int $duracionTurno)
     {
         $horaActual = $horaInicio->copy();
