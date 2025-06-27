@@ -77,7 +77,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
-            EquiposYJugadoresSeeder::class,
+            //EquiposYJugadoresSeeder::class,
             CanchasYHorariosSeeder::class,
             ConfigurationSeeder::class,
         ]);

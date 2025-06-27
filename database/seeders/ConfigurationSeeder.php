@@ -19,16 +19,16 @@ class ConfigurationSeeder extends Seeder
             ],
             [
             'colores' => [
-                'primary' => '#000000',
+                'primary' => '#fc5414',
                 'secondary' => '#000000',
             ],
-            'habilitar_turnos' => true,
+            'habilitar_turnos' => false,
             'habilitar_mercado_pago' => false,
             'mercado_pago_access_token' => null,
             'mercado_pago_webhook_secret' => null,
             'nombre_complejo' => 'Rock & Gol',
-            'direccion_complejo' => 'Calle 47 Nº 537 entre 5 y 6, La Plata, Buenos Aires',
-            'telefono_complejo' => '2215607115',
+            'direccion_complejo' => '520 esq. 20 - La Plata, Buenos Aires',
+            'telefono_complejo' => '542215395987',
         ]);
     }
 }
