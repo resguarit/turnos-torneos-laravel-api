@@ -20,4 +20,12 @@ class ConfigController extends Controller
     {
         return $this->configService->configurarHorarios($request);
     }
+    public function setHorarioSemanaCompleta(Request $request)
+    {
+        return $this->configService->setHorarioSemanaCompleta(
+            $request->input('hora_apertura'),
+            $request->input('hora_cierre'),
+            $request->input('deporte_id')
+        );
+    }
 }
