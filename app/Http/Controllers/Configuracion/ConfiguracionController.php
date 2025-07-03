@@ -50,6 +50,7 @@ class ConfiguracionController extends Controller
             'direccion_complejo' => $configuracion->direccion_complejo,
             'telefono_complejo' => $configuracion->telefono_complejo,
             'logo_complejo_url' => $logoUrl,
+            'mercado_pago_public_key' => $configuracion->mercado_pago_public_key,
             'mercado_pago_access_token' => $accessToken,
             'mercado_pago_webhook_secret' => $webhookSecret,
         ]);
@@ -65,6 +66,7 @@ class ConfiguracionController extends Controller
             'nombre_complejo' => 'required|string',
             'direccion_complejo' => 'required|string',
             'telefono_complejo' => 'required|string',
+            'mercado_pago_public_key' => 'nullable|string',
             'mercado_pago_access_token' => 'nullable|string',
             'mercado_pago_webhook_secret' => 'nullable|string',
             'logo_complejo' => 'nullable|image|max:2048', // Validar imagen
@@ -86,6 +88,7 @@ class ConfiguracionController extends Controller
             'nombre_complejo' => $request->nombre_complejo,
             'direccion_complejo' => $request->direccion_complejo,
             'telefono_complejo' => $request->telefono_complejo,
+            'mercado_pago_public_key' => $request->mercado_pago_public_key,
         ];
 
         // Manejar el logo del complejo
