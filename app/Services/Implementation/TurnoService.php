@@ -37,6 +37,7 @@ use App\Models\MetodoPago;
 use App\Models\Caja;
 use App\Http\Controllers\Checkout\MercadoPagoController;
 use App\Models\Configuracion;
+use App\Models\Descuento;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -169,6 +170,22 @@ class TurnoService implements TurnoServiceInterface
 
         $monto_total = $cancha->precio_por_hora;        
         $monto_seña = $cancha->seña;
+
+        $descuento = Descuento::where('fecha', $request->fecha_turno)
+            ->where('cancha_id', $request->cancha_id)
+            ->where('horario_id', $request->horario_id)
+            ->first();
+
+        if ($descuento) {
+            if ($descuento->tipo === 'porcentaje') {
+                $monto_total -= $monto_total * ($descuento->valor / 100);
+                Log::info("Porcentaje: " . $monto_total);
+            } elseif ($descuento->tipo === 'fijo') {
+                $monto_total -= $descuento->valor;
+            }
+
+            $monto_total = max(0, $monto_total);
+        }
 
         if (is_null($monto_seña)) {
             return response()->json([

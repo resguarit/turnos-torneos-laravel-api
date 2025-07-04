@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Descuento;
 
 class Cancha extends Model
 {
@@ -39,4 +40,8 @@ class Cancha extends Model
         return $this->hasMany(BloqueoTemporal::class, 'cancha_id');
     }
 
+    public function descuentos()
+    {
+        return $this->hasMany(Descuento::class, 'cancha_id');
+    }
 }
