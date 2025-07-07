@@ -40,6 +40,8 @@ use App\Http\Controllers\TipoGastoController;
 use App\Http\Controllers\BalanceController;
 use App\Http\Controllers\Configuracion\ConfiguracionController;
 use App\Http\Controllers\Api\PenalController;
+use App\Http\Controllers\Api\ClaseController;
+use App\Http\Controllers\Api\ProfesorController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -265,6 +267,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/penales/{id}', [PenalController::class, 'update']);
     Route::delete('/penales/{id}', [PenalController::class, 'destroy']);
     Route::get('/penales/partido/{partidoId}', [PenalController::class, 'getByPartido']);
+
+    Route::get('/clases', [ClaseController::class, 'index']);
+    Route::get('/clases/{id}', [ClaseController::class, 'show']);
+    Route::post('/clases', [ClaseController::class, 'store']);
+    Route::put('/clases/{id}', [ClaseController::class, 'update']);
+    Route::delete('/clases/{id}', [ClaseController::class, 'destroy']);
+    Route::post('/clases/crear-fijas', [ClaseController::class, 'crearClasesFijas']);
+
+    Route::get('/profesores', [ProfesorController::class, 'index']);
+    Route::get('/profesores/{id}', [ProfesorController::class, 'show']);
+    Route::post('/profesores', [ProfesorController::class, 'store']);
+    Route::put('/profesores/{id}', [ProfesorController::class, 'update']);
+    Route::delete('/profesores/{id}', [ProfesorController::class, 'destroy']);
+
 
     // Rutas que requieren verificación de MercadoPago habilitado
     Route::middleware(['check.mercadopago'])->group(function () {

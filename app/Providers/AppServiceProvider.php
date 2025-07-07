@@ -57,6 +57,10 @@ use App\Services\Interface\BloqueoDisponibilidadServiceInterface;
 use App\Services\Implementation\BloqueoDisponibilidadService;
 use App\Services\Interface\PenalServiceInterface;
 use App\Services\Implementation\PenalService;
+use App\Services\Interface\ClaseServiceInterface;
+use App\Services\Implementation\ClaseService;
+use App\Services\Interface\ProfesorServiceInterface;
+use App\Services\Implementation\ProfesorService;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -93,6 +97,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PaymentServiceInterface::class, PaymentService::class);
         $this->app->bind(BloqueoDisponibilidadServiceInterface::class, BloqueoDisponibilidadService::class);
         $this->app->bind(PenalServiceInterface::class, PenalService::class);
+        $this->app->bind(ClaseServiceInterface::class, ClaseService::class);
+        $this->app->bind(ProfesorServiceInterface::class, ProfesorService::class);
     }
 
     /**
