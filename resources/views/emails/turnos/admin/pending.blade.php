@@ -48,7 +48,7 @@
                             
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
-                                <a href="{{ config('app.url_front') }}/panel-admin?tab=turnos&id={{ $turno->id }}" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver en el sistema</a>
+                                <a href="{{ $notification->tenantUrl('panel-admin?tab=turnos&id=' . $turno->id) }}" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver en el sistema</a>
                             </p>
                             
                             <p>Este es un mensaje automático del sistema de reservas.</p>
