@@ -13,14 +13,21 @@ class Clase extends Model
     protected $fillable = [
         'nombre',
         'descripcion',
-        'fecha',
+        'fecha_inicio',
+        'fecha_fin',
         'profesor_id',
         'cancha_id',
         'horario_id',
+        'horario_ids',
         'cupo_maximo',
         'precio_mensual',
         'activa',
-        'tipo'
+        'tipo',
+        'duracion'
+    ];
+
+    protected $casts = [
+        'horario_ids' => 'array',
     ];
 
     public function profesor()
