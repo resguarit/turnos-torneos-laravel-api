@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\CheckMercadoPagoEnabled;
+use App\Http\Middleware\SetTenantDatabase;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Registrar el middleware de MercadoPago
         $middleware->alias([
             'check.mercadopago' => CheckMercadoPagoEnabled::class,
+        ]);
+
+        $middleware->group('api', [
+            SetTenantDatabase::class,
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
