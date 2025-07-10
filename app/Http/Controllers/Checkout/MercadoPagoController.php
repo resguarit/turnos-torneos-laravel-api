@@ -34,6 +34,8 @@ class MercadoPagoController extends Controller
         // Configurar MercadoPago con las credenciales de la base de datos
         MercadoPagoConfigService::configureMP();
         
+        $subdominio = $request->header('x-complejo');
+        
         try {
             $client = new PreferenceClient();
 
@@ -51,9 +53,9 @@ class MercadoPagoController extends Controller
             ],
             'external_reference' => $turno->id,
             'back_urls' => [
-                'success' => config('app.url_front') . "/checkout/success/". $turno->id,
-                'pending' => config('app.url_front') . "/checkout/pending/". $turno->id,
-                'failure' => config('app.url_front') . "/checkout/failure/". $turno->id,
+                'success' => tenant_url($subdominio, "/checkout/success/". $turno->id),
+                'pending' => tenant_url($subdominio, "/checkout/pending/". $turno->id),
+                'failure' => tenant_url($subdominio, "/checkout/failure/". $turno->id),
             ],
             'auto_return' => 'approved',
             'payment_methods' => [

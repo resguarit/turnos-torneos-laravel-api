@@ -12,6 +12,9 @@ use App\Services\Interface\PaymentServiceInterface;
 use MercadoPago\Client\Payment\PaymentClient;
 use App\Services\MercadoPagoConfigService;
 use MercadoPago\Exceptions\MPApiException;
+use App\Models\Complejo;
+use Illuminate\Container\Attributes\DB;
+use Illuminate\Support\Facades\Config;
 
 class MercadoPagoWebhook extends Controller
 {
@@ -22,8 +25,30 @@ class MercadoPagoWebhook extends Controller
         $this->paymentService = $paymentService;
     }
 
-    public function handleWebhook(Request $request)
+    public function handleWebhook(Request $request, $subdominio)
     {
+        $complejo = Complejo::where('subdominio', $subdominio)->first();
+
+        if (!$complejo) {
+            Log::error('Complejo no encontrado', ['subdominio' => $subdominio]);
+            return response()->json(['error' => 'Complejo no encontrado'], 404);
+        }
+
+        try {
+            DB::purge('mysql_tenant');
+            Config::set('database.connections.mysql_tenant.host', $complejo->db_host);
+            Config::set('database.connections.mysql_tenant.database', $complejo->db_database);
+            Config::set('database.connections.mysql_tenant.username', $complejo->db_username);
+            Config::set('database.connections.mysql_tenant.password', $complejo->db_password);
+            Config::set('database.connections.mysql_tenant.port', $complejo->db_port);
+            Config::set('database.default', 'mysql_tenant');
+        } catch (\Exception $e) {
+            Log::error("Error al conectar a la BD del tenant en webhook: " . $e->getMessage());
+            return response()->json(['error' => 'Error interno'], 500);
+        }
+
+        Log::info('Webhook de MercadoPago recibido para el complejo: ' . $complejo->nombre);
+
         // Configurar MercadoPago con las credenciales de la base de datos
         MercadoPagoConfigService::configureMP();
         
