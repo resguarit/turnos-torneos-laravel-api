@@ -42,7 +42,8 @@ class PasswordResetController extends Controller
             ['token' => $token, 'created_at' => Carbon::now()]
         );
 
-        $resetLink = config('app.url_front') . '/reset-password?email=' . urlencode($request->email) . '&token=' . $token;
+        $subdominio = $request->header('x-complejo');
+        $resetLink = tenant_url($subdominio, '/reset-password?email=' . urlencode($request->email) . '&token=' . $token);
 
         $user->notify(new ResetPasswordNotification($user, $resetLink));
 

@@ -295,7 +295,8 @@ class TurnoService implements TurnoServiceInterface
             
             User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.pending', $configuracion));
             
-            TurnosPendientes::dispatch($turno->id, $configuracion)->delay(Carbon::now()->addMinutes(30));
+            $subdominio = $request->header('x-complejo');
+            TurnosPendientes::dispatch($turno->id, $configuracion, $subdominio)->delay(Carbon::now()->addMinutes(30));
 
             DB::commit();
 

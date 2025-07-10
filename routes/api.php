@@ -49,7 +49,7 @@ Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']
 Route::post('/verify-email', [VerifyEmailController::class, 'verifyEmail']);
 
 // Rutas de MercadoPago públicas (no requieren autenticación)
-Route::post('/mercadopago/webhook', [MercadoPagoWebhook::class, 'handleWebhook']);
+Route::post('/mercadopago/webhook/{subdominio}', [MercadoPagoWebhook::class, 'handleWebhook']);
 Route::post('/mercadopago/verify-payment', [MercadoPagoController::class, 'verifyPaymentStatus']);
 Route::post('/mercadopago/verify-payment-by-preference', [MercadoPagoController::class, 'verifyPaymentStatusByPreference']);    
 

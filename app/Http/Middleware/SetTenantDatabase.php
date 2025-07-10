@@ -19,6 +19,11 @@ class SetTenantDatabase
      */
     public function handle(Request $request, Closure $next): Response
     {
+
+        if ($request->is('api/mercadopago/webhook/*')) {
+            return $next($request);
+        }
+
         $subdominio = $request->header('x-complejo') ?? $request->header('X-Complejo');
 
         if (!$subdominio) {

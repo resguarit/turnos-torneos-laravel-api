@@ -40,7 +40,9 @@ class UserController extends Controller
             ], 422);
         }
 
-        $response = $this->authService->register($request->all());
+        $subdominio = $request->header('x-complejo');
+
+        $response = $this->authService->register($request->all(), $subdominio);
         return response()->json($response, $response['status']);
     }
 

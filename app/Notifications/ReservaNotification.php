@@ -11,10 +11,11 @@ use App\Mail\ReservaCancelada;
 use App\Models\Turno;
 use App\Models\User;
 use App\Models\Configuracion;
+use App\Notifications\Traits\TenantAware;
 
 class ReservaNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, TenantAware;
 
     protected $turno;
     protected $tipo;
@@ -27,6 +28,7 @@ class ReservaNotification extends Notification implements ShouldQueue
         $this->turno = $turno;
         $this->tipo = $tipo;
         $this->configuracion = $configuracion;
+        $this->withTenant(); // Set the tenant subdomain if available
     }
 
     /**
@@ -50,14 +52,16 @@ class ReservaNotification extends Notification implements ShouldQueue
                     ->subject('Reserva Confirmada (' . $this->turno->id . ')')
                     ->view('emails.turnos.confirmation', [
                         'turno' => $this->turno,
-                        'configuracion' => $this->configuracion
+                        'configuracion' => $this->configuracion,
+                        'notificacion' => $this
                     ]);
             case 'cancelacion':
                 return (new MailMessage)
                     ->subject('Reserva Cancelada (' . $this->turno->id . ')')
                     ->view('emails.turnos.cancelation', [
                         'turno' => $this->turno,
-                        'configuracion' => $this->configuracion
+                        'configuracion' => $this->configuracion,
+                        'notificacion' => $this
                     ]);
             case 'cancelacion_automatica':
                 return (new MailMessage)
@@ -71,28 +75,32 @@ class ReservaNotification extends Notification implements ShouldQueue
                     ->subject('Reserva Confirmada (' . $this->turno->id . ')')
                     ->view('emails.turnos.admin.confirmation', [
                         'turno' => $this->turno,
-                        'configuracion' => $this->configuracion
+                        'configuracion' => $this->configuracion,
+                        'notificacion' => $this
                     ]);
             case 'admin.cancelacion':
                 return (new MailMessage)
                     ->subject('Reserva Cancelada (' . $this->turno->id . ')')
                     ->view('emails.turnos.admin.cancelation', [
                         'turno' => $this->turno,
-                        'configuracion' => $this->configuracion
+                        'configuracion' => $this->configuracion,
+                        'notificacion' => $this
                     ]);
             case 'admin.cancelacion_automatica':
                 return (new MailMessage)
                     ->subject('Reserva Cancelada Automáticamente (' . $this->turno->id . ')')
                     ->view('emails.turnos.admin.automatic-cancelation', [
                         'turno' => $this->turno,
-                        'configuracion' => $this->configuracion
+                        'configuracion' => $this->configuracion,
+                        'notificacion' => $this
                     ]);
             case 'admin.pending':
                 return (new MailMessage)
                     ->subject('Reserva Pendiente (' . $this->turno->id . ')')
                     ->view('emails.turnos.admin.pending', [
                         'turno' => $this->turno,
-                        'configuracion' => $this->configuracion
+                        'configuracion' => $this->configuracion,
+                        'notificacion' => $this
                     ]);
             default:
                 throw new \InvalidArgumentException('Tipo de notificación no válido: ' . $this->tipo);

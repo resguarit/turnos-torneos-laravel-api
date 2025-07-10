@@ -14,6 +14,27 @@ if (!function_exists('formatearFechaCompleta')) {
     }
 }
 
+if (!function_exists('')){
+    /**
+     * Genera una URL para el frontend de un tenant específico.
+     *
+     * @param string $subdominio El subdominio del tenant.
+     * @param string $path La ruta a la que se quiere apuntar (ej: '/checkout/success').
+     * @return string La URL completa.
+     */
+    function tenant_url(string $subdominio, string $path = ''): string
+    {
+        $baseDomain = config('app.base_domain', 'rgturnos.com.ar');
+        $protocol = config('app.url_protocol', 'https');
+
+        if ($path && $path[0] === '/') {
+            $path = substr($path, 1);
+        }
+
+        return "{$protocol}://{$subdominio}.{$baseDomain}/{$path}";
+    }
+}
+
 if (!function_exists('formatearFechaSinDia')) {
     /**
      * Formatea fecha sin día de la semana

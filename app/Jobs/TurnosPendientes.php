@@ -19,6 +19,8 @@ use App\Notifications\ReservaNotification;
 use App\Models\User;
 use Carbon\Carbon;
 use App\Models\Configuracion;
+use App\Models\Complejo;
+use Illuminate\Support\Facades\Config;
 
 class TurnosPendientes implements ShouldQueue
 {
@@ -26,14 +28,16 @@ class TurnosPendientes implements ShouldQueue
 
     protected $turnoId;
     protected $configuracion;
+    protected string $subdominio;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($turnoId, $configuracion = null)
+    public function __construct($turnoId, $configuracion = null, $subdominio)
     {
         $this->turnoId = $turnoId;
         $this->configuracion = $configuracion;
+        $this->subdominio = $subdominio;
     }
 
     /**
@@ -41,7 +45,23 @@ class TurnosPendientes implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info('Iniciando el job TurnosPendientes para el turno #' . $this->turnoId);
+        Log::info('Iniciando el job TurnosPendientes para el turno #' . $this->turnoId . ' en el complejo: ' . $this->subdominio);
+        $complejo = Complejo::where('subdominio', $this->subdominio)->first();
+
+        if (!$complejo) {
+            Log::error('Complejo con subdominio ' . $this->subdominio . ' no encontrado');
+            return;
+        }
+
+        DB::purge('mysql_tenant');
+        Config::set('database.connections.mysql_tenant.host', $complejo->db_host);
+        Config::set('database.connections.mysql_tenant.database', $complejo->db_database);
+        Config::set('database.connections.mysql_tenant.username', $complejo->db_username);
+        Config::set('database.connections.mysql_tenant.password', $complejo->db_password);
+        Config::set('database.connections.mysql_tenant.port', $complejo->db_port);
+        Config::set('database.default', 'mysql_tenant');
+
+        Log::info("Job TurnosPendientes: Ejecutando para el complejo '{$complejo->nombre}' (ID Turno: {$this->turnoId})");
         
         $turno = Turno::with(['persona', 'persona.cuentaCorriente', 'cancha'])->find($this->turnoId);
 
@@ -83,7 +103,7 @@ class TurnosPendientes implements ShouldQueue
                 'fecha_cancelacion' => now(),	
             ]);
 
-            $this->enviarNotificaciones($turnoActual);
+            $this->enviarNotificaciones($turnoActual, $this->subdominio);
 
             DB::commit();
 
@@ -123,7 +143,7 @@ class TurnosPendientes implements ShouldQueue
         $cuentaCorriente->save();
     }
 
-    private function enviarNotificaciones(Turno $turno): void
+    private function enviarNotificaciones(Turno $turno, string $subdominio): void
     {
         try {
             // Si no se pasó la configuración en el constructor, la obtenemos ahora
@@ -133,14 +153,16 @@ class TurnosPendientes implements ShouldQueue
             }
             
             if($turno->persona && $turno->persona->usuario) {
-                $turno->persona->usuario->notify(
-                    new ReservaNotification($turno, 'cancelacion_automatica', $configuracion)
-                );
+                $userNotification = new ReservaNotification($turno, 'cancelacion_automatica', $configuracion);
+                $userNotification->subdominio = $subdominio; // Asignar el subdominio a la notificación
+
+                $turno->persona->usuario->notify($userNotification);
             }
 
-            User::where('rol', 'admin')->get()->each->notify(
-                new ReservaNotification($turno, 'admin.cancelacion_automatica', $configuracion)
-            );
+            $adminNotification = new ReservaNotification($turno, 'admin.cancelacion_automatica', $configuracion);
+            $adminNotification->subdominio = $subdominio; 
+
+            User::where('rol', 'admin')->get()->each->notify($adminNotification);
         } catch (\Exception $e) {
             Log::error('Error al enviar notificaciones: ' . $e->getMessage());
         }
