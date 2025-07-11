@@ -30,14 +30,14 @@ class ClaseService implements ClaseServiceInterface
             'fecha_fin' => 'required|date',
             'profesor_id' => 'required|exists:profesores,id',
             'cancha_id' => 'required|exists:canchas,id',
-            'duracion' => 'required|integer|min:1',
             'cupo_maximo' => 'required|integer|min:1',
             'precio_mensual' => 'required|numeric|min:0',
             'activa' => 'required|boolean',
             'tipo' => 'in:unica',
-            'horario_id' => 'required_without:horario_ids|exists:horarios,id',
-            'horario_ids' => 'nullable|array',
-            'horario_ids.*' => 'exists:horarios,id',
+            'deporte_id' => 'required|exists:deportes,id',
+            'dia' => 'required|string|in:lunes,martes,miércoles,jueves,viernes,sábado,domingo',
+            'hora_inicio' => 'required|date_format:H:i',
+            'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
         ]);
 
         if ($validator->fails()) {
@@ -48,9 +48,44 @@ class ClaseService implements ClaseServiceInterface
             ], 400);
         }
 
+        $horaInicio = $request->hora_inicio . ':00';
+        $horaFin = $request->hora_fin . ':00';
+
+        // Buscar horarios que cubran el rango
+        $horarios = \App\Models\Horario::where('dia', ucfirst($request->dia))
+            ->where('deporte_id', $request->deporte_id)
+            ->where('activo', true)
+            ->where('hora_inicio', '>=', $horaInicio)
+            ->where('hora_fin', '<=', $horaFin)
+            ->orderBy('hora_inicio')
+            ->get()
+            ->filter(function($horario) use ($horaInicio, $horaFin) {
+                if ($horario->hora_fin === '00:00:00' && $horaFin !== '00:00:00') {
+                    return false;
+                }
+                return $horario->hora_inicio >= $horaInicio && $horario->hora_fin <= $horaFin;
+            });
+
+        if ($horarios->isEmpty()) {
+            return response()->json([
+                'message' => "No hay horarios disponibles para {$request->dia} en el rango {$horaInicio}-{$horaFin}",
+                'status' => 400
+            ], 400);
+        }
+
+        // Verificar rango completo (sin huecos)
+        $rangoCompleto = $this->verificarRangoCompleto($horarios, $horaInicio, $horaFin);
+        if (!$rangoCompleto) {
+            return response()->json([
+                'message' => "Los horarios de {$request->dia} no cubren completamente el rango {$horaInicio}-{$horaFin}",
+                'status' => 400
+            ], 400);
+        }
+
+        $esUnaHora = $horarios->count() === 1;
+
         DB::beginTransaction();
         try {
-            // Crear la clase
             $clase = Clase::create([
                 'nombre' => $request->nombre,
                 'descripcion' => $request->descripcion,
@@ -58,30 +93,21 @@ class ClaseService implements ClaseServiceInterface
                 'fecha_fin' => $request->fecha_fin,
                 'profesor_id' => $request->profesor_id,
                 'cancha_id' => $request->cancha_id,
-                'horario_id' => $request->duracion == 1 ? $request->horario_id : null,
-                'horario_ids' => $request->duracion > 1 ? $request->horario_ids : null,
+                'horario_id' => $esUnaHora ? $horarios->first()->id : null,
+                'horario_ids' => !$esUnaHora ? $horarios->pluck('id')->toArray() : null,
                 'cupo_maximo' => $request->cupo_maximo,
                 'precio_mensual' => $request->precio_mensual,
                 'activa' => $request->activa,
                 'tipo' => 'unica',
-                'duracion' => $request->duracion,
+                'duracion' => $horarios->count(),
             ]);
 
-            // Bloquear automáticamente los turnos
-            if ($request->duracion == 1) {
+            foreach ($horarios as $horario) {
                 \App\Models\BloqueoDisponibilidadTurno::create([
                     'fecha' => $request->fecha_inicio,
                     'cancha_id' => $request->cancha_id,
-                    'horario_id' => $request->horario_id,
+                    'horario_id' => $horario->id,
                 ]);
-            } else {
-                foreach ($request->horario_ids as $horarioId) {
-                    \App\Models\BloqueoDisponibilidadTurno::create([
-                        'fecha' => $request->fecha_inicio,
-                        'cancha_id' => $request->cancha_id,
-                        'horario_id' => $horarioId,
-                    ]);
-                }
             }
 
             DB::commit();
