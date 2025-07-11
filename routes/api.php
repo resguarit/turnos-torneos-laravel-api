@@ -104,6 +104,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/horarios', [HorarioController::class, 'store']);
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
     Route::get('/horarios-extremos-activos', [HorarioController::class, 'getHorariosExtremosActivos']);
+    Route::post('horarios/activos-por-dias', [HorarioController::class, 'horariosActivosPorDias']);
 
     
     Route::post('/configurar-horarios', [ConfigController::class, 'configurarHorarios']);

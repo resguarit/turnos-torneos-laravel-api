@@ -79,4 +79,9 @@ class HorarioController extends Controller
         
         return $this->horarioService->getHorariosExtremosActivos($request);
     }
+
+    public function horariosActivosPorDias(Request $request)
+    {
+        return $this->horarioService->getHorariosActivosPorDias($request);
+    }
 }
