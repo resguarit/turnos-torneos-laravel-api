@@ -6,10 +6,8 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+
+/*     public function up(): void
     {
         Schema::create('clases', function (Blueprint $table) {
             $table->id();
@@ -27,13 +25,11 @@ return new class extends Migration
             $table->foreign('horario_id')->references('id')->on('horarios')->onDelete('set null');
             $table->timestamps();
         });
-    }
+    } */
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+
+/*     public function down(): void
     {
         Schema::dropIfExists('clases');
-    }
+    } */
 };
