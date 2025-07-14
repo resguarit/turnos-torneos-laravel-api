@@ -17,7 +17,6 @@ class Clase extends Model
         'fecha_fin',
         'profesor_id',
         'cancha_id',
-        'horario_id',
         'horario_ids',
         'cupo_maximo',
         'precio_mensual',
@@ -40,8 +39,8 @@ class Clase extends Model
         return $this->belongsTo(Cancha::class, 'cancha_id');
     }
 
-    public function horario()
+    public function getHorariosAttribute()
     {
-        return $this->belongsTo(Horario::class, 'horario_id');
+        return \App\Models\Horario::whereIn('id', $this->horario_ids ?? [])->get();
     }
 }

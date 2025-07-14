@@ -13,12 +13,20 @@ class ClaseService implements ClaseServiceInterface
 {
     public function getAll()
     {
-        return Clase::with('profesor', 'cancha', 'horario')->get();
+        $clases = Clase::with('profesor', 'cancha')->get();
+
+        // Agrega los datos completos de los horarios a cada clase
+        $clases->transform(function ($clase) {
+            $clase->horarios = $clase->horarios; // Esto usa el accesor del modelo
+            return $clase;
+        });
+
+        return $clases;
     }
 
     public function getById($id)
     {
-        return Clase::with('profesor', 'cancha', 'horario')->find($id);
+        return Clase::with('profesor', 'cancha')->find($id);
     }
 
     public function create(Request $request)
@@ -51,7 +59,6 @@ class ClaseService implements ClaseServiceInterface
         $horaInicio = $request->hora_inicio . ':00';
         $horaFin = $request->hora_fin . ':00';
 
-        // Buscar horarios que cubran el rango
         $horarios = \App\Models\Horario::where('dia', ucfirst($request->dia))
             ->where('deporte_id', $request->deporte_id)
             ->where('activo', true)
@@ -93,8 +100,7 @@ class ClaseService implements ClaseServiceInterface
                 'fecha_fin' => $request->fecha_fin,
                 'profesor_id' => $request->profesor_id,
                 'cancha_id' => $request->cancha_id,
-                'horario_id' => $esUnaHora ? $horarios->first()->id : null,
-                'horario_ids' => !$esUnaHora ? $horarios->pluck('id')->toArray() : null,
+                'horario_ids' => $horarios->pluck('id')->toArray(),
                 'cupo_maximo' => $request->cupo_maximo,
                 'precio_mensual' => $request->precio_mensual,
                 'activa' => $request->activa,
@@ -239,7 +245,6 @@ class ClaseService implements ClaseServiceInterface
                     ->orderBy('hora_inicio')
                     ->get()
                     ->filter(function($horario) use ($item) {
-                        // Excluir horarios que terminan en 00:00:00 si el rango no incluye medianoche
                         if ($horario->hora_fin === '00:00:00' && $item['hora_fin'] !== '00:00:00') {
                             return false;
                         }
@@ -251,8 +256,6 @@ class ClaseService implements ClaseServiceInterface
                     continue;
                 }
 
-
-                $esUnaHora = $horarios->count() === 1;
                 $clase = Clase::create([
                     'nombre' => $request->nombre,
                     'descripcion' => $request->descripcion,
@@ -260,8 +263,7 @@ class ClaseService implements ClaseServiceInterface
                     'fecha_fin' => $item['fecha']->toDateString(),
                     'profesor_id' => $request->profesor_id,
                     'cancha_id' => $canchaId,
-                    'horario_id' => $esUnaHora ? $horarios->first()->id : null,
-                    'horario_ids' => !$esUnaHora ? $horarios->pluck('id')->toArray() : null,
+                    'horario_ids' => $horarios->pluck('id')->toArray(),
                     'cupo_maximo' => $request->cupo_maximo,
                     'precio_mensual' => $request->precio_mensual,
                     'activa' => $request->activa,
