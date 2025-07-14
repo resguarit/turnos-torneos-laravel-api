@@ -275,6 +275,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/clases/{id}', [ClaseController::class, 'update']);
     Route::delete('/clases/{id}', [ClaseController::class, 'destroy']);
     Route::post('/clases/crear-fijas', [ClaseController::class, 'crearClasesFijas']);
+    Route::post('clases/delete-many', [ClaseController::class, 'deleteMany']);
 
     Route::get('/profesores', [ProfesorController::class, 'index']);
     Route::get('/profesores/{id}', [ProfesorController::class, 'show']);

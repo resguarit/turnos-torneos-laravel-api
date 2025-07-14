@@ -28,7 +28,7 @@ class Clase extends Model
     protected $casts = [
         'horario_ids' => 'array',
     ];
-
+    
     public function profesor()
     {
         return $this->belongsTo(Profesor::class, 'profesor_id');

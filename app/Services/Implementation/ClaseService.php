@@ -180,6 +180,64 @@ class ClaseService implements ClaseServiceInterface
         ], 200);
     }
 
+    public function deleteMany(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        \Log::info('deleteMany - IDs recibidos:', $ids);
+
+        if (!is_array($ids) || empty($ids)) {
+            \Log::warning('deleteMany - Array de IDs vacío o no es array');
+            return response()->json([
+                'message' => 'Debes enviar un array de IDs',
+                'status' => 400
+            ], 400);
+        }
+
+        $eliminadas = [];
+        $noEncontradas = [];
+
+        $clases = Clase::whereIn('id', $ids)->get()->keyBy('id');
+        \Log::info('deleteMany - Clases encontradas:', $clases->keys()->toArray());
+
+        foreach ($ids as $id) {
+            $clase = $clases->get($id);
+            if (!$clase) {
+                \Log::warning("deleteMany - Clase no encontrada para ID: $id");
+                $noEncontradas[] = $id;
+                continue;
+            }
+
+            \Log::info("deleteMany - Eliminando bloqueos para clase ID: $id", [
+                'cancha_id' => $clase->cancha_id,
+                'horario_ids' => $clase->horario_ids,
+                'fecha_inicio' => $clase->fecha_inicio,
+                'fecha_fin' => $clase->fecha_fin,
+            ]);
+
+            $bloqueosEliminados = \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $clase->cancha_id)
+                ->whereIn('horario_id', $clase->horario_ids ?? [])
+                ->where('fecha', '>=', $clase->fecha_inicio)
+                ->where('fecha', '<=', $clase->fecha_fin)
+                ->delete();
+
+            \Log::info("deleteMany - Bloqueos eliminados: $bloqueosEliminados");
+
+            $clase->delete();
+            \Log::info("deleteMany - Clase eliminada: $id");
+            $eliminadas[] = $id;
+        }
+
+        \Log::info('deleteMany - Eliminadas:', $eliminadas);
+        \Log::info('deleteMany - No encontradas:', $noEncontradas);
+
+        return response()->json([
+            'message' => 'Eliminación masiva finalizada',
+            'eliminadas' => $eliminadas,
+            'no_encontradas' => $noEncontradas,
+            'status' => 200
+        ], 200);
+    }
+
     public function crearClasesFijas(Request $request)
     {
         $validator = Validator::make($request->all(), [
