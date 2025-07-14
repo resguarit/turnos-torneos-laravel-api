@@ -165,6 +165,13 @@ class ClaseService implements ClaseServiceInterface
             ], 404);
         }
 
+        // Eliminar bloqueos de disponibilidad asociados a la clase
+        \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $clase->cancha_id)
+            ->whereIn('horario_id', $clase->horario_ids ?? [])
+            ->where('fecha', '>=', $clase->fecha_inicio)
+            ->where('fecha', '<=', $clase->fecha_fin)
+            ->delete();
+
         $clase->delete();
 
         return response()->json([
