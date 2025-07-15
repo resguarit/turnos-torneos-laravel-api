@@ -27,7 +27,7 @@ use App\Jobs\SendTenantNotification;
 class PaymentService implements PaymentServiceInterface
 {
 
-    public function handleNewPayment($payment)
+    public function handleNewPayment($payment, $subdominio)
     {
         // Configurar MercadoPago con las credenciales de la base de datos
         MercadoPagoConfigService::configureMP();
@@ -42,7 +42,6 @@ class PaymentService implements PaymentServiceInterface
 
         $clave = "bloqueo:{$turno->fecha_turno->format('Y-m-d')}:{$turno->horario_id}:{$turno->cancha_id}";
         $bloqueo = Cache::get($clave);
-        $subdominio = request()->header('x-complejo');
 
         if($payment->status == 'rejected') {
 

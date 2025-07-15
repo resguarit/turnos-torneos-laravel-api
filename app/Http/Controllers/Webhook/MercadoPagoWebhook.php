@@ -106,7 +106,7 @@ class MercadoPagoWebhook extends Controller
                     }
 
                     // Toda la logica de pago se maneja en el paymentService
-                    $this->paymentService->handleNewPayment($payment);
+                    $this->paymentService->handleNewPayment($payment, $subdominio);
                     
                     return response()->json(['status' => 'success'], 200);
                     break;
