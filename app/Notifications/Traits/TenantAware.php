@@ -2,9 +2,13 @@
 
 namespace App\Notifications\Traits;
 
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use App\Models\Complejo;
+
 trait TenantAware
 {
-    public ?string $subdominio;
+    public ?string $subdominio = null;
 
     /**
      * Guarda el subdominio del tenant actual en la notificación.
@@ -42,5 +46,24 @@ trait TenantAware
         $path = $path ? '/' . ltrim($path, '/') : '';
 
         return "{$protocol}://{$this->subdominio}.{$baseDomain}{$path}";
+    }
+
+    public function switchToTenant(): void
+    {
+        if (!$this->subdominio) {
+            return;
+        }
+
+        $complejo = Complejo::where('subdominio', $this->subdominio)->first();
+
+        if ($complejo) {
+            DB::purge('mysql_tenant');
+            Config::set('database.connections.mysql_tenant.host', $complejo->db_host);
+            Config::set('database.connections.mysql_tenant.database', $complejo->db_database);
+            Config::set('database.connections.mysql_tenant.username', $complejo->db_username);
+            Config::set('database.connections.mysql_tenant.password', $complejo->db_password);
+            Config::set('database.connections.mysql_tenant.port', $complejo->db_port);
+            Config::set('database.default', 'mysql_tenant');
+        }
     }
 }

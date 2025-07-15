@@ -22,6 +22,7 @@ use MercadoPago\Client\Payment\PaymentRefundClient;
 use MercadoPago\Exceptions\MPApiException;
 use App\Services\MercadoPagoConfigService;
 use App\Models\Configuracion;
+use App\Jobs\SendTenantNotification;
 
 class PaymentService implements PaymentServiceInterface
 {
@@ -41,6 +42,7 @@ class PaymentService implements PaymentServiceInterface
 
         $clave = "bloqueo:{$turno->fecha_turno->format('Y-m-d')}:{$turno->horario_id}:{$turno->cancha_id}";
         $bloqueo = Cache::get($clave);
+        $subdominio = request()->header('x-complejo');
 
         if($payment->status == 'rejected') {
 
@@ -117,10 +119,25 @@ class PaymentService implements PaymentServiceInterface
                     $configuracion = Configuracion::first();
                     
                     if ($persona->usuario) {
-                        $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion', $configuracion));
+                        // Usar SendTenantNotification en lugar de notify directamente
+                        SendTenantNotification::dispatch(
+                            $subdominio,
+                            $persona->usuario->id,
+                            ReservaNotification::class,
+                            [$turno->id, 'confirmacion', $configuracion?->id]
+                        );
                     }
 
-                    User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion', $configuracion));
+                    // Enviar notificaciones a los administradores
+                    $admins = User::where('rol', 'admin')->get();
+                    foreach ($admins as $admin) {
+                        SendTenantNotification::dispatch(
+                            $subdominio,
+                            $admin->id,
+                            ReservaNotification::class,
+                            [$turno->id, 'admin.confirmacion', $configuracion?->id]
+                        );
+                    }
 
                     DB::commit();
                 } else if ($turno->estado == TurnoEstado::PENDIENTE) {
@@ -152,10 +169,25 @@ class PaymentService implements PaymentServiceInterface
                     $configuracion = Configuracion::first();
                     
                     if ($persona->usuario) {
-                        $persona->usuario->notify(new ReservaNotification($turno, 'confirmacion', $configuracion));
+                        // Usar SendTenantNotification en lugar de notify directamente
+                        SendTenantNotification::dispatch(
+                            $subdominio,
+                            $persona->usuario->id,
+                            ReservaNotification::class,
+                            [$turno->id, 'confirmacion', $configuracion?->id]
+                        );
                     }
 
-                    User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.confirmacion', $configuracion));
+                    // Enviar notificaciones a los administradores
+                    $admins = User::where('rol', 'admin')->get();
+                    foreach ($admins as $admin) {
+                        SendTenantNotification::dispatch(
+                            $subdominio,
+                            $admin->id,
+                            ReservaNotification::class,
+                            [$turno->id, 'admin.confirmacion', $configuracion?->id]
+                        );
+                    }
 
                     DB::commit();
                 }

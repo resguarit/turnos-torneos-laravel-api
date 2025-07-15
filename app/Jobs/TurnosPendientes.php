@@ -21,22 +21,23 @@ use Carbon\Carbon;
 use App\Models\Configuracion;
 use App\Models\Complejo;
 use Illuminate\Support\Facades\Config;
+use App\Jobs\SendTenantNotification;
 
 class TurnosPendientes implements ShouldQueue
 {
     use Queueable, Dispatchable, InteractsWithQueue, SerializesModels;
 
     protected $turnoId;
-    protected $configuracion;
-    protected string $subdominio;
+    protected $configuracionId;
+    protected $subdominio;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($turnoId, $configuracion = null, $subdominio)
+    public function __construct($turnoId, $configuracionId = null, $subdominio)
     {
         $this->turnoId = $turnoId;
-        $this->configuracion = $configuracion;
+        $this->configuracionId = $configuracionId;
         $this->subdominio = $subdominio;
     }
 
@@ -103,7 +104,29 @@ class TurnosPendientes implements ShouldQueue
                 'fecha_cancelacion' => now(),	
             ]);
 
-            $this->enviarNotificaciones($turnoActual, $this->subdominio);
+           
+            // Usar directamente this->turnoId y this->configuracionId sin modificaciones
+            Log::info('Enviando notificaciones para el turno #' . $this->turnoId . ' en el complejo: ' . $this->subdominio);
+            
+            if($turno->persona && $turno->persona->usuario) {
+                SendTenantNotification::dispatch(
+                    $this->subdominio,
+                    $turno->persona->usuario->id,
+                    ReservaNotification::class,
+                    [$this->turnoId, 'cancelacion_automatica', $this->configuracionId]
+                );
+            }
+
+            // Enviar notificaciones a los administradores
+            $admins = User::where('rol', 'admin')->get();
+            foreach ($admins as $admin) {
+                SendTenantNotification::dispatch(
+                    $this->subdominio,
+                    $admin->id,
+                    ReservaNotification::class,
+                    [$this->turnoId, 'admin.cancelacion_automatica', $this->configuracionId]
+                );
+            }
 
             DB::commit();
 
@@ -143,28 +166,51 @@ class TurnosPendientes implements ShouldQueue
         $cuentaCorriente->save();
     }
 
-    private function enviarNotificaciones(Turno $turno, string $subdominio): void
+    private function enviarNotificaciones($turno, $subdominio): void
     {
         try {
-            // Si no se pasó la configuración en el constructor, la obtenemos ahora
-            $configuracion = $this->configuracion;
-            if (!$configuracion) {
+            // Si no se pasó el ID de configuración en el constructor, intentamos obtenerlo
+            $configuracionId = $this->configuracionId;
+            if (!$configuracionId) {
                 $configuracion = Configuracion::first();
+                if ($configuracion) {
+                    $configuracionId = $configuracion->id;
+                }
             }
+
+            Log::info('Enviando notificaciones para el turno #' . $turno->id . ' en el complejo: ' . $subdominio);
+            
+            // DEBUGGING: Agregar logs para ver exactamente qué valores se están enviando
+            Log::info('Datos para notificación - turnoId: ' . $turno->id . ' - tipo: cancelacion_automatica - configuracionId: ' . $configuracionId);
             
             if($turno->persona && $turno->persona->usuario) {
-                $userNotification = new ReservaNotification($turno, 'cancelacion_automatica', $configuracion);
-                $userNotification->subdominio = $subdominio; // Asignar el subdominio a la notificación
-
-                $turno->persona->usuario->notify($userNotification);
+                // CORRECIÓN CRÍTICA: Convertir explícitamente el ID a string para evitar problemas de tipo
+                $turnoIdString = (string)$turno->id;
+                
+                SendTenantNotification::dispatch(
+                    $subdominio,
+                    $turno->persona->usuario->id,
+                    ReservaNotification::class,
+                    [$turnoIdString, 'cancelacion_automatica', $configuracionId]
+                );
             }
 
-            $adminNotification = new ReservaNotification($turno, 'admin.cancelacion_automatica', $configuracion);
-            $adminNotification->subdominio = $subdominio; 
-
-            User::where('rol', 'admin')->get()->each->notify($adminNotification);
+            // Enviar notificaciones a los administradores
+            $admins = User::where('rol', 'admin')->get();
+            foreach ($admins as $admin) {
+                // CORRECIÓN CRÍTICA: Convertir explícitamente el ID a string para evitar problemas de tipo
+                $turnoIdString = (string)$turno->id;
+                
+                SendTenantNotification::dispatch(
+                    $subdominio,
+                    $admin->id,
+                    ReservaNotification::class,
+                    [$turnoIdString, 'admin.cancelacion_automatica', $configuracionId]
+                );
+            }
         } catch (\Exception $e) {
-            Log::error('Error al enviar notificaciones: ' . $e->getMessage());
+            // Mejorar el log para capturar más información sobre el error
+            Log::error('Error al enviar notificaciones: ' . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
         }
     }
 

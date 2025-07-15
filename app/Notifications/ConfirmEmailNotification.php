@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Notifications\Traits\TenantAware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -9,7 +10,7 @@ use Illuminate\Notifications\Notification;
 
 class ConfirmEmailNotification extends Notification
 {
-    use Queueable;
+    use Queueable, TenantAware;
 
     public $user;
     public $confirmationLink;

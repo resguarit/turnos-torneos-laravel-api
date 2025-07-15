@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Notifications\ResetPasswordNotification;
+use Illuminate\Support\Facades\Log;
 
 class PasswordResetController extends Controller
 {
