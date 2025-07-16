@@ -145,13 +145,91 @@ class ClaseService implements ClaseServiceInterface
             ], 404);
         }
 
-        $clase->update($request->all());
+        $validator = Validator::make($request->all(), [
+            'nombre' => 'sometimes|string|max:255',
+            'descripcion' => 'nullable|string|max:255',
+            'fecha_inicio' => 'sometimes|date',
+            'fecha_fin' => 'sometimes|date',
+            'profesor_id' => 'sometimes|exists:profesores,id',
+            'cancha_id' => 'sometimes|exists:canchas,id',
+            'cupo_maximo' => 'sometimes|integer|min:1',
+            'precio_mensual' => 'sometimes|numeric|min:0',
+            'activa' => 'sometimes|boolean',
+            'horario_ids' => 'sometimes|array|min:1',
+        ]);
 
-        return response()->json([
-            'message' => 'Clase actualizada correctamente',
-            'clase' => $clase,
-            'status' => 200
-        ], 200);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Eliminar bloqueos anteriores
+            \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $clase->cancha_id)
+                ->whereIn('horario_id', is_array($clase->horario_ids) ? $clase->horario_ids : json_decode($clase->horario_ids, true) ?? [])
+                ->where('fecha', '>=', $clase->fecha_inicio)
+                ->where('fecha', '<=', $clase->fecha_fin)
+                ->delete();
+
+            // Si se envían nuevos horarios, actualiza hora_inicio y hora_fin según los horarios seleccionados
+            $horario_ids = $request->horario_ids ?? $clase->horario_ids;
+            $horarios = \App\Models\Horario::whereIn('id', $horario_ids)->orderBy('hora_inicio')->get();
+
+            $hora_inicio = $horarios->isNotEmpty() ? $horarios->first()->hora_inicio : null;
+            $hora_fin = $horarios->isNotEmpty() ? $horarios->last()->hora_fin : null;
+
+            // Actualizar la clase
+            $clase->update([
+                'nombre' => $request->nombre ?? $clase->nombre,
+                'descripcion' => $request->descripcion ?? $clase->descripcion,
+                'fecha_inicio' => $request->fecha_inicio ?? $clase->fecha_inicio,
+                'fecha_fin' => $request->fecha_fin ?? $clase->fecha_fin,
+                'profesor_id' => $request->profesor_id ?? $clase->profesor_id,
+                'cancha_id' => $request->cancha_id ?? $clase->cancha_id,
+                'horario_ids' => $horario_ids,
+                'cupo_maximo' => $request->cupo_maximo ?? $clase->cupo_maximo,
+                'precio_mensual' => $request->precio_mensual ?? $clase->precio_mensual,
+                'activa' => $request->activa ?? $clase->activa,
+                'duracion' => count($horario_ids),
+                // Si tienes campos hora_inicio y hora_fin en la tabla clases, actualízalos aquí:
+                // 'hora_inicio' => $hora_inicio,
+                // 'hora_fin' => $hora_fin,
+            ]);
+
+            // Crear nuevos bloqueos
+            foreach ($horario_ids as $horarioId) {
+                $fechaActual = $request->fecha_inicio ?? $clase->fecha_inicio;
+                $fechaFin = $request->fecha_fin ?? $clase->fecha_fin;
+                while ($fechaActual <= $fechaFin) {
+                    \App\Models\BloqueoDisponibilidadTurno::create([
+                        'fecha' => $fechaActual,
+                        'cancha_id' => $request->cancha_id ?? $clase->cancha_id,
+                        'horario_id' => $horarioId,
+                    ]);
+                    $fechaActual = date('Y-m-d', strtotime($fechaActual . ' +1 day'));
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Clase actualizada correctamente',
+                'clase' => $clase,
+                'status' => 200
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al actualizar la clase',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
     }
 
     public function delete($id)
