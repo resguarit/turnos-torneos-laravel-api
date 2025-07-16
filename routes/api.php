@@ -277,6 +277,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/clases/crear-fijas', [ClaseController::class, 'crearClasesFijas']);
     Route::post('clases/delete-many', [ClaseController::class, 'deleteMany']);
 
+    Route::get('/clases/fijas/grilla', [ClaseController::class, 'getClasesFijasGrilla']);
+
     Route::get('/profesores', [ProfesorController::class, 'index']);
     Route::get('/profesores/{id}', [ProfesorController::class, 'show']);
     Route::post('/profesores', [ProfesorController::class, 'store']);

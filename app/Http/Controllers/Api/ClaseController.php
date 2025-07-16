@@ -54,6 +54,14 @@ class ClaseController extends Controller
         return $this->claseService->crearClasesFijas($request);
     }
 
+        public function getClasesFijasGrilla(Request $request)
+    {
+        $fechaInicio = $request->query('fecha_inicio');
+        $fechaFin = $request->query('fecha_fin');
+        $grilla = $this->claseService->getClasesFijasGrilla($fechaInicio, $fechaFin);
+        return response()->json($grilla);
+    }
+
     public function deleteMany(Request $request)
     {
         return $this->claseService->deleteMany($request);

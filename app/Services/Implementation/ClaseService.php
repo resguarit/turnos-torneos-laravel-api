@@ -517,4 +517,72 @@ class ClaseService implements ClaseServiceInterface
         
         return $inicioEsperado === $horaFin;
     }
+
+    public function getClasesFijasGrilla($fechaInicio = null, $fechaFin = null)
+    {
+        \Log::info("getClasesFijasGrilla - fechaInicio: $fechaInicio, fechaFin: $fechaFin");
+
+        $dias = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
+
+        // Genera los bloques horarios de 1 hora (00:00 a 23:00)
+        $horas = [];
+        for ($h = 0; $h < 24; $h++) {
+            $horaInicio = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00:00';
+            $horas[] = $horaInicio;
+        }
+
+        // Prepara la grilla vacía
+        $grilla = [];
+        foreach ($horas as $hora) {
+            foreach ($dias as $dia) {
+                $grilla[$hora][$dia] = [];
+            }
+        }
+
+        $query = Clase::where('tipo', 'fija');
+        if ($fechaInicio) {
+            $query->where('fecha_inicio', '>=', $fechaInicio);
+        }
+        if ($fechaFin) {
+            $query->where('fecha_fin', '<=', $fechaFin);
+        }
+        $clases = $query->get();
+
+        \Log::info("getClasesFijasGrilla - Clases encontradas: " . $clases->count());
+
+        // Array para evitar duplicados
+        $clasesUnicas = [];
+
+        foreach ($clases as $clase) {
+            foreach ($clase->horarios as $horario) {
+                $diaLower = strtolower($horario->dia);
+
+                // Encuentra el bloque horario donde debe ir la clase
+                $horaClase = $horario->hora_inicio;
+                $h = intval(substr($horaClase, 0, 2));
+                $bloque = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00:00';
+
+                // Si la clase empieza en minutos distintos de 00, igual la metemos en el bloque correspondiente
+                if (in_array($bloque, $horas) && in_array($diaLower, $dias)) {
+                    $key = $clase->nombre . '|' . ($clase->profesor->nombre ?? '') . '|' . ($clase->cancha->nro ?? '') . '|' . $bloque . '|' . $horario->hora_fin . '|' . $diaLower;
+                    if (!isset($clasesUnicas[$bloque][$diaLower][$key])) {
+                        $grilla[$bloque][$diaLower][] = [
+                            'id' => $clase->id,
+                            'nombre' => $clase->nombre,
+                            'profesor' => $clase->profesor->nombre ?? '',
+                            'cancha' => $clase->cancha->nro ?? '',
+                            'hora_inicio' => $horario->hora_inicio,
+                            'hora_fin' => $horario->hora_fin,
+                            'fecha' => $clase->fecha_inicio,
+                        ];
+                        $clasesUnicas[$bloque][$diaLower][$key] = true;
+                    }
+                }
+            }
+        }
+
+        \Log::info("getClasesFijasGrilla - Grilla generada: " . json_encode($grilla));
+
+        return $grilla;
+    }
 }
