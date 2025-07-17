@@ -44,7 +44,7 @@ class CreateComplejoCommand extends Command
         $centralConnection = config('database.connections.mysql_central');
         $db_host = $centralConnection['host'];
         $db_port = $centralConnection['port'];
-        $db_database = 'turnos_' . strtolower($subdominio);
+        $db_database = 'turn_' . strtolower($subdominio);
         $db_username = $centralConnection['username'];
         $db_password = $centralConnection['password'];
 
