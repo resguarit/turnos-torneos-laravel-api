@@ -9,7 +9,8 @@ use App\Services\Interface\BloqueoDisponibilidadServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Carbon\Carbon;  
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;   
 
 class BloqueoDisponibilidadService implements BloqueoDisponibilidadServiceInterface
 {
@@ -68,11 +69,7 @@ class BloqueoDisponibilidadService implements BloqueoDisponibilidadServiceInterf
         $fecha = Carbon::createFromFormat('Y-m-d', $request->fecha);
         $dia = $this->getNombreDiaSemana($fecha->dayOfWeek);
 
-        try {
-            DB::beginTransaction();
-
-            // Obtener los horarios que están dentro del rango y corresponden a los deportes
-            $horarios = Horario::whereIn('deporte_id', $request->deportes)
+        $horarios = Horario::whereIn('deporte_id', $request->deportes)
                 ->where('activo', true)
                 ->where('dia', $dia)
                 ->where(function($query) use ($request) {
@@ -81,22 +78,33 @@ class BloqueoDisponibilidadService implements BloqueoDisponibilidadServiceInterf
                 })
                 ->get();
 
-            if ($horarios->isEmpty()) {
-                return response()->json([
-                    'message' => 'No hay horarios disponibles en el rango especificado'
-                ], 400);
-            }
+        if ($horarios->isEmpty()) {
+            return response()->json([
+                'message' => 'No hay horarios disponibles en el rango especificado'
+            ], 400);
+        }
+
+        try {
+            DB::beginTransaction();
 
             $bloqueos = [];
             foreach ($canchasValidas as $cancha) {
                 $horarioCancha = $horarios->where('deporte_id', $cancha->deporte_id);
                 
                 foreach ($horarioCancha as $horario) {
+
+                    if ($horario->hora_fin == '00:00:00'){
+                        if ($request->hora_fin < '23:30') {
+                            continue;
+                        }
+                    }
+
                     $bloqueo = BloqueoDisponibilidadTurno::firstOrCreate([
                         'fecha' => $request->fecha,
                         'cancha_id' => $cancha->id,
                         'horario_id' => $horario->id
                     ]);
+
                     $bloqueos[] = $bloqueo;
                 }
             }

@@ -42,6 +42,7 @@ use App\Http\Controllers\Configuracion\ConfiguracionController;
 use App\Http\Controllers\Api\PenalController;
 use App\Http\Controllers\Api\ClaseController;
 use App\Http\Controllers\Api\ProfesorController;
+use App\Http\Controllers\Api\DescuentoController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -60,7 +61,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/configuracion-update', [ConfiguracionController::class, 'actualizarConfiguracion']);
 
-    
+    Route::post('/descuentos', [DescuentoController::class, 'storeBatch']);
+    Route::get('/descuentos', [DescuentoController::class, 'getDescuentos']);
+    Route::delete('/descuentos/{id}', [DescuentoController::class, 'destroy']);
+
     Route::get('/canchas', [CanchaController::class, 'index']);
 
     Route::post('/canchas', [CanchaController::class, 'store']);

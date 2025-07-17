@@ -14,6 +14,7 @@ class Configuracion extends Model
         'colores',
         'habilitar_turnos',
         'habilitar_mercado_pago',
+        'mercado_pago_public_key',
         'mercado_pago_access_token',
         'mercado_pago_webhook_secret',
         'nombre_complejo',
