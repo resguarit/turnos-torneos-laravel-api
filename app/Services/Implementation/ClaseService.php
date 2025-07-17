@@ -504,6 +504,9 @@ class ClaseService implements ClaseServiceInterface
 
         \Log::info("getClasesFijasGrilla - Clases encontradas: " . $clases->count());
 
+        // Array para controlar duplicados por día/horario/clase
+        $clasesUnicas = [];
+
         foreach ($clases as $clase) {
             // Obtener canchas de la clase
             $canchas = $clase->canchas;
@@ -518,15 +521,24 @@ class ClaseService implements ClaseServiceInterface
                 $bloque = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00:00';
 
                 if (in_array($bloque, $horas) && in_array($diaLower, $dias)) {
-                    $grilla[$bloque][$diaLower][] = [
-                        'id' => $clase->id,
-                        'nombre' => $clase->nombre,
-                        'profesor' => $clase->profesor->nombre ?? '',
-                        'canchas' => $canchasStr,
-                        'hora_inicio' => $horario->hora_inicio,
-                        'hora_fin' => $horario->hora_fin,
-                        'fecha' => $clase->fecha_inicio,
-                    ];
+                    // Crear clave única para evitar duplicados: nombre + profesor + canchas + horario + día
+                    $claveUnica = $clase->nombre . '|' . ($clase->profesor->nombre ?? '') . '|' . $canchasStr . '|' . $horario->hora_inicio . '|' . $horario->hora_fin . '|' . $diaLower;
+                    
+                    // Solo agregar si no existe esta combinación
+                    if (!isset($clasesUnicas[$bloque][$diaLower][$claveUnica])) {
+                        $grilla[$bloque][$diaLower][] = [
+                            'id' => $clase->id,
+                            'nombre' => $clase->nombre,
+                            'profesor' => $clase->profesor->nombre ?? '',
+                            'canchas' => $canchasStr,
+                            'hora_inicio' => $horario->hora_inicio,
+                            'hora_fin' => $horario->hora_fin,
+                            'fecha' => $clase->fecha_inicio, // Puedes mostrar la primera fecha o quitar este campo
+                        ];
+                        
+                        // Marcar como agregada
+                        $clasesUnicas[$bloque][$diaLower][$claveUnica] = true;
+                    }
                 }
             }
         }
