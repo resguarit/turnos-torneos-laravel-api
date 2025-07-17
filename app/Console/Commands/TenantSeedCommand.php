@@ -70,7 +70,7 @@ class TenantSeedCommand extends Command
             $this->call('db:seed', [
                 '--database' => 'mysql_tenant',
                 '--force' => true,
-                '--class' => 'database\\seeders\\complejos\\DatabaseSeeder',
+                '--class' => 'database/seeders/complejos/DatabaseSeeder',
             ]);
 
             $this->info("Seeders completados exitosamente para el complejo: {$complejo->nombre}");
