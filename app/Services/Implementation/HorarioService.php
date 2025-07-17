@@ -560,6 +560,37 @@ class HorarioService implements HorarioServiceInterface
         ], 200);
     }
 
+    public function getHorariosActivosPorDias(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'deporte_id' => 'required|exists:deportes,id',
+            'dias' => 'required|array',
+            'dias.*' => 'string|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 422
+            ], 422);
+        }
+
+        $result = [];
+        foreach ($request->dias as $dia) {
+            $horarios = Horario::where('dia', $dia)
+                ->where('activo', true)
+                ->where('deporte_id', $request->deporte_id)
+                ->get();
+            $result[$dia] = $horarios;
+        }
+
+        return response()->json([
+            'horarios_por_dia' => $result,
+            'status' => 200
+        ], 200);
+    }
+
     /**
      * Convierte una hora en formato H:i a minutos desde medianoche
      */
