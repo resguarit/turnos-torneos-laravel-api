@@ -16,7 +16,7 @@ class Clase extends Model
         'fecha_inicio',
         'fecha_fin',
         'profesor_id',
-        'cancha_id',
+        'cancha_ids',
         'horario_ids',
         'cupo_maximo',
         'precio_mensual',
@@ -27,6 +27,7 @@ class Clase extends Model
 
     protected $casts = [
         'horario_ids' => 'array',
+        'cancha_ids' => 'array',
     ];
     
     public function profesor()
@@ -34,13 +35,26 @@ class Clase extends Model
         return $this->belongsTo(Profesor::class, 'profesor_id');
     }
 
+    public function canchas()
+    {
+        return Cancha::whereIn('id', $this->cancha_ids ?? [])->get();
+    }
+
+    // Mantener compatibilidad con código existente
     public function cancha()
     {
-        return $this->belongsTo(Cancha::class, 'cancha_id');
+        $canchas = $this->canchas();
+        return $canchas->isNotEmpty() ? $canchas->first() : null;
     }
+
 
     public function getHorariosAttribute()
     {
         return \App\Models\Horario::whereIn('id', $this->horario_ids ?? [])->get();
+    }
+
+        public function getCanchasAttribute()
+    {
+        return Cancha::whereIn('id', $this->cancha_ids ?? [])->get();
     }
 }
