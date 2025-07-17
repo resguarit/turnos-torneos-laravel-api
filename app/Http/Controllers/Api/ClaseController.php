@@ -66,4 +66,9 @@ class ClaseController extends Controller
     {
         return $this->claseService->deleteMany($request);
     }
+
+    public function updateClasesFijas(Request $request)
+    {
+        return $this->claseService->updateClasesFijas($request);
+    }
 }
