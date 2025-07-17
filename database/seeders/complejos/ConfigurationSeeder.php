@@ -26,9 +26,9 @@ class ConfigurationSeeder extends Seeder
             'habilitar_mercado_pago' => false,
             'mercado_pago_access_token' => null,
             'mercado_pago_webhook_secret' => null,
-            'nombre_complejo' => 'Rock & Gol',
-            'direccion_complejo' => 'Calle 47 Nº 537 entre 5 y 6, La Plata, Buenos Aires',
-            'telefono_complejo' => '2215607115',
+            'nombre_complejo' => 'RG Turnos',
+            'direccion_complejo' => 'Diagonal 76 Nº 46 entre 14 y 15, La Plata, Buenos Aires',
+            'telefono_complejo' => '2216914649',
         ]);
     }
 }

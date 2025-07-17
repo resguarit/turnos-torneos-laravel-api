@@ -12,7 +12,7 @@ class MigrateCentralDatabase extends Command
      *
      * @var string
      */
-    protected $signature = 'migrate:central';
+    protected $signature = 'central:migrate';
 
     /**
      * The console command description.

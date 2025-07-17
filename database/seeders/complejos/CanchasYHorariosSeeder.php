@@ -27,8 +27,9 @@ class CanchasYHorariosSeeder extends Seeder
         // --- CANCHAS ---
 
         // Canchas para Fútbol (Deporte ID: $deporteFutbolId)
-        Cancha::create([
-            'nro' => 1,
+        Cancha::firstOrCreate(
+        ['nro' => 1], 
+        [
             'descripcion' => 'Cancha Fútbol 5 Techada',
             'tipo_cancha' => 'F5',
             'activa' => true,
@@ -37,8 +38,9 @@ class CanchasYHorariosSeeder extends Seeder
             'deporte_id' => $deporteFutbol5Id
         ]);
 
-        Cancha::create([
-            'nro' => 2,
+        Cancha::firstOrCreate(
+        ['nro' => 2],
+        [
             'descripcion' => 'Cancha Fútbol 7 Descubierta',
             'tipo_cancha' => 'F7',
             'activa' => true,
@@ -47,8 +49,9 @@ class CanchasYHorariosSeeder extends Seeder
             'deporte_id' => $deporteFutbol7Id
         ]);
         
-        Cancha::create([
-            'nro' => 3,
+        Cancha::create(
+        ['nro' => 3],
+        [
             'descripcion' => 'Cancha Fútbol 5',
             'tipo_cancha' => 'F5',
             'activa' => true,

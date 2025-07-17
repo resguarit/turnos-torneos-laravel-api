@@ -15,7 +15,7 @@ class MigrateTenants extends Command
      *
      * @var string
      */
-    protected $signature = 'migrate:complejos';
+    protected $signature = 'complejos:migrate';
 
     /**
      * The console command description.

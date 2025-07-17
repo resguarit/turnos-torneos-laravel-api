@@ -8,6 +8,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;   
 use App\Models\Persona;
 use App\Models\CuentaCorriente;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,70 +17,34 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        DB::transaction(function () {
 
-        //creamos las personas
-        $persona = Persona::create([
-            'name' => 'admin',
-            'dni' => '123456',
-            'telefono' => '1234567890',
-        ]);
+            //creamos las personas
+            $persona = Persona::firstOrCreate([
+                'dni' => '123456',
+            ], [
+                'name' => 'Admin',
+                'telefono' => '123456789'
+            ]);
 
-        CuentaCorriente::create([
-            'persona_id' => $persona->id,
-            'saldo' => 0,
-        ]);
+            CuentaCorriente::firstOrCreate([
+                'persona_id' => $persona->id,
+            ], [
+                'saldo' => 0,
+            ]);
 
-        User::create([
-            'email' => 'admin@gmail.com',
-            'dni' => '123456',
-            'password' => bcrypt('password'),
-            'rol' => 'admin',
-            'persona_id' => $persona->id,
-        ]);
+            User::firstOrCreate(
+                ['email' => 'admin@gmail.com'],
+                [
+                    'dni' => $persona->dni,
+                    'password' => bcrypt('password'),
+                    'rol' => 'admin',
+                    'persona_id' => $persona->id,
+                ]);
 
-        $persona = Persona::create([
-            'name' => 'Mariano Salas',
-            'dni' => '45356347',
-            'telefono' => '2215607115'
-        ]);
-
-        CuentaCorriente::create([
-            'persona_id' => $persona->id,
-            'saldo' => 0,
-        ]);
-
-        User::create([
-            'email' => 'marianosalas24@gmail.com',
-            'dni' => '45356347',
-            'password' => bcrypt('password'),
-            'rol' => 'cliente',
-            'persona_id' => $persona->id,
-        ]);
-
-        $persona = Persona::create([
-            'name' => 'Mariano Admin',
-            'dni' => '45356348',
-            'telefono' => '2215607116'
-        ]);
-
-        CuentaCorriente::create([
-            'persona_id' => $persona->id,
-            'saldo' => 0,
-        ]);
-
-        User::create([
-            'email' => 'msalas.escuela@gmail.com',
-            'dni' => '45356348',
-            'password' => bcrypt('password'),
-            'rol' => 'admin',
-            'persona_id' => $persona->id,
-        ]);
-
-        $this->call([
-            EquiposYJugadoresSeeder::class,
-            CanchasYHorariosSeeder::class,
-            ConfigurationSeeder::class,
-        ]);
+            $this->call([
+                ConfigurationSeeder::class,
+            ]);
+        });
     }
 }
