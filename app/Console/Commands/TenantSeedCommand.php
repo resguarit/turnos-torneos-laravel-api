@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 use App\Models\Complejo;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use Database\Seeders\Complejos\DatabaseSeeder;
+use Database\Seeders\DatabaseSeeder;
 use Dflydev\DotAccessData\Data;
 
 class TenantSeedCommand extends Command
