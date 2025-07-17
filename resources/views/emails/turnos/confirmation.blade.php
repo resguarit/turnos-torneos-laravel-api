@@ -45,7 +45,7 @@
                             
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
-                                <a href="{{ config('app.url_front') }}/user-profile" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver mis turnos</a>
+                                <a href="{{ $notification->tenantUrl('user-profile') }}" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver mis turnos</a>
                             </p>
                             
                             <p>Gracias por confiar en nosotros.<br>

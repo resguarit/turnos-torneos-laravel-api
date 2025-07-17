@@ -26,7 +26,7 @@
                             
                             <!-- Detalles sin formato de tabla especial -->
                             <div style="background-color: #f9f9f9; padding: 15px; margin: 15px 0; border-left: 3px solid #999999;">
-                                <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ formatearFechaCompleta($turno->fecha_turno) }}</p>
+                                <p style="margin: 5px 0;"><strong>Fecha del turno:</strong> {{ formatearFechaCompleta($turno->fecha_turno) }}</p>
                                 <p style="margin: 5px 0;"><strong>Horario:</strong> {{ formatearRangoHorario($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
                                 <p style="margin: 5px 0;"><strong>Duración:</strong> {{ calcularDuracion($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
                                 <p style="margin: 5px 0;"><strong>Cancha:</strong> #{{ $turno->cancha->nro }} {{ $turno->cancha->tipo_cancha }}</p>
@@ -39,11 +39,9 @@
                                 @endif
                             </div>
                             <p style="margin: 5px 0;"><strong>Fecha de cancelación:</strong> {{ formatearFechaCompleta($turno->created_at) }} a las {{ $turno->created_at->format('H:i') }} hs</p>
-                            <p>Las cancelaciones realizadas 30 minutos después de la reserva tienen un cargo del 10% del valor del turno.</p>
-                            
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
-                                <a href="{{ config('app.url_front') }}/user-profile" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver mis turnos</a>
+                                <a href="{{ $notification->tenantUrl('user-profile') }}" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver mis turnos</a>
                             </p>
                             
                             <p>Gracias por confiar en nosotros.<br>

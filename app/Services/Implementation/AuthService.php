@@ -49,7 +49,7 @@ class AuthService implements AuthServiceInterface
         ];
     }
 
-    public function register(array $data)
+    public function register(array $data, $subdominio)
     {
         DB::beginTransaction();
 
@@ -94,7 +94,7 @@ class AuthService implements AuthServiceInterface
             ]);
 
             $token = VerifyEmailController::generateVerificationToken($data['email']);
-            $confirmationLink = env('APP_URL_FRONT') . '/verify-email?email=' . $data['email'] . '&token=' . $token;
+            $confirmationLink = tenant_url($subdominio, 'verify-email?email=' . $data['email'] . '&token=' . $token);
             $user->notify(new ConfirmEmailNotification($user, $confirmationLink));
             
             DB::commit();

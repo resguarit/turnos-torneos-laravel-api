@@ -45,6 +45,14 @@ class TurnoResource extends JsonResource
             'fecha_turno' => $this->fecha_turno->format('Y-m-d'),
             'monto_total' => $this->monto_total,
             'monto_seña' => $this->monto_seña,
+            'descuento' => $this->descuento ? [
+                'motivo' => $this->descuento->motivo ?? null,
+                'tipo' => $this->descuento->tipo,
+                'valor' => $this->descuento->valor,
+                'monto_original' => $this->descuento->tipo === 'porcentaje' 
+                ? ($this->monto_total / (1 - ($this->descuento->valor/100))) 
+                : $this->monto_total + $this->descuento->valor
+            ] : null,
             'estado' => $this->estado,
             'tipo' => $this->tipo,
             'created_at' => $this->created_at,

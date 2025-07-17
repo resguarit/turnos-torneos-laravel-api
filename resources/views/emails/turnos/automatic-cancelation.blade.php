@@ -53,8 +53,8 @@
                             
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
-                                <a href="{{ config('app.url_front') }}/user-profile" style="display: inline-block; background-color: #3498db; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 10px;">Ver mis turnos</a>
-                                <a href="{{ config('app.url_front') }}/select-deporte" style="display: inline-block; background-color: #27ae60; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px;">Reservar nuevo turno</a>
+                                <a href="{{ $notification->tenantUrl('user-profile') }}" style="display: inline-block; background-color: #3498db; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 10px;">Ver mis turnos</a>
+                                <a href="{{ $notification->tenantUrl('select-deporte') }}" style="display: inline-block; background-color: #27ae60; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px;">Reservar nuevo turno</a>
                             </p>
                             
                             <p>Si tienes alguna consulta sobre esta cancelación o necesitas asistencia, no dudes en contactarnos.</p>

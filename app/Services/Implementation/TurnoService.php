@@ -37,6 +37,8 @@ use App\Models\MetodoPago;
 use App\Models\Caja;
 use App\Http\Controllers\Checkout\MercadoPagoController;
 use App\Models\Configuracion;
+use App\Models\Descuento;
+use App\Jobs\SendTenantNotification;
 
 class TurnoService implements TurnoServiceInterface
 {
@@ -169,6 +171,23 @@ class TurnoService implements TurnoServiceInterface
 
         $monto_total = $cancha->precio_por_hora;        
         $monto_seña = $cancha->seña;
+        $descuento_aplicado_id = null;
+
+        $descuento = Descuento::where('fecha', $request->fecha_turno)
+            ->where('cancha_id', $request->cancha_id)
+            ->where('horario_id', $request->horario_id)
+            ->first();
+
+        if ($descuento) {
+            if ($descuento->tipo === 'porcentaje') {
+                $monto_total -= $monto_total * ($descuento->valor / 100);
+            } elseif ($descuento->tipo === 'fijo') {
+                $monto_total -= $descuento->valor;
+            }
+
+            $monto_total = max(0, $monto_total);
+            $descuento_aplicado_id = $descuento->id;
+        }
 
         if (is_null($monto_seña)) {
             return response()->json([
@@ -228,6 +247,7 @@ class TurnoService implements TurnoServiceInterface
             'persona_id' => $persona->id,
             'monto_total' => $monto_total,
             'monto_seña' => $monto_seña,
+            'descuento_id' => $descuento_aplicado_id,
             'estado' => $request->estado,
             'tipo' => 'unico'
         ]);
@@ -274,9 +294,20 @@ class TurnoService implements TurnoServiceInterface
             // Obtener la configuración para incluirla en las notificaciones
             $configuracion = Configuracion::first();
             
-            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.pending', $configuracion));
+            // Usar SendTenantNotification en lugar de notify directamente
+            $subdominio = $request->header('x-complejo');
+            $admins = User::where('rol', 'admin')->get();
             
-            TurnosPendientes::dispatch($turno->id, $configuracion)->delay(Carbon::now()->addMinutes(30));
+            foreach ($admins as $admin) {
+                SendTenantNotification::dispatch(
+                    $subdominio,
+                    $admin->id,
+                    ReservaNotification::class,
+                    [$turno->id, 'admin.pending', $configuracion->id]
+                );
+            }
+
+            TurnosPendientes::dispatch($turno->id, $configuracion->id, $subdominio)->delay(Carbon::now()->addMinutes(30));
 
             DB::commit();
 
@@ -752,10 +783,11 @@ class TurnoService implements TurnoServiceInterface
                 if ($cancha->deporte_id == $horario->deporte_id) {
                     $turno = $turnos->first(function ($t) use ($horario, $cancha, $fecha) {
                          $match = $t->horario_id == $horario->id
-                        && $t->cancha_id == $cancha->id;
+                        && $t->cancha_id == $cancha->id
+                        && $t->fecha_turno->isSameDay($fecha); // Asegurarse de que la fecha también coincida
 
                     if ($match) {
-                        \Log::debug('Turno MATCH', [
+                        Log::debug('Turno MATCH', [
                             'turno_id' => $t->id,
                             'horario_id' => $t->horario_id,
                             'cancha_id' => $t->cancha_id,
@@ -789,7 +821,7 @@ class TurnoService implements TurnoServiceInterface
                                 }
                             } else {
                                 if ($partido && $fechaModel !== null) {
-                                     \Log::warning("TurnoService: For partido ID {$partido->id}, 'fecha' relation was not a Fecha model instance. Type: " . gettype($fechaModel));
+                                     Log::warning("TurnoService: For partido ID {$partido->id}, 'fecha' relation was not a Fecha model instance. Type: " . gettype($fechaModel));
                                 }
                             }
 
@@ -823,6 +855,7 @@ class TurnoService implements TurnoServiceInterface
                                 'tipo' => $turno->tipo,
                             ];
                         }
+                        
                     }
 
                     $grid[$hora][$cancha->nro] = [
@@ -1100,11 +1133,28 @@ class TurnoService implements TurnoServiceInterface
             // Notificaciones (adaptar según necesidad)
             // Obtener la configuración para incluirla en las notificaciones
             $configuracion = Configuracion::first();
+            $subdominio = request()->header('x-complejo');
             
             if ($persona->usuario) {
-                $persona->usuario->notify(new ReservaNotification($turno, 'cancelacion', $configuracion));
+                // Usar SendTenantNotification en lugar de notify directamente
+                SendTenantNotification::dispatch(
+                    $subdominio,
+                    $persona->usuario->id,
+                    ReservaNotification::class,
+                    [$turno->id, 'cancelacion', $configuracion?->id]
+                );
             }
-            User::where('rol', 'admin')->get()->each->notify(new ReservaNotification($turno, 'admin.cancelacion', $configuracion));
+            
+            // Enviar notificaciones a los administradores
+            $admins = User::where('rol', 'admin')->get();
+            foreach ($admins as $admin) {
+                SendTenantNotification::dispatch(
+                    $subdominio,
+                    $admin->id,
+                    ReservaNotification::class,
+                    [$turno->id, 'admin.cancelacion', $configuracion?->id]
+                );
+            }
 
             DB::commit();
 
@@ -1182,26 +1232,26 @@ class TurnoService implements TurnoServiceInterface
         DB::beginTransaction();
         
         try {
-        // Crear una nueva reserva
-        $turno = Turno::create([
-            'fecha_turno' => $request->fecha_turno,
-            'fecha_reserva' => now(),
-            'horario_id' => $request->horario_id,
-            'cancha_id' => $request->cancha_id,
-            'persona_id' => $request->persona_id,
-            'monto_total' => $monto_total,
-            'monto_seña' => $monto_seña,
-            'estado' => $request->estado,
-            'tipo' => $request->tipo
-        ]);
+            // Crear una nueva reserva
+            $turno = Turno::create([
+                'fecha_turno' => $request->fecha_turno,
+                'fecha_reserva' => now(),
+                'horario_id' => $request->horario_id,
+                'cancha_id' => $request->cancha_id,
+                'persona_id' => $request->persona_id,
+                'monto_total' => $monto_total,
+                'monto_seña' => $monto_seña,
+                'estado' => $request->estado,
+                'tipo' => $request->tipo
+            ]);
 
-        if (!$turno) {
+            if (!$turno) {
                 DB::rollBack();
-            return response()->json([
-                'message' => 'Error al crear el turno',
-                'status' => 500
-            ], 500);
-        }
+                return response()->json([
+                    'message' => 'Error al crear el turno',
+                    'status' => 500
+                ], 500);
+            }
 
             // Registrar transacción en cuenta corriente según el estado
             if ($request->estado != 'Pagado') {

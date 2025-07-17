@@ -42,7 +42,7 @@ return [
             'synchronous' => null,
         ],
 
-        'mysql' => [
+        'mysql_central' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -58,6 +58,26 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
+        'mysql_tenant' => [
+            'driver'         => 'mysql',
+            'url'            => null,
+            'host'           => null, // Será seteado por el middleware
+            'port'           => null, // Será seteado por el middleware
+            'database'       => null, // Será seteado por el middleware
+            'username'       => null, // Será seteado por el middleware
+            'password'       => null, // Será seteado por el middleware
+            'unix_socket'    => '',
+            'charset'        => env('DB_CHARSET', 'utf8mb4'),
+            'collation'      => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix'         => '',
+            'prefix_indexes' => true,
+            'strict'         => true,
+            'engine'         => null,
+            'options'        => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],

@@ -40,6 +40,7 @@ use App\Http\Controllers\TipoGastoController;
 use App\Http\Controllers\BalanceController;
 use App\Http\Controllers\Configuracion\ConfiguracionController;
 use App\Http\Controllers\Api\PenalController;
+use App\Http\Controllers\Api\DescuentoController;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
@@ -48,7 +49,7 @@ Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']
 Route::post('/verify-email', [VerifyEmailController::class, 'verifyEmail']);
 
 // Rutas de MercadoPago públicas (no requieren autenticación)
-Route::post('/mercadopago/webhook', [MercadoPagoWebhook::class, 'handleWebhook']);
+Route::post('/mercadopago/webhook/{subdominio}', [MercadoPagoWebhook::class, 'handleWebhook']);
 Route::post('/mercadopago/verify-payment', [MercadoPagoController::class, 'verifyPaymentStatus']);
 Route::post('/mercadopago/verify-payment-by-preference', [MercadoPagoController::class, 'verifyPaymentStatusByPreference']);    
 
@@ -58,7 +59,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/configuracion-update', [ConfiguracionController::class, 'actualizarConfiguracion']);
 
-    
+    Route::post('/descuentos', [DescuentoController::class, 'storeBatch']);
+    Route::get('/descuentos', [DescuentoController::class, 'getDescuentos']);
+    Route::delete('/descuentos/{id}', [DescuentoController::class, 'destroy']);
+
     Route::get('/canchas', [CanchaController::class, 'index']);
 
     Route::post('/canchas', [CanchaController::class, 'store']);

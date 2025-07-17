@@ -29,7 +29,7 @@
                                 <p style="margin: 5px 0;"><strong>Cliente:</strong> {{ $turno->persona->name }}</p>
                                 <p style="margin: 5px 0;"><strong>Email:</strong> {{ $turno->persona->usuario->email }}</p>
                                 <p style="margin: 5px 0;"><strong>Teléfono:</strong> {{ $turno->persona->telefono }}</p>
-                                <p style="margin: 5px 0;"><strong>Fecha:</strong> {{ formatearFechaCompleta($turno->fecha_turno) }}</p>
+                                <p style="margin: 5px 0;"><strong>Fecha del turno:</strong> {{ formatearFechaCompleta($turno->fecha_turno) }}</p>
                                 <p style="margin: 5px 0;"><strong>Horario:</strong> {{ formatearRangoHorario($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
                                 <p style="margin: 5px 0;"><strong>Duración:</strong> {{ calcularDuracion($turno->horario->hora_inicio, $turno->horario->hora_fin) }}</p>
                                 <p style="margin: 5px 0;"><strong>Cancha:</strong> #{{ $turno->cancha->nro }} {{ $turno->cancha->tipo_cancha }}</p>
@@ -46,7 +46,7 @@
                             
                             <!-- Botón simple -->
                             <p style="margin: 20px 0;">
-                                <a href="{{ config('app.url_front') }}/panel-admin?tab=turnos&id={{ $turno->id }}" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver en el sistema</a>
+                                <a href="{{ $notification->tenantUrl('panel-admin?tab=turnos&id=' . $turno->id) }}" style="display: inline-block; background-color: #333333; color: #ffffff; text-decoration: none; padding: 8px 15px; border-radius: 3px;">Ver en el sistema</a>
                             </p>
                             
                             <p>El horario está ahora disponible para nuevas reservas.</p>

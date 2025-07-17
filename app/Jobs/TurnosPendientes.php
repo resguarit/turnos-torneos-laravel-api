@@ -19,21 +19,26 @@ use App\Notifications\ReservaNotification;
 use App\Models\User;
 use Carbon\Carbon;
 use App\Models\Configuracion;
+use App\Models\Complejo;
+use Illuminate\Support\Facades\Config;
+use App\Jobs\SendTenantNotification;
 
 class TurnosPendientes implements ShouldQueue
 {
     use Queueable, Dispatchable, InteractsWithQueue, SerializesModels;
 
     protected $turnoId;
-    protected $configuracion;
+    protected $configuracionId;
+    protected $subdominio;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($turnoId, $configuracion = null)
+    public function __construct($turnoId, $configuracionId = null, $subdominio)
     {
         $this->turnoId = $turnoId;
-        $this->configuracion = $configuracion;
+        $this->configuracionId = $configuracionId;
+        $this->subdominio = $subdominio;
     }
 
     /**
@@ -41,7 +46,23 @@ class TurnosPendientes implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info('Iniciando el job TurnosPendientes para el turno #' . $this->turnoId);
+        Log::info('Iniciando el job TurnosPendientes para el turno #' . $this->turnoId . ' en el complejo: ' . $this->subdominio);
+        $complejo = Complejo::where('subdominio', $this->subdominio)->first();
+
+        if (!$complejo) {
+            Log::error('Complejo con subdominio ' . $this->subdominio . ' no encontrado');
+            return;
+        }
+
+        DB::purge('mysql_tenant');
+        Config::set('database.connections.mysql_tenant.host', $complejo->db_host);
+        Config::set('database.connections.mysql_tenant.database', $complejo->db_database);
+        Config::set('database.connections.mysql_tenant.username', $complejo->db_username);
+        Config::set('database.connections.mysql_tenant.password', $complejo->db_password);
+        Config::set('database.connections.mysql_tenant.port', $complejo->db_port);
+        Config::set('database.default', 'mysql_tenant');
+
+        Log::info("Job TurnosPendientes: Ejecutando para el complejo '{$complejo->nombre}' (ID Turno: {$this->turnoId})");
         
         $turno = Turno::with(['persona', 'persona.cuentaCorriente', 'cancha'])->find($this->turnoId);
 
@@ -83,7 +104,29 @@ class TurnosPendientes implements ShouldQueue
                 'fecha_cancelacion' => now(),	
             ]);
 
-            $this->enviarNotificaciones($turnoActual);
+           
+            // Usar directamente this->turnoId y this->configuracionId sin modificaciones
+            Log::info('Enviando notificaciones para el turno #' . $this->turnoId . ' en el complejo: ' . $this->subdominio);
+            
+            if($turno->persona && $turno->persona->usuario) {
+                SendTenantNotification::dispatch(
+                    $this->subdominio,
+                    $turno->persona->usuario->id,
+                    ReservaNotification::class,
+                    [$this->turnoId, 'cancelacion_automatica', $this->configuracionId]
+                );
+            }
+
+            // Enviar notificaciones a los administradores
+            $admins = User::where('rol', 'admin')->get();
+            foreach ($admins as $admin) {
+                SendTenantNotification::dispatch(
+                    $this->subdominio,
+                    $admin->id,
+                    ReservaNotification::class,
+                    [$this->turnoId, 'admin.cancelacion_automatica', $this->configuracionId]
+                );
+            }
 
             DB::commit();
 
@@ -123,26 +166,51 @@ class TurnosPendientes implements ShouldQueue
         $cuentaCorriente->save();
     }
 
-    private function enviarNotificaciones(Turno $turno): void
+    private function enviarNotificaciones($turno, $subdominio): void
     {
         try {
-            // Si no se pasó la configuración en el constructor, la obtenemos ahora
-            $configuracion = $this->configuracion;
-            if (!$configuracion) {
+            // Si no se pasó el ID de configuración en el constructor, intentamos obtenerlo
+            $configuracionId = $this->configuracionId;
+            if (!$configuracionId) {
                 $configuracion = Configuracion::first();
+                if ($configuracion) {
+                    $configuracionId = $configuracion->id;
+                }
             }
+
+            Log::info('Enviando notificaciones para el turno #' . $turno->id . ' en el complejo: ' . $subdominio);
+            
+            // DEBUGGING: Agregar logs para ver exactamente qué valores se están enviando
+            Log::info('Datos para notificación - turnoId: ' . $turno->id . ' - tipo: cancelacion_automatica - configuracionId: ' . $configuracionId);
             
             if($turno->persona && $turno->persona->usuario) {
-                $turno->persona->usuario->notify(
-                    new ReservaNotification($turno, 'cancelacion_automatica', $configuracion)
+                // CORRECIÓN CRÍTICA: Convertir explícitamente el ID a string para evitar problemas de tipo
+                $turnoIdString = (string)$turno->id;
+                
+                SendTenantNotification::dispatch(
+                    $subdominio,
+                    $turno->persona->usuario->id,
+                    ReservaNotification::class,
+                    [$turnoIdString, 'cancelacion_automatica', $configuracionId]
                 );
             }
 
-            User::where('rol', 'admin')->get()->each->notify(
-                new ReservaNotification($turno, 'admin.cancelacion_automatica', $configuracion)
-            );
+            // Enviar notificaciones a los administradores
+            $admins = User::where('rol', 'admin')->get();
+            foreach ($admins as $admin) {
+                // CORRECIÓN CRÍTICA: Convertir explícitamente el ID a string para evitar problemas de tipo
+                $turnoIdString = (string)$turno->id;
+                
+                SendTenantNotification::dispatch(
+                    $subdominio,
+                    $admin->id,
+                    ReservaNotification::class,
+                    [$turnoIdString, 'admin.cancelacion_automatica', $configuracionId]
+                );
+            }
         } catch (\Exception $e) {
-            Log::error('Error al enviar notificaciones: ' . $e->getMessage());
+            // Mejorar el log para capturar más información sobre el error
+            Log::error('Error al enviar notificaciones: ' . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
         }
     }
 
