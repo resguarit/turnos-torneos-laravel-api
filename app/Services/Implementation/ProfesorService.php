@@ -26,6 +26,8 @@ class ProfesorService implements ProfesorServiceInterface
             'apellido' => 'required|string|max:255',
             'dni' => 'required|string|max:20|unique:profesores,dni',
             'telefono' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255|unique:profesores,email',
+            'especialidad' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -54,6 +56,23 @@ class ProfesorService implements ProfesorServiceInterface
                 'message' => 'Profesor no encontrado',
                 'status' => 404
             ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'nombre' => 'sometimes|required|string|max:255',
+            'apellido' => 'sometimes|required|string|max:255',
+            'dni' => 'sometimes|required|string|max:20|unique:profesores,dni,' . $id,
+            'telefono' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255|unique:profesores,email,' . $id,
+            'especialidad' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
         }
 
         $profesor->update($request->all());
