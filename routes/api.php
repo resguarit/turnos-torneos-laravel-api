@@ -276,6 +276,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/clases/{id}', [ClaseController::class, 'destroy']);
     Route::post('/clases/crear-fijas', [ClaseController::class, 'crearClasesFijas']);
     Route::post('clases/delete-many', [ClaseController::class, 'deleteMany']);
+    Route::put('/clases-fijas', [ClaseController::class, 'updateClasesFijas']);
 
     Route::get('/clases/fijas/grilla', [ClaseController::class, 'getClasesFijasGrilla']);
 

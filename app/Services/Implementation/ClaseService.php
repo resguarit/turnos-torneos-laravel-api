@@ -547,4 +547,280 @@ class ClaseService implements ClaseServiceInterface
 
         return $grilla;
     }
+
+    public function updateClasesFijas(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:clases,id',
+            'nombre' => 'sometimes|string|max:255',
+            'descripcion' => 'nullable|string|max:255',
+            'profesor_id' => 'sometimes|exists:profesores,id',
+            'cupo_maximo' => 'sometimes|integer|min:1',
+            'precio_mensual' => 'sometimes|numeric|min:0',
+            'activa' => 'sometimes|boolean',
+            'fecha_inicio' => 'sometimes|date',
+            'duracion_meses' => 'sometimes|integer|min:1',
+            'dias_horarios' => 'sometimes|array|min:1',
+            'dias_horarios.*.dia' => 'required|string|in:lunes,martes,miércoles,jueves,viernes,sábado,domingo',
+            'dias_horarios.*.hora_inicio' => 'required|date_format:H:i',
+            'dias_horarios.*.hora_fin' => 'required|date_format:H:i|after:dias_horarios.*.hora_inicio',
+            'deporte_id' => 'sometimes|exists:deportes,id',
+            'cancha_ids' => 'sometimes|array|min:1',
+            'cancha_ids.*' => 'exists:canchas,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error en la validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
+        }
+
+        $ids = $request->ids;
+        $clases = Clase::whereIn('id', $ids)->where('tipo', 'fija')->get();
+
+        if ($clases->isEmpty()) {
+            return response()->json([
+                'message' => 'No se encontraron clases fijas con los IDs proporcionados',
+                'status' => 404
+            ], 404);
+        }
+
+        // Verificar si todas las clases pertenecen al mismo grupo (mismo nombre y profesor)
+        $primerClase = $clases->first();
+        $esGrupoHomogeneo = $clases->every(function ($clase) use ($primerClase) {
+            return $clase->nombre === $primerClase->nombre && 
+                $clase->profesor_id === $primerClase->profesor_id;
+        });
+
+        if (!$esGrupoHomogeneo) {
+            return response()->json([
+                'message' => 'Las clases seleccionadas no forman un grupo homogéneo (diferente nombre o profesor)',
+                'status' => 400
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Si se cambian fechas o días, recrear las clases
+            if ($request->has('fecha_inicio') || $request->has('duracion_meses') || $request->has('dias_horarios')) {
+                
+                // Eliminar clases antiguas y sus bloqueos
+                foreach ($clases as $clase) {
+                    foreach ($clase->cancha_ids ?? [] as $canchaId) {
+                        \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $canchaId)
+                            ->whereIn('horario_id', $clase->horario_ids ?? [])
+                            ->where('fecha', '>=', $clase->fecha_inicio)
+                            ->where('fecha', '<=', $clase->fecha_fin)
+                            ->delete();
+                    }
+                    $clase->delete();
+                }
+
+                // Recrear clases con nuevos parámetros
+                $fechaInicio = $request->has('fecha_inicio') 
+                    ? Carbon::parse($request->fecha_inicio)->startOfDay()
+                    : Carbon::parse($primerClase->fecha_inicio)->startOfDay();
+                
+                $duracionMeses = $request->duracion_meses ?? 1;
+                $fechaFin = $fechaInicio->copy()->addMonths($duracionMeses);
+                
+                $deporteId = $request->deporte_id ?? $primerClase->deporte_id ?? 1;
+                $canchaIds = $request->cancha_ids ?? $primerClase->cancha_ids;
+                
+                // Si no se proporcionan dias_horarios, usar los de la primera clase
+                $diasHorarios = $request->dias_horarios ?? $this->extraerDiasHorariosDeClase($primerClase);
+
+                // Mapear días a números
+                $diasMap = [
+                    'domingo' => 0, 'lunes' => 1, 'martes' => 2, 'miércoles' => 3,
+                    'jueves' => 4, 'viernes' => 5, 'sábado' => 6,
+                ];
+
+                // Recopilar fechas a crear por día
+                $fechasPorDia = [];
+                $current = $fechaInicio->copy();
+                while ($current->lessThanOrEqualTo($fechaFin)) {
+                    foreach ($diasHorarios as $dh) {
+                        if ($current->dayOfWeek === $diasMap[$dh['dia']]) {
+                            $fechasPorDia[] = [
+                                'fecha' => $current->copy(),
+                                'dia' => $dh['dia'],
+                                'hora_inicio' => $dh['hora_inicio'] . ':00',
+                                'hora_fin' => $dh['hora_fin'] . ':00'
+                            ];
+                        }
+                    }
+                    $current->addDay();
+                }
+
+                $erroresValidacion = [];
+                $clasesCreadas = [];
+                $bloqueosCreados = [];
+
+                foreach ($fechasPorDia as $item) {
+                    $horarios = \App\Models\Horario::where('dia', ucfirst($item['dia']))
+                        ->where('deporte_id', $deporteId)
+                        ->where('activo', true)
+                        ->where('hora_inicio', '>=', $item['hora_inicio'])
+                        ->where('hora_fin', '<=', $item['hora_fin'])
+                        ->orderBy('hora_inicio')
+                        ->get()
+                        ->filter(function($horario) use ($item) {
+                            if ($horario->hora_fin === '00:00:00' && $item['hora_fin'] !== '00:00:00') {
+                                return false;
+                            }
+                            return $horario->hora_inicio >= $item['hora_inicio'] && $horario->hora_fin <= $item['hora_fin'];
+                        });
+
+                    if ($horarios->isEmpty()) {
+                        $erroresValidacion[] = "No hay horarios disponibles para {$item['dia']} en el rango {$item['hora_inicio']}-{$item['hora_fin']} ({$item['fecha']->toDateString()})";
+                        continue;
+                    }
+
+                    $clase = Clase::create([
+                        'nombre' => $request->nombre ?? $primerClase->nombre,
+                        'descripcion' => $request->descripcion ?? $primerClase->descripcion,
+                        'fecha_inicio' => $item['fecha']->toDateString(),
+                        'fecha_fin' => $item['fecha']->toDateString(),
+                        'profesor_id' => $request->profesor_id ?? $primerClase->profesor_id,
+                        'cancha_ids' => $canchaIds,
+                        'horario_ids' => $horarios->pluck('id')->toArray(),
+                        'cupo_maximo' => $request->cupo_maximo ?? $primerClase->cupo_maximo,
+                        'precio_mensual' => $request->precio_mensual ?? $primerClase->precio_mensual,
+                        'activa' => $request->activa ?? $primerClase->activa,
+                        'tipo' => 'fija',
+                        'duracion' => $horarios->count(),
+                    ]);
+                    $clasesCreadas[] = $clase;
+
+                    // Crear bloqueos para todas las canchas
+                    foreach ($canchaIds as $canchaId) {
+                        foreach ($horarios as $horario) {
+                            $bloqueo = \App\Models\BloqueoDisponibilidadTurno::create([
+                                'fecha' => $item['fecha']->toDateString(),
+                                'cancha_id' => $canchaId,
+                                'horario_id' => $horario->id,
+                            ]);
+                            $bloqueosCreados[] = $bloqueo;
+                        }
+                    }
+                }
+
+                if (!empty($erroresValidacion)) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Errores en los horarios solicitados',
+                        'errores' => $erroresValidacion,
+                        'status' => 400
+                    ], 400);
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'message' => 'Clases fijas actualizadas y recreadas correctamente',
+                    'clases_eliminadas' => count($clases),
+                    'clases_creadas' => count($clasesCreadas),
+                    'bloqueos_creados' => count($bloqueosCreados),
+                    'clases' => $clasesCreadas,
+                    'status' => 200
+                ], 200);
+
+            } else {
+                // Solo actualizar campos básicos sin recrear
+                $clasesActualizadas = [];
+                
+                foreach ($clases as $clase) {
+                    // Eliminar bloqueos anteriores si cambian las canchas
+                    if ($request->has('cancha_ids')) {
+                        foreach ($clase->cancha_ids ?? [] as $canchaId) {
+                            \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $canchaId)
+                                ->whereIn('horario_id', $clase->horario_ids ?? [])
+                                ->where('fecha', '>=', $clase->fecha_inicio)
+                                ->where('fecha', '<=', $clase->fecha_fin)
+                                ->delete();
+                        }
+                    }
+
+                    $clase->update([
+                        'nombre' => $request->nombre ?? $clase->nombre,
+                        'descripcion' => $request->descripcion ?? $clase->descripcion,
+                        'profesor_id' => $request->profesor_id ?? $clase->profesor_id,
+                        'cancha_ids' => $request->cancha_ids ?? $clase->cancha_ids,
+                        'cupo_maximo' => $request->cupo_maximo ?? $clase->cupo_maximo,
+                        'precio_mensual' => $request->precio_mensual ?? $clase->precio_mensual,
+                        'activa' => $request->activa ?? $clase->activa,
+                    ]);
+
+                    // Recrear bloqueos si cambiaron las canchas
+                    if ($request->has('cancha_ids')) {
+                        foreach ($clase->cancha_ids as $canchaId) {
+                            foreach ($clase->horario_ids as $horarioId) {
+                                \App\Models\BloqueoDisponibilidadTurno::create([
+                                    'fecha' => $clase->fecha_inicio,
+                                    'cancha_id' => $canchaId,
+                                    'horario_id' => $horarioId,
+                                ]);
+                            }
+                        }
+                    }
+
+                    $clasesActualizadas[] = $clase;
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'message' => 'Clases fijas actualizadas correctamente',
+                    'clases_actualizadas' => count($clasesActualizadas),
+                    'clases' => $clasesActualizadas,
+                    'status' => 200
+                ], 200);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al actualizar las clases fijas',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ], 500);
+        }
+    }
+
+    /**
+     * Extrae los días y horarios de una clase existente
+     */
+    private function extraerDiasHorariosDeClase($clase)
+    {
+        $diasHorarios = [];
+        $horariosAgrupados = [];
+        
+        // Agrupar horarios por día
+        foreach ($clase->horarios as $horario) {
+            $dia = strtolower($horario->dia);
+            if (!isset($horariosAgrupados[$dia])) {
+                $horariosAgrupados[$dia] = [];
+            }
+            $horariosAgrupados[$dia][] = $horario;
+        }
+        
+        // Crear rangos de horarios por día
+        foreach ($horariosAgrupados as $dia => $horarios) {
+            $horarios = collect($horarios)->sortBy('hora_inicio');
+            $horaInicio = $horarios->first()->hora_inicio;
+            $horaFin = $horarios->last()->hora_fin;
+            
+            $diasHorarios[] = [
+                'dia' => $dia,
+                'hora_inicio' => substr($horaInicio, 0, 5), // H:i format
+                'hora_fin' => substr($horaFin, 0, 5)
+            ];
+        }
+        
+        return $diasHorarios;
+    }
 }
