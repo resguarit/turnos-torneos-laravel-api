@@ -13,11 +13,12 @@ class ClaseService implements ClaseServiceInterface
 {
     public function getAll()
     {
-        $clases = Clase::with('profesor', 'cancha')->get();
+        $clases = Clase::with('profesor')->get();
 
-        // Agrega los datos completos de los horarios a cada clase
+        // Agregar datos completos de horarios y canchas
         $clases->transform(function ($clase) {
-            $clase->horarios = $clase->horarios; // Esto usa el accesor del modelo
+            $clase->horarios = $clase->horarios;
+            $clase->canchas = $clase->canchas;
             return $clase;
         });
 
@@ -26,7 +27,12 @@ class ClaseService implements ClaseServiceInterface
 
     public function getById($id)
     {
-        return Clase::with('profesor', 'cancha')->find($id);
+        $clase = Clase::with('profesor')->find($id);
+        if ($clase) {
+            $clase->horarios = $clase->horarios;
+            $clase->canchas = $clase->canchas;
+        }
+        return $clase;
     }
 
     public function create(Request $request)
@@ -37,7 +43,8 @@ class ClaseService implements ClaseServiceInterface
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date',
             'profesor_id' => 'required|exists:profesores,id',
-            'cancha_id' => 'required|exists:canchas,id',
+            'cancha_ids' => 'required|array|min:1',
+            'cancha_ids.*' => 'exists:canchas,id',
             'cupo_maximo' => 'required|integer|min:1',
             'precio_mensual' => 'required|numeric|min:0',
             'activa' => 'required|boolean',
@@ -80,7 +87,6 @@ class ClaseService implements ClaseServiceInterface
             ], 400);
         }
 
-        // Verificar rango completo (sin huecos)
         $rangoCompleto = $this->verificarRangoCompleto($horarios, $horaInicio, $horaFin);
         if (!$rangoCompleto) {
             return response()->json([
@@ -88,8 +94,6 @@ class ClaseService implements ClaseServiceInterface
                 'status' => 400
             ], 400);
         }
-
-        $esUnaHora = $horarios->count() === 1;
 
         DB::beginTransaction();
         try {
@@ -99,7 +103,7 @@ class ClaseService implements ClaseServiceInterface
                 'fecha_inicio' => $request->fecha_inicio,
                 'fecha_fin' => $request->fecha_fin,
                 'profesor_id' => $request->profesor_id,
-                'cancha_id' => $request->cancha_id,
+                'cancha_ids' => $request->cancha_ids,
                 'horario_ids' => $horarios->pluck('id')->toArray(),
                 'cupo_maximo' => $request->cupo_maximo,
                 'precio_mensual' => $request->precio_mensual,
@@ -108,18 +112,21 @@ class ClaseService implements ClaseServiceInterface
                 'duracion' => $horarios->count(),
             ]);
 
-            foreach ($horarios as $horario) {
-                \App\Models\BloqueoDisponibilidadTurno::create([
-                    'fecha' => $request->fecha_inicio,
-                    'cancha_id' => $request->cancha_id,
-                    'horario_id' => $horario->id,
-                ]);
+            // Crear bloqueos para todas las canchas
+            foreach ($request->cancha_ids as $canchaId) {
+                foreach ($horarios as $horario) {
+                    \App\Models\BloqueoDisponibilidadTurno::create([
+                        'fecha' => $request->fecha_inicio,
+                        'cancha_id' => $canchaId,
+                        'horario_id' => $horario->id,
+                    ]);
+                }
             }
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Clase creada y turno bloqueado correctamente',
+                'message' => 'Clase creada y turnos bloqueados correctamente',
                 'clase' => $clase,
                 'status' => 201
             ], 201);
@@ -151,7 +158,8 @@ class ClaseService implements ClaseServiceInterface
             'fecha_inicio' => 'sometimes|date',
             'fecha_fin' => 'sometimes|date',
             'profesor_id' => 'sometimes|exists:profesores,id',
-            'cancha_id' => 'sometimes|exists:canchas,id',
+            'cancha_ids' => 'sometimes|array|min:1',
+            'cancha_ids.*' => 'exists:canchas,id',
             'cupo_maximo' => 'sometimes|integer|min:1',
             'precio_mensual' => 'sometimes|numeric|min:0',
             'activa' => 'sometimes|boolean',
@@ -168,19 +176,18 @@ class ClaseService implements ClaseServiceInterface
 
         DB::beginTransaction();
         try {
-            // Eliminar bloqueos anteriores
-            \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $clase->cancha_id)
-                ->whereIn('horario_id', is_array($clase->horario_ids) ? $clase->horario_ids : json_decode($clase->horario_ids, true) ?? [])
-                ->where('fecha', '>=', $clase->fecha_inicio)
-                ->where('fecha', '<=', $clase->fecha_fin)
-                ->delete();
+            // Eliminar bloqueos anteriores para todas las canchas asociadas
+            $canchaIdsAnteriores = $clase->cancha_ids ?? [];
+            foreach ($canchaIdsAnteriores as $canchaId) {
+                \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $canchaId)
+                    ->whereIn('horario_id', $clase->horario_ids ?? [])
+                    ->where('fecha', '>=', $clase->fecha_inicio)
+                    ->where('fecha', '<=', $clase->fecha_fin)
+                    ->delete();
+            }
 
-            // Si se envían nuevos horarios, actualiza hora_inicio y hora_fin según los horarios seleccionados
             $horario_ids = $request->horario_ids ?? $clase->horario_ids;
-            $horarios = \App\Models\Horario::whereIn('id', $horario_ids)->orderBy('hora_inicio')->get();
-
-            $hora_inicio = $horarios->isNotEmpty() ? $horarios->first()->hora_inicio : null;
-            $hora_fin = $horarios->isNotEmpty() ? $horarios->last()->hora_fin : null;
+            $cancha_ids = $request->cancha_ids ?? $clase->cancha_ids;
 
             // Actualizar la clase
             $clase->update([
@@ -189,28 +196,27 @@ class ClaseService implements ClaseServiceInterface
                 'fecha_inicio' => $request->fecha_inicio ?? $clase->fecha_inicio,
                 'fecha_fin' => $request->fecha_fin ?? $clase->fecha_fin,
                 'profesor_id' => $request->profesor_id ?? $clase->profesor_id,
-                'cancha_id' => $request->cancha_id ?? $clase->cancha_id,
+                'cancha_ids' => $cancha_ids,
                 'horario_ids' => $horario_ids,
                 'cupo_maximo' => $request->cupo_maximo ?? $clase->cupo_maximo,
                 'precio_mensual' => $request->precio_mensual ?? $clase->precio_mensual,
                 'activa' => $request->activa ?? $clase->activa,
                 'duracion' => count($horario_ids),
-                // Si tienes campos hora_inicio y hora_fin en la tabla clases, actualízalos aquí:
-                // 'hora_inicio' => $hora_inicio,
-                // 'hora_fin' => $hora_fin,
             ]);
 
-            // Crear nuevos bloqueos
-            foreach ($horario_ids as $horarioId) {
-                $fechaActual = $request->fecha_inicio ?? $clase->fecha_inicio;
-                $fechaFin = $request->fecha_fin ?? $clase->fecha_fin;
-                while ($fechaActual <= $fechaFin) {
-                    \App\Models\BloqueoDisponibilidadTurno::create([
-                        'fecha' => $fechaActual,
-                        'cancha_id' => $request->cancha_id ?? $clase->cancha_id,
-                        'horario_id' => $horarioId,
-                    ]);
-                    $fechaActual = date('Y-m-d', strtotime($fechaActual . ' +1 day'));
+            // Crear nuevos bloqueos para todas las canchas
+            foreach ($cancha_ids as $canchaId) {
+                foreach ($horario_ids as $horarioId) {
+                    $fechaActual = $request->fecha_inicio ?? $clase->fecha_inicio;
+                    $fechaFin = $request->fecha_fin ?? $clase->fecha_fin;
+                    while ($fechaActual <= $fechaFin) {
+                        \App\Models\BloqueoDisponibilidadTurno::create([
+                            'fecha' => $fechaActual,
+                            'cancha_id' => $canchaId,
+                            'horario_id' => $horarioId,
+                        ]);
+                        $fechaActual = date('Y-m-d', strtotime($fechaActual . ' +1 day'));
+                    }
                 }
             }
 
@@ -243,12 +249,14 @@ class ClaseService implements ClaseServiceInterface
             ], 404);
         }
 
-        // Eliminar bloqueos de disponibilidad asociados a la clase
-        \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $clase->cancha_id)
-            ->whereIn('horario_id', $clase->horario_ids ?? [])
-            ->where('fecha', '>=', $clase->fecha_inicio)
-            ->where('fecha', '<=', $clase->fecha_fin)
-            ->delete();
+        // Eliminar bloqueos para todas las canchas asociadas
+        foreach ($clase->cancha_ids ?? [] as $canchaId) {
+            \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $canchaId)
+                ->whereIn('horario_id', $clase->horario_ids ?? [])
+                ->where('fecha', '>=', $clase->fecha_inicio)
+                ->where('fecha', '<=', $clase->fecha_fin)
+                ->delete();
+        }
 
         $clase->delete();
 
@@ -264,7 +272,6 @@ class ClaseService implements ClaseServiceInterface
         \Log::info('deleteMany - IDs recibidos:', $ids);
 
         if (!is_array($ids) || empty($ids)) {
-            \Log::warning('deleteMany - Array de IDs vacío o no es array');
             return response()->json([
                 'message' => 'Debes enviar un array de IDs',
                 'status' => 400
@@ -275,38 +282,26 @@ class ClaseService implements ClaseServiceInterface
         $noEncontradas = [];
 
         $clases = Clase::whereIn('id', $ids)->get()->keyBy('id');
-        \Log::info('deleteMany - Clases encontradas:', $clases->keys()->toArray());
 
         foreach ($ids as $id) {
             $clase = $clases->get($id);
             if (!$clase) {
-                \Log::warning("deleteMany - Clase no encontrada para ID: $id");
                 $noEncontradas[] = $id;
                 continue;
             }
 
-            \Log::info("deleteMany - Eliminando bloqueos para clase ID: $id", [
-                'cancha_id' => $clase->cancha_id,
-                'horario_ids' => $clase->horario_ids,
-                'fecha_inicio' => $clase->fecha_inicio,
-                'fecha_fin' => $clase->fecha_fin,
-            ]);
-
-            $bloqueosEliminados = \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $clase->cancha_id)
-                ->whereIn('horario_id', $clase->horario_ids ?? [])
-                ->where('fecha', '>=', $clase->fecha_inicio)
-                ->where('fecha', '<=', $clase->fecha_fin)
-                ->delete();
-
-            \Log::info("deleteMany - Bloqueos eliminados: $bloqueosEliminados");
+            // Eliminar bloqueos para todas las canchas asociadas
+            foreach ($clase->cancha_ids ?? [] as $canchaId) {
+                \App\Models\BloqueoDisponibilidadTurno::where('cancha_id', $canchaId)
+                    ->whereIn('horario_id', $clase->horario_ids ?? [])
+                    ->where('fecha', '>=', $clase->fecha_inicio)
+                    ->where('fecha', '<=', $clase->fecha_fin)
+                    ->delete();
+            }
 
             $clase->delete();
-            \Log::info("deleteMany - Clase eliminada: $id");
             $eliminadas[] = $id;
         }
-
-        \Log::info('deleteMany - Eliminadas:', $eliminadas);
-        \Log::info('deleteMany - No encontradas:', $noEncontradas);
 
         return response()->json([
             'message' => 'Eliminación masiva finalizada',
@@ -332,7 +327,8 @@ class ClaseService implements ClaseServiceInterface
             'dias_horarios.*.hora_inicio' => 'required|date_format:H:i',
             'dias_horarios.*.hora_fin' => 'required|date_format:H:i|after:dias_horarios.*.hora_inicio',
             'deporte_id' => 'required|exists:deportes,id',
-            'cancha_id' => 'required|exists:canchas,id',
+            'cancha_ids' => 'required|array|min:1',
+            'cancha_ids.*' => 'exists:canchas,id',
         ]);
 
         if ($validator->fails()) {
@@ -346,7 +342,7 @@ class ClaseService implements ClaseServiceInterface
         $fechaInicio = Carbon::parse($request->fecha_inicio)->startOfDay();
         $fechaFin = $fechaInicio->copy()->addMonths($request->duracion_meses);
         $deporteId = $request->deporte_id;
-        $canchaId = $request->cancha_id;
+        $canchaIds = $request->cancha_ids;
 
         // Mapear días a números
         $diasMap = [
@@ -372,7 +368,6 @@ class ClaseService implements ClaseServiceInterface
             $current->addDay();
         }
 
-        // Obtener horarios requeridos por fecha/día
         $erroresValidacion = [];
         $clasesCreadas = [];
         $bloqueosCreados = [];
@@ -405,7 +400,7 @@ class ClaseService implements ClaseServiceInterface
                     'fecha_inicio' => $item['fecha']->toDateString(),
                     'fecha_fin' => $item['fecha']->toDateString(),
                     'profesor_id' => $request->profesor_id,
-                    'cancha_id' => $canchaId,
+                    'cancha_ids' => $canchaIds,
                     'horario_ids' => $horarios->pluck('id')->toArray(),
                     'cupo_maximo' => $request->cupo_maximo,
                     'precio_mensual' => $request->precio_mensual,
@@ -415,13 +410,16 @@ class ClaseService implements ClaseServiceInterface
                 ]);
                 $clasesCreadas[] = $clase;
 
-                foreach ($horarios as $horario) {
-                    $bloqueo = \App\Models\BloqueoDisponibilidadTurno::create([
-                        'fecha' => $item['fecha']->toDateString(),
-                        'cancha_id' => $canchaId,
-                        'horario_id' => $horario->id,
-                    ]);
-                    $bloqueosCreados[] = $bloqueo;
+                // Crear bloqueos para todas las canchas
+                foreach ($canchaIds as $canchaId) {
+                    foreach ($horarios as $horario) {
+                        $bloqueo = \App\Models\BloqueoDisponibilidadTurno::create([
+                            'fecha' => $item['fecha']->toDateString(),
+                            'cancha_id' => $canchaId,
+                            'horario_id' => $horario->id,
+                        ]);
+                        $bloqueosCreados[] = $bloqueo;
+                    }
                 }
             }
 
@@ -456,50 +454,6 @@ class ClaseService implements ClaseServiceInterface
         }
     }
 
-    /**
-     * Obtiene los horarios que cubren el rango solicitado para cada día
-     */
-    private function obtenerHorariosRango($diasSemana, $horaInicio, $horaFin, $deporteId)
-    {
-        $horariosRequeridos = [];
-        $erroresValidacion = [];
-
-        foreach ($diasSemana as $dia) {
-            $diaCapitalizado = ucfirst($dia);
-            
-            // Buscar horarios que cubran el rango solicitado
-            $horarios = \App\Models\Horario::where('dia', $diaCapitalizado)
-                ->where('deporte_id', $deporteId)
-                ->where('activo', true)
-                ->where('hora_inicio', '>=', $horaInicio)
-                ->where('hora_fin', '<=', $horaFin)
-                ->orderBy('hora_inicio')
-                ->get();
-
-            if ($horarios->isEmpty()) {
-                $erroresValidacion[] = "No hay horarios disponibles para {$dia} en el rango {$horaInicio}-{$horaFin}";
-                continue;
-            }
-
-            // Verificar que los horarios cubran completamente el rango
-            $rangoCompleto = $this->verificarRangoCompleto($horarios, $horaInicio, $horaFin);
-            if (!$rangoCompleto) {
-                $erroresValidacion[] = "Los horarios de {$dia} no cubren completamente el rango {$horaInicio}-{$horaFin}";
-                continue;
-            }
-
-            $horariosRequeridos[$dia] = $horarios;
-        }
-
-        return [
-            'horarios' => $horariosRequeridos,
-            'errores' => $erroresValidacion
-        ];
-    }
-
-    /**
-     * Verifica que los horarios cubran completamente el rango solicitado
-     */
     private function verificarRangoCompleto($horarios, $horaInicio, $horaFin)
     {
         if ($horarios->isEmpty()) return false;
@@ -510,7 +464,7 @@ class ClaseService implements ClaseServiceInterface
         
         foreach ($horarios as $horario) {
             if ($horario->hora_inicio !== $inicioEsperado) {
-                return false; // Hay un gap
+                return false;
             }
             $inicioEsperado = $horario->hora_fin;
         }
@@ -539,7 +493,7 @@ class ClaseService implements ClaseServiceInterface
             }
         }
 
-        $query = Clase::where('tipo', 'fija');
+        $query = Clase::with('profesor')->where('tipo', 'fija');
         if ($fechaInicio) {
             $query->where('fecha_inicio', '>=', $fechaInicio);
         }
@@ -550,10 +504,11 @@ class ClaseService implements ClaseServiceInterface
 
         \Log::info("getClasesFijasGrilla - Clases encontradas: " . $clases->count());
 
-        // Array para evitar duplicados
-        $clasesUnicas = [];
-
         foreach ($clases as $clase) {
+            // Obtener canchas de la clase
+            $canchas = $clase->canchas;
+            $canchasStr = $canchas->pluck('nro')->implode(', ');
+
             foreach ($clase->horarios as $horario) {
                 $diaLower = strtolower($horario->dia);
 
@@ -562,21 +517,16 @@ class ClaseService implements ClaseServiceInterface
                 $h = intval(substr($horaClase, 0, 2));
                 $bloque = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00:00';
 
-                // Si la clase empieza en minutos distintos de 00, igual la metemos en el bloque correspondiente
                 if (in_array($bloque, $horas) && in_array($diaLower, $dias)) {
-                    $key = $clase->nombre . '|' . ($clase->profesor->nombre ?? '') . '|' . ($clase->cancha->nro ?? '') . '|' . $bloque . '|' . $horario->hora_fin . '|' . $diaLower;
-                    if (!isset($clasesUnicas[$bloque][$diaLower][$key])) {
-                        $grilla[$bloque][$diaLower][] = [
-                            'id' => $clase->id,
-                            'nombre' => $clase->nombre,
-                            'profesor' => $clase->profesor ?? '',
-                            'cancha' => $clase->cancha->nro ?? '',
-                            'hora_inicio' => $horario->hora_inicio,
-                            'hora_fin' => $horario->hora_fin,
-                            'fecha' => $clase->fecha_inicio,
-                        ];
-                        $clasesUnicas[$bloque][$diaLower][$key] = true;
-                    }
+                    $grilla[$bloque][$diaLower][] = [
+                        'id' => $clase->id,
+                        'nombre' => $clase->nombre,
+                        'profesor' => $clase->profesor->nombre ?? '',
+                        'canchas' => $canchasStr,
+                        'hora_inicio' => $horario->hora_inicio,
+                        'hora_fin' => $horario->hora_fin,
+                        'fecha' => $clase->fecha_inicio,
+                    ];
                 }
             }
         }
