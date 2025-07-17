@@ -6,6 +6,8 @@ use Illuminate\Console\Command;
 use App\Models\Complejo;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Database\Seeders\Complejos\DatabaseSeeder;
+use Dflydev\DotAccessData\Data;
 
 class TenantSeedCommand extends Command
 {
@@ -70,7 +72,7 @@ class TenantSeedCommand extends Command
             $this->call('db:seed', [
                 '--database' => 'mysql_tenant',
                 '--force' => true,
-                '--class' => 'database/seeders/complejos/DatabaseSeeder',
+                '--class' => DatabaseSeeder::class,
             ]);
 
             $this->info("Seeders completados exitosamente para el complejo: {$complejo->nombre}");
