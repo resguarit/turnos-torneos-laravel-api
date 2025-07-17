@@ -569,7 +569,7 @@ class ClaseService implements ClaseServiceInterface
                         $grilla[$bloque][$diaLower][] = [
                             'id' => $clase->id,
                             'nombre' => $clase->nombre,
-                            'profesor' => $clase->profesor->nombre ?? '',
+                            'profesor' => $clase->profesor ?? '',
                             'cancha' => $clase->cancha->nro ?? '',
                             'hora_inicio' => $horario->hora_inicio,
                             'hora_fin' => $horario->hora_fin,
